@@ -1,0 +1,8 @@
+target
+*.d
+*.o
+*.bak
+*.exe
+*.log.new
+debian
+.redo

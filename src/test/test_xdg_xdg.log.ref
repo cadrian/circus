@@ -1,0 +1,6 @@
+data_dirs = /xdg/data/home/circus:/xdg/data/dirs
+config_dirs = /xdg/config/home/circus:/xdg/config/dirs
+cache_home = /xdg/cache/home
+runtime_dir = /xdg/runtime/dir
+data_home = /xdg/data/home/circus
+config_home = /xdg/config/home/circus

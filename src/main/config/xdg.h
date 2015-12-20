@@ -16,6 +16,9 @@
 #ifndef __CIRCUS_XDG_H
 #define __CIRCUS_XDG_H
 
+const char *data_dirs(void);
+const char *config_dirs(void);
+
 const char *cache_home(void);
 const char *runtime_dir(void);
 const char *data_home(void);

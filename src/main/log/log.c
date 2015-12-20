@@ -114,47 +114,28 @@ void circus_log(const char *file, int line, const char *tag, const char *module,
    assert(module != NULL);
    assert(format != NULL);
 
-   va_list args, args2;
-   int n;
+   va_list args;
    time_t date = time(NULL);
    struct tm *tm = localtime(&date);
    char *message = NULL;
    char *logline = NULL;
 
    va_start(args, format);
-   va_copy(args2, args);
-   n = vsnprintf("", 0, format, args);
-   assert(n >= 0);
+   message = vszprintf(format, args);
+   assert(message != NULL);
+   va_end(args);
 
-   message = malloc(n + 1);
-   assert(message);
-   if (n) {
-      vsnprintf(message, n + 1, format, args2);
-   } else {
-      *message = '\0';
-   }
-
-   n = snprintf("", 0, "%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
-                tm->tm_mday, tm->tm_mon, tm->tm_year,
-                tm->tm_hour, tm->tm_min, tm->tm_sec,
-                file, line, tag, module, message);
-   assert(n >= 0);
-   if (n) {
-      logline = malloc(n + 1);
-      assert(logline);
-      snprintf(logline, n + 1, "%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
-               tm->tm_mday, tm->tm_mon, tm->tm_year,
-               tm->tm_hour, tm->tm_min, tm->tm_sec,
-               file, line, tag, module, message);
-      write_req_t *req = malloc(sizeof(write_req_t));
-      req->buf.base = logline;
-      req->buf.len = n;
-      uv_write(&req->req, log_handle, &req->buf, 1, on_write);
-   }
+   logline = szprintf("%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
+                      tm->tm_mday, tm->tm_mon, tm->tm_year,
+                      tm->tm_hour, tm->tm_min, tm->tm_sec,
+                      file, line, tag, module, message);
+   assert(logline != NULL);
    free(message);
 
-   va_end(args);
-   va_end(args2);
+   write_req_t *req = malloc(sizeof(write_req_t));
+   req->buf.base = logline;
+   req->buf.len = strlen(logline);
+   uv_write(&req->req, log_handle, &req->buf, 1, on_write);
 }
 
 void circus_log_end(void) {

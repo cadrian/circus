@@ -1,13 +1,38 @@
 set -e
-redo-ifchange $2.o
-DEPS=$(egrep -o  "$(pwd)/main/[^[:space:]]+\.h" $2.d |
+
+function deps_of() {
+    egrep -o  "$(pwd)/main/[^[:space:]]+\.h" ${1%.o}.d |
               sed -r 's!'^"$(pwd)"'/main/!!;s!\.h$!!' |
               while read header; do
                   grep -l '^#include "'$(basename $header)'.h"$' main/$header*.c
               done |
               sed 's!\.c$!.o!'
-    )
-redo-ifchange $DEPS
+}
+
+function rebuild_deps() {
+    # Try to recursively rebuild all deps until fix point
+    rm -f $1.dep[s01]
+    # The seed is the target itself
+    echo $1.o > $1.deps
+    # We stop when the list of deps does not change anymore (fix point)
+    until diff -q $1.deps $1.dep0 >/dev/null 2>&1; do
+        mv $1.deps $1.dep0
+        touch $1.dep1
+        while read o; do
+            echo $o >> $1.dep1
+            redo-ifchange $o
+            deps_of $o >> $1.dep1
+        done < $1.dep0
+        cat $1.dep1 | sort -u > $1.deps
+        rm $1.dep1
+    done
+    rm $1.dep0
+    cat $1.deps | grep -v "^$1.o$" | awk '{printf("%s ", $0)} END {printf("\n")}'
+    rm $1.deps
+}
+
+DEPS=$(rebuild_deps $2)
+#echo "deps: $DEPS" >&2
 LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"

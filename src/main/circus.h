@@ -16,6 +16,8 @@
 #ifndef __CIRCUS_CIRCUS_H
 #define __CIRCUS_CIRCUS_H
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef DEBUG
@@ -34,5 +36,8 @@
       }                                                      \
    }                                                         \
    while(0)
+
+char *szprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+char *vszprintf(const char *format, va_list args);
 
 #endif /* __CIRCUS_CIRCUS_H */

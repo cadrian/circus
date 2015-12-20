@@ -5,6 +5,9 @@ logref=$2.log.ref
 
 exe=$2.exe
 redo-ifchange $exe
+if [[ ${LIBUV_DIR-x} != x ]]; then
+    export LD_LIBRARY_PATH=$LIBUV_DIR/lib:{LD_LIBRARY_PATH-}
+fi
 $exe >$lognew || {
     echo "**** Exited with status $?" >>$lognew
     echo "cat $lognew" >&2

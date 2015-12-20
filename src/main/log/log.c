@@ -14,8 +14,12 @@
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 
 #include <cad_shared.h>
@@ -24,21 +28,16 @@
 
 #include <uv.h>
 
+#include "circus.h"
 #include "log.h"
-
-typedef struct log_line_s log_line_t;
-struct log_line_s {
-   log_line_t *next;
-   time_t date;
-   const char *file;
-   int line;
-   const char *tag;
-   const char *module;
-   char buffer[0];
-};
 
 static int default_level = LOG_INFO;
 static cad_hash_t *module_levels = NULL;
+
+static uv_tty_t tty;
+static uv_pipe_t pipe;
+static uv_file fd;
+static uv_stream_t *log_handle = NULL;
 
 void circus_set_log(const char *module, int max_level) {
    int *level;
@@ -51,6 +50,7 @@ void circus_set_log(const char *module, int max_level) {
       level = module_levels->get(module_levels, module);
       if (level == NULL) {
          level = malloc(sizeof(int));
+         assert(level);
          module_levels->set(module_levels, module, level);
       }
       *level = max_level;
@@ -70,78 +70,104 @@ int circus_is_log(int level, const char *module) {
    return level <= max_level;
 }
 
-static uv_poll_t *log_handle = NULL;
-static log_line_t *first_line = NULL;
-static log_line_t *last_line = NULL;
+static void start_log_tty(void) {
+   uv_tty_init(uv_default_loop(), &tty, 1, 0);
+   uv_tty_set_mode(&tty, UV_TTY_MODE_NORMAL);
+   log_handle = (uv_stream_t*)&tty;
+}
 
-void on_log_writable(uv_poll_t* handle, int status, int events) {
-   log_line_t *log_line = first_line;
-   log_line_t *next;
-   struct tm *tm;
-   if (status == 0) {
-      first_line = last_line = NULL;
-      while (log_line) {
-         next = log_line->next;
-         tm = localtime(&(log_line->date));
-         printf("%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
-                tm->tm_mday, tm->tm_mon, tm->tm_year,
-                tm->tm_hour, tm->tm_min, tm->tm_sec,
-                log_line->file, log_line->line,
-                log_line->tag, log_line->module, log_line->buffer);
-         free(log_line);
-         log_line = next;
+void circus_start_log(const char *filename) {
+   circus_log_end();
+   if (filename) {
+      uv_fs_t *req = malloc(sizeof(uv_fs_t));
+      assert(req);
+      fd = uv_fs_open(uv_default_loop(), req, filename, O_WRONLY | O_CREAT | O_APPEND, 0600, NULL);
+      if (fd > 0) {
+         uv_pipe_init(uv_default_loop(), &pipe, 0);
+         uv_pipe_open(&pipe, fd);
+         log_handle = (uv_stream_t*)&pipe;
+      } else {
+         start_log_tty();
       }
+      free(req);
+   } else {
+      start_log_tty();
    }
 }
 
-static void circus_init_log(void) {
-   log_handle = malloc(sizeof(uv_poll_t));
-   uv_poll_init(uv_default_loop(), log_handle, 1); // 1 is stdout
-   uv_poll_start(log_handle, UV_WRITABLE, on_log_writable);
+typedef struct {
+    uv_write_t req;
+    uv_buf_t buf;
+} write_req_t;
+
+static void on_write(uv_write_t* req, int status) {
+   write_req_t *wreq = (write_req_t*) req;
+   free(wreq->buf.base);
+   free(wreq);
 }
 
 void circus_log(const char *file, int line, const char *tag, const char *module, const char *format, ...) {
-   static int init=0;
+   assert(log_handle != NULL);
+   assert(file != NULL);
+   assert(line > 0);
+   assert(tag != NULL);
+   assert(module != NULL);
+   assert(format != NULL);
 
    va_list args, args2;
    int n;
-   log_line_t *log_line;
-
-   if (!init) {
-      init = 1;
-      circus_init_log();
-   }
+   time_t date = time(NULL);
+   struct tm *tm = localtime(&date);
+   char *message = NULL;
+   char *logline = NULL;
 
    va_start(args, format);
    va_copy(args2, args);
-
    n = vsnprintf("", 0, format, args);
-   log_line = malloc(sizeof(log_line_t) + n+1);
-   log_line->next = NULL;
-   log_line->date = time(NULL);
-   log_line->file = file;
-   log_line->line = line;
-   log_line->tag = tag;
-   log_line->module = module;
-   log_line->buffer[0] = '\0';
+   assert(n >= 0);
+
+   message = malloc(n + 1);
+   assert(message);
    if (n) {
-      vsnprintf(log_line->buffer, n+1, format, args2);
+      vsnprintf(message, n + 1, format, args2);
+   } else {
+      *message = '\0';
    }
+
+   n = snprintf("", 0, "%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
+                tm->tm_mday, tm->tm_mon, tm->tm_year,
+                tm->tm_hour, tm->tm_min, tm->tm_sec,
+                file, line, tag, module, message);
+   assert(n >= 0);
+   if (n) {
+      logline = malloc(n + 1);
+      assert(logline);
+      snprintf(logline, n + 1, "%02d/%02d/%04d %02d:%02d:%02d %s:%d [%7s] %s: %s\n",
+               tm->tm_mday, tm->tm_mon, tm->tm_year,
+               tm->tm_hour, tm->tm_min, tm->tm_sec,
+               file, line, tag, module, message);
+      write_req_t *req = malloc(sizeof(write_req_t));
+      req->buf.base = logline;
+      req->buf.len = n;
+      uv_write(&req->req, log_handle, &req->buf, 1, on_write);
+   }
+   free(message);
 
    va_end(args);
    va_end(args2);
-
-   if (last_line) {
-      last_line->next = log_line;
-      last_line = log_line;
-   } else {
-      first_line = last_line = log_line;
-   }
 }
 
 void circus_log_end(void) {
    if (log_handle) {
-      uv_poll_stop(log_handle);
-      free(log_handle);
+      if (log_handle == (uv_stream_t*)&tty) {
+         uv_tty_reset_mode();
+      } else {
+         assert(log_handle == (uv_stream_t*)&pipe);
+         uv_fs_t* req = malloc(sizeof(uv_fs_t));
+         assert(req);
+         uv_fs_close(uv_default_loop(), req, fd, NULL);
+         free(req);
+      }
+      log_handle = NULL;
    }
 }

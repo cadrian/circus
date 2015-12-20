@@ -12,5 +12,4 @@ LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 fi
-echo "LD_FLAGS=$LD_FLAGS" >&2
 gcc -Wall -Werror $LD_FLAGS -O2 -o $3 $2.o $DEPS -lcad -luv

@@ -23,6 +23,7 @@ typedef enum {
    LOG_DEBUG,
 } log_level_t;
 
+void circus_start_log(const char *filename);
 void circus_set_log(const char *module, int max_level);
 int circus_is_log(int level, const char *module);
 void circus_log(const char *file, int line, const char *tag, const char *module, const char *format, ...) __attribute__((format(printf, 5, 6)));

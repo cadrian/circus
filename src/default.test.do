@@ -15,10 +15,7 @@ $exe >$lognew || {
 }
 
 if [ -r $logref ]; then
-    diff -q $logref $lognew || {
-        echo "diff $logref $lognew" >&2
-        exit 1
-    }
+    diff -u $logref $lognew >&2
 else
     echo "mv $lognew $logref" >&2
     exit 1

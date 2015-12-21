@@ -1,0 +1,11 @@
+test/test_log.c:9 [   INFO] main: Idle 0
+test/test_log.c:9 [   INFO] main: Idle 1
+test/test_log.c:9 [   INFO] main: Idle 2
+test/test_log.c:9 [   INFO] main: Idle 3
+test/test_log.c:9 [   INFO] main: Idle 4
+test/test_log.c:9 [   INFO] main: Idle 5
+test/test_log.c:9 [   INFO] main: Idle 6
+test/test_log.c:9 [   INFO] main: Idle 7
+test/test_log.c:9 [   INFO] main: Idle 8
+test/test_log.c:9 [   INFO] main: Idle 9
+test/test_log.c:9 [   INFO] main: Idle 10

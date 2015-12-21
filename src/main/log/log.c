@@ -38,6 +38,7 @@ static cad_hash_t *module_levels = NULL;
 
 static uv_file fd;
 static uv_stream_t *log_handle = NULL;
+static int64_t offset = 0;
 
 const char *log_format = DEFAULT_FORMAT;
 
@@ -210,6 +211,7 @@ static void start_log_tty(void) {
    case UV_FILE:
       log_handle = malloc(sizeof(uv_stream_t));
       log_handle->type = UV_FILE;
+      offset = 0;
       break;
    default:
       fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
@@ -289,8 +291,9 @@ void circus_log(const char *file, int line, const char *tag, const char *module,
    free(message);
 
    write_req_t *req = malloc(sizeof(write_req_t));
+   int len = strlen(logline);
    req->buf.base = logline;
-   req->buf.len = strlen(logline);
+   req->buf.len = len;
    switch(log_handle->type) {
    case UV_TTY:
    case UV_NAMED_PIPE:
@@ -299,7 +302,8 @@ void circus_log(const char *file, int line, const char *tag, const char *module,
       break;
    case UV_FILE:
       req->cleanup = cleanup_fs;
-      uv_fs_write(uv_default_loop(), &req->req.fs, fd, &req->buf, 1, -1, (uv_fs_cb)on_write);
+      uv_fs_write(uv_default_loop(), &req->req.fs, fd, &req->buf, 1, offset, (uv_fs_cb)on_write);
+      offset += len;
       break;
    default:
       crash();

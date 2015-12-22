@@ -1,10 +1,10 @@
 set -e
 
 function deps_of() {
-    egrep -o  "$(pwd)/main/[^[:space:]]+\.h" ${1%.o}.d |
-              sed -r 's!'^"$(pwd)"'/main/!!;s!\.h$!!' |
+    egrep -o  "$(pwd)/include/[^[:space:]]+\.h" ${1%.o}.d |
+              sed -r 's!'^"$(pwd)"'/include/!!;s!\.h$!!' |
               while read header; do
-                  grep -l '^#include "'$(basename $header)'.h"$' main/$header*.c
+                  find main -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
               done |
               sed 's!\.c$!.o!'
 }

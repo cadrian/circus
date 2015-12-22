@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <uv.h>
 
-#include "log/log.h"
+#include "log.h"
 
 void wait_for_a_while(uv_idle_t* handle) {
    static int counter=0;

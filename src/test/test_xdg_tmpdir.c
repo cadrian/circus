@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "circus.h"
-#include "config/xdg.h"
+#include "xdg.h"
 
 int main(int argc, char **argv) {
    unsetenv("XDG_DATA_DIRS");

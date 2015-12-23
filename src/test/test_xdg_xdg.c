@@ -16,13 +16,12 @@ int main(int argc, char **argv) {
    setenv("HOME", "/home/test", 1);
    setenv("USER", "test", 1);
 
-   printf("data_dirs = %s\n", data_dirs());
-   printf("config_dirs = %s\n", config_dirs());
-
-   printf("cache_home = %s\n", cache_home());
-   printf("runtime_dir = %s\n", runtime_dir());
-   printf("data_home = %s\n", data_home());
-   printf("config_home = %s\n", config_home());
+   printf("data_dirs = %s\n", xdg_data_dirs());
+   printf("config_dirs = %s\n", xdg_config_dirs());
+   printf("cache_home = %s\n", xdg_cache_home());
+   printf("runtime_dir = %s\n", xdg_runtime_dir());
+   printf("data_home = %s\n", xdg_data_home());
+   printf("config_home = %s\n", xdg_config_home());
 
    return 0;
 }

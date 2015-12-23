@@ -16,12 +16,11 @@
 #ifndef __CIRCUS_XDG_H
 #define __CIRCUS_XDG_H
 
-const char *data_dirs(void);
-const char *config_dirs(void);
-
-const char *cache_home(void);
-const char *runtime_dir(void);
-const char *data_home(void);
-const char *config_home(void);
+const char *xdg_data_dirs(void);
+const char *xdg_config_dirs(void);
+const char *xdg_cache_home(void);
+const char *xdg_runtime_dir(void);
+const char *xdg_data_home(void);
+const char *xdg_config_home(void);
 
 #endif /* __CIRCUS_XDG_H */

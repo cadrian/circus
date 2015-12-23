@@ -19,31 +19,31 @@
 #include "circus.h"
 #include "xdg.h"
 
-const char *data_dirs(void) {
+const char *xdg_data_dirs(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_DATA_DIRS");
       if (!xdg || !strlen(xdg)) {
          xdg = "/usr/local/share/:/usr/share/";
       }
-      result = szprintf(stdlib_memory, NULL, "%s:%s", data_home(), xdg);
+      result = szprintf(stdlib_memory, NULL, "%s:%s", xdg_data_home(), xdg);
    }
    return result;
 }
 
-const char *config_dirs(void) {
+const char *xdg_config_dirs(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_CONFIG_DIRS");
       if (!xdg || !strlen(xdg)) {
          xdg = "/usr/local/etc:/etc/xdg";
       }
-      result = szprintf(stdlib_memory, NULL, "%s:%s", config_home(), xdg);
+      result = szprintf(stdlib_memory, NULL, "%s:%s", xdg_config_home(), xdg);
    }
    return result;
 }
 
-const char *cache_home(void) {
+const char *xdg_cache_home(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_CACHE_HOME");
@@ -58,7 +58,7 @@ const char *cache_home(void) {
    return result;
 }
 
-const char *runtime_dir(void) {
+const char *xdg_runtime_dir(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_RUNTIME_DIR");
@@ -79,7 +79,7 @@ const char *runtime_dir(void) {
    return result;
 }
 
-const char *data_home(void) {
+const char *xdg_data_home(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_DATA_HOME");
@@ -99,7 +99,7 @@ const char *data_home(void) {
    return result;
 }
 
-const char *config_home(void) {
+const char *xdg_config_home(void) {
    static const char *result = NULL;
    if (!result) {
       char *xdg = getenv("XDG_CONFIG_HOME");

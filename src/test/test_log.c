@@ -8,8 +8,7 @@ circus_log_t *LOG;
 void wait_for_a_while(uv_idle_t* handle) {
    static int counter=0;
 
-   cad_output_stream_t *info = LOG->stream(LOG, "main", LOG_INFO);
-   info->put(info, "Idle %d", counter);
+   log_info(LOG, "main", "Idle %d", counter);
 
    counter++;
    if (counter > 10) {

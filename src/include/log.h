@@ -49,4 +49,28 @@ struct circus_log_s {
 __PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
 __PUBLIC__ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level);
 
+#define log_error(logger, module, format, ...)                           \
+   do {                                                                 \
+      cad_output_stream_t * __stream##__LINE__ = (logger)->stream((logger), (module), LOG_ERROR); \
+      __stream##__LINE__ ->put(__stream##__LINE__ , (format), __VA_ARGS__); \
+   } while(0)
+
+#define log_warning(logger, module, format, ...)                           \
+   do {                                                                 \
+      cad_output_stream_t * __stream##__LINE__ = (logger)->stream((logger), (module), LOG_WARNING); \
+      __stream##__LINE__ ->put(__stream##__LINE__ , (format), __VA_ARGS__); \
+   } while(0)
+
+#define log_info(logger, module, format, ...)                           \
+   do {                                                                 \
+      cad_output_stream_t * __stream##__LINE__ = (logger)->stream((logger), (module), LOG_INFO); \
+      __stream##__LINE__ ->put(__stream##__LINE__ , (format), __VA_ARGS__); \
+   } while(0)
+
+#define log_debug(logger, module, format, ...)                           \
+   do {                                                                 \
+      cad_output_stream_t * __stream##__LINE__ = (logger)->stream((logger), (module), LOG_DEBUG); \
+      __stream##__LINE__ ->put(__stream##__LINE__ , (format), __VA_ARGS__); \
+   } while(0)
+
 #endif /* __CIRCUS_LOG_H */

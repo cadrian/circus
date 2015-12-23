@@ -16,42 +16,37 @@
 #ifndef __CIRCUS_LOG_H
 #define __CIRCUS_LOG_H
 
+#include "cad_stream.h"
+
+typedef struct circus_log_s circus_log_t;
+
 typedef enum {
    LOG_ERROR=0,
    LOG_WARNING,
    LOG_INFO,
    LOG_DEBUG,
+   __LOG_MAX
 } log_level_t;
 
-void circus_start_log(const char *filename);
-void circus_set_log(const char *module, int max_level);
-int circus_is_log(int level, const char *module);
-void circus_set_format(const char *format);
-void circus_log(const char *file, int line, const char *tag, const char *module, const char *format, ...) __attribute__((format(printf, 5, 6)));
-void circus_log_end(void);
+#define DEFAULT_FORMAT "%Y-%M-%D %h:%m:%s %F:%L [%T] %O: %G\n"
 
-#define log_error(module, format, ...)                                  \
-   do {                                                                 \
-      if (circus_is_log(LOG_ERROR, (module)))                           \
-         circus_log(__FILE__, __LINE__, "ERROR", (module), (format), __VA_ARGS__); \
-   } while (0)
+typedef void (*circus_log_set_log_fn)(circus_log_t *this, const char *module, log_level_t max_level);
+typedef int (*circus_log_is_log_fn)(circus_log_t *this, const char *module, log_level_t level);
+typedef void (*circus_log_set_format_fn)(circus_log_t *this, const char *format);
+typedef cad_output_stream_t *(*circus_log_stream_fn)(circus_log_t *this, const char *module, log_level_t level);
+typedef void (*circus_log_close_fn)(circus_log_t *this);
+typedef void (*circus_log_free_fn)(circus_log_t *this);
 
-#define log_warning(module, format, ...)                                \
-   do {                                                                 \
-      if (circus_is_log(LOG_WARNING, (module)))                         \
-         circus_log(__FILE__, __LINE__, "WARNING", (module), (format), __VA_ARGS__); \
-   } while (0)
+struct circus_log_s {
+   circus_log_set_log_fn set_log;
+   circus_log_is_log_fn is_log;
+   circus_log_set_format_fn set_format;
+   circus_log_stream_fn stream;
+   circus_log_close_fn close;
+   circus_log_free_fn free;
+};
 
-#define log_info(module, format, ...)                                   \
-   do {                                                                 \
-      if (circus_is_log(LOG_INFO, (module)))                            \
-         circus_log(__FILE__, __LINE__, "INFO", (module), (format), __VA_ARGS__); \
-   } while (0)
-
-#define log_debug(module, format, ...)                                  \
-   do {                                                                 \
-      if (circus_is_log(LOG_DEBUG, (module)))                           \
-         circus_log(__FILE__, __LINE__, "DEBUG", (module), (format), __VA_ARGS__); \
-   } while (0)
+__PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
+__PUBLIC__ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level);
 
 #endif /* __CIRCUS_LOG_H */

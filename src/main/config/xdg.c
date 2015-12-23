@@ -26,7 +26,7 @@ const char *data_dirs(void) {
       if (!xdg || !strlen(xdg)) {
          xdg = "/usr/local/share/:/usr/share/";
       }
-      result = szprintf("%s:%s", data_home(), xdg);
+      result = szprintf(stdlib_memory, NULL, "%s:%s", data_home(), xdg);
    }
    return result;
 }
@@ -38,7 +38,7 @@ const char *config_dirs(void) {
       if (!xdg || !strlen(xdg)) {
          xdg = "/usr/local/etc:/etc/xdg";
       }
-      result = szprintf("%s:%s", config_home(), xdg);
+      result = szprintf(stdlib_memory, NULL, "%s:%s", config_home(), xdg);
    }
    return result;
 }
@@ -50,7 +50,7 @@ const char *cache_home(void) {
       if (!xdg || !strlen(xdg)) {
          char *home = getenv("HOME");
          assert(home != NULL);
-         xdg = szprintf("%s/.cache/circus", home);
+         xdg = szprintf(stdlib_memory, NULL, "%s/.cache/circus", home);
          assert(xdg != NULL);
       }
       result = (const char *)xdg;
@@ -65,12 +65,12 @@ const char *runtime_dir(void) {
       if (!xdg || !strlen(xdg)) {
          char *tmp = getenv("TMPDIR");
          if (tmp) {
-            xdg = szprintf("%s/circus", tmp);
+            xdg = szprintf(stdlib_memory, NULL, "%s/circus", tmp);
             assert(xdg != NULL);
          } else {
             char *user = getenv("USER");
             assert(user != NULL);
-            xdg = szprintf("/tmp/circus-%s", user);
+            xdg = szprintf(stdlib_memory, NULL, "/tmp/circus-%s", user);
             assert(xdg != NULL);
          }
       }
@@ -87,11 +87,11 @@ const char *data_home(void) {
       if (!xdg || !strlen(xdg)) {
          char *home = getenv("HOME");
          assert(home != NULL);
-         xdg = szprintf("%s/.local/share", home);
+         xdg = szprintf(stdlib_memory, NULL, "%s/.local/share", home);
          assert(xdg != NULL);
          m = 1;
       }
-      result = (const char *)szprintf("%s/circus", xdg);
+      result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
       if (m) {
          free(xdg);
       }
@@ -107,11 +107,11 @@ const char *config_home(void) {
       if (!xdg || !strlen(xdg)) {
          char *home = getenv("HOME");
          assert(home != NULL);
-         xdg = szprintf("%s/.config", home);
+         xdg = szprintf(stdlib_memory, NULL, "%s/.config", home);
          assert(xdg != NULL);
          m = 1;
       }
-      result = (const char *)szprintf("%s/circus", xdg);
+      result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
       if (m) {
          free(xdg);
       }

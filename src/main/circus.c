@@ -19,7 +19,7 @@
 
 #include "circus.h"
 
-char *vszprintf(const char *format, va_list args) {
+char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args) {
    va_list args2;
    int n, n2;
    char *result = NULL;
@@ -27,20 +27,24 @@ char *vszprintf(const char *format, va_list args) {
    va_copy(args2, args);
    n = vsnprintf("", 0, format, args);
    assert(n >= 0);
-   result = malloc(n + 1);
+   result = memory.malloc(n + 1);
    assert(result != NULL);
    n2 = vsnprintf(result, n + 1, format, args2);
    assert(n2 == n);
    va_end(args2);
 
+   if (size) {
+      *size = n;
+   }
+
    return result;
 }
 
-char *szprintf(const char *format, ...) {
+char *szprintf(cad_memory_t memory, int *size, const char *format, ...) {
    va_list args;
    char *result = NULL;
    va_start(args, format);
-   result = vszprintf(format, args);
+   result = vszprintf(memory, size, format, args);
    va_end(args);
    assert(result != NULL);
    return result;

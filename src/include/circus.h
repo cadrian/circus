@@ -16,6 +16,7 @@
 #ifndef __CIRCUS_CIRCUS_H
 #define __CIRCUS_CIRCUS_H
 
+#include <cad_shared.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +38,7 @@
    }                                                         \
    while(0)
 
-char *szprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-char *vszprintf(const char *format, va_list args);
+char *szprintf(cad_memory_t memory, int *size, const char *format, ...) __attribute__((format(printf, 3, 4)));
+char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args);
 
 #endif /* __CIRCUS_CIRCUS_H */

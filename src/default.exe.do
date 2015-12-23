@@ -37,4 +37,4 @@ LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 fi
-gcc -Wall -Werror $LD_FLAGS -O2 -o $3 $2.o $DEPS -lcad -luv
+gcc -Wall -Werror $LD_FLAGS -O2 -g -o $3 $2.o $DEPS -lcad -luv

@@ -31,18 +31,9 @@
 #include "circus.h"
 #include "log.h"
 
-#define DEFAULT_FORMAT "%Y-%M-%D %h:%m:%s %F:%L [%T] %O: %G\n"
+static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG"};
 
-static int default_level = LOG_INFO;
-static cad_hash_t *module_levels = NULL;
-
-static uv_file fd;
-static uv_stream_t *log_handle = NULL;
-static int64_t offset = 0;
-
-const char *log_format = DEFAULT_FORMAT;
-
-static int format_log(char *buf, const int buflen, const char *format, struct tm *tm, const char *file, int line, const char *tag, const char *module, const char *message) {
+static int format_log(char *buf, const int buflen, const char *format, struct tm *tm, const char *tag, const char *module, const char *message) {
    int result = 0;
    int state = 0;
    const char *f;
@@ -108,20 +99,6 @@ static int format_log(char *buf, const int buflen, const char *format, struct tm
                result += 2;
             }
             break;
-         case 'F':
-            if (result < buflen) {
-               result += snprintf(buf + result, buflen - result, "%s", file);
-            } else {
-               result += strlen(file);
-            }
-            break;
-         case 'L':
-            if (result < buflen) {
-               result += snprintf(buf + result, buflen - result, "%d", line);
-            } else {
-               result += snprintf("", 0, "%d", line);
-            }
-            break;
          case 'T':
             if (result < buflen) {
                result += snprintf(buf + result, buflen - result, "%7s", tag);
@@ -156,89 +133,7 @@ static int format_log(char *buf, const int buflen, const char *format, struct tm
    return result;
 }
 
-void circus_set_log(const char *module, int max_level) {
-   int *level;
-   if (!module) {
-      default_level = max_level;
-   } else {
-      if (!module_levels) {
-         module_levels = cad_new_hash(stdlib_memory, cad_hash_strings);
-      }
-      level = module_levels->get(module_levels, module);
-      if (level == NULL) {
-         level = malloc(sizeof(int));
-         assert(level);
-         module_levels->set(module_levels, module, level);
-      }
-      *level = max_level;
-   }
-}
-
-int circus_is_log(int level, const char *module) {
-   int max_level = default_level;
-   if (module) {
-      if (module_levels) {
-         int *level = module_levels->get(module_levels, module);
-         if (level) {
-            max_level = *level;
-         }
-      }
-   }
-   return level <= max_level;
-}
-
-void circus_set_format(const char *format) {
-   log_format = format;
-}
-
-static void start_log_tty(void) {
-   uv_tty_t *tty;
-   uv_pipe_t *pipe;
-   uv_handle_type handle_type = uv_guess_handle(1);
-   switch(handle_type) {
-   case UV_TTY:
-      tty = malloc(sizeof(uv_tty_t));
-      uv_tty_init(uv_default_loop(), tty, 1, 0);
-      uv_tty_set_mode(tty, UV_TTY_MODE_NORMAL);
-      log_handle = (uv_stream_t*)tty;
-      break;
-   case UV_NAMED_PIPE:
-      pipe = malloc(sizeof(uv_pipe_t));
-      uv_pipe_init(uv_default_loop(), pipe, 0);
-      uv_pipe_open(pipe, 1);
-      log_handle = (uv_stream_t*)pipe;
-      break;
-   case UV_FILE:
-      log_handle = malloc(sizeof(uv_stream_t));
-      log_handle->type = UV_FILE;
-      offset = 0;
-      break;
-   default:
-      fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
-      crash();
-   }
-   fd = 1;
-}
-
-void circus_start_log(const char *filename) {
-   circus_log_end();
-   if (filename) {
-      uv_fs_t *req = malloc(sizeof(uv_fs_t));
-      assert(req);
-      fd = uv_fs_open(uv_default_loop(), req, filename, O_WRONLY | O_CREAT | O_APPEND, 0600, NULL);
-      if (fd > 0) {
-         uv_pipe_t *pipe = malloc(sizeof(uv_pipe_t));
-         uv_pipe_init(uv_default_loop(), pipe, 0);
-         uv_pipe_open(pipe, fd);
-         log_handle = (uv_stream_t*)pipe;
-      } else {
-         start_log_tty();
-      }
-      free(req);
-   } else {
-      start_log_tty();
-   }
-}
+/* ---------------------------------------------------------------- */
 
 typedef struct write_req_s write_req_t;
 struct write_req_s {
@@ -246,33 +141,199 @@ struct write_req_s {
       uv_write_t stream;
       uv_fs_t fs;
    } req;
+   cad_memory_t memory;
    uv_buf_t buf;
    void (*cleanup)(write_req_t*);
 };
 
 static void cleanup_stream(write_req_t *req) {
-   free(req->buf.base);
+   req->memory.free(req->buf.base);
 }
 
 static void cleanup_fs(write_req_t *req) {
-   free(req->buf.base);
+   req->memory.free(req->buf.base);
    uv_fs_req_cleanup(&req->req.fs);
 }
 
 static void on_write(write_req_t* req, int status) {
    req->cleanup(req);
-   free(req);
+   req->memory.free(req);
 }
 
-void circus_log(const char *file, int line, const char *tag, const char *module, const char *format, ...) {
-   assert(log_handle != NULL);
-   assert(file != NULL);
-   assert(line > 0);
-   assert(tag != NULL);
-   assert(module != NULL);
-   assert(format != NULL);
+/* ---------------------------------------------------------------- */
 
+typedef struct uv_logger_s uv_logger_t;
+typedef void (*logger_free_fn)(uv_logger_t *logger);
+typedef void (*logger_write_fn)(uv_logger_t *logger, write_req_t *req);
+typedef void (*logger_flush_fn)(uv_logger_t *logger);
+typedef struct {
+   logger_free_fn  free ;
+   logger_write_fn write;
+   logger_flush_fn flush;
+} uv_logger_fn;
+
+struct uv_logger_s {
+   uv_logger_fn fn;
+   cad_memory_t memory;
+   uv_stream_t *log_handle;
+   uv_file fd;
+   int64_t offset;
+   char *format;
+};
+
+static void file_free(uv_logger_t *this) {
+   assert(this->log_handle == NULL);
+   this->memory.free(this);
+}
+
+static void file_write(uv_logger_t *this, write_req_t *req) {
+   int64_t offset = this->offset;
+   req->cleanup = cleanup_fs;
+   this->offset += req->buf.len;
+   uv_fs_write(uv_default_loop(), &req->req.fs, this->fd, &req->buf, 1, offset, (uv_fs_cb)on_write);
+}
+
+static void file_flush(uv_logger_t *this) {
+   uv_fs_t req;
+   uv_fs_fdatasync(uv_default_loop(), &req, this->fd, NULL);
+   // TODO: be sure to wait that all the data has been written before
+   // flushing. This will need some clever use of this->offset
+   // (expected offset) and a new counter in the on_write callback
+   // (actual written offset) + using a uv_mutex_t and uv_cond_t
+   // barrier
+}
+
+/**
+ * FILE is used when stdout was redirected
+ */
+static uv_logger_fn logger_file_fn = {
+   (logger_free_fn)file_free,
+   (logger_write_fn)file_write,
+   (logger_flush_fn)file_flush,
+};
+
+static void tty_free(uv_logger_t *this) {
+   uv_tty_reset_mode();
+   this->memory.free(this->log_handle);
+   this->memory.free(this);
+}
+
+static void tty_write(uv_logger_t *this, write_req_t *req) {
+   req->cleanup = cleanup_stream;
+   uv_write(&req->req.stream, this->log_handle, &req->buf, 1, (uv_write_cb)on_write);
+}
+
+static void tty_flush(uv_logger_t *this) {
+   // TODO: just some kind of barrier too (see log_flush_file for explanations)
+}
+
+/**
+ * TTY is used for normal tty-attached stdout
+ */
+static uv_logger_fn logger_tty_fn = {
+   (logger_free_fn)tty_free,
+   (logger_write_fn)tty_write,
+   (logger_flush_fn)tty_flush,
+};
+
+static void pipe_free(uv_logger_t *this) {
+   uv_fs_t req;
+   uv_fs_close(uv_default_loop(), &req, this->fd, NULL);
+   this->memory.free(this->log_handle);
+   this->memory.free(this);
+}
+
+static void pipe_write(uv_logger_t *this, write_req_t *req) {
+   req->cleanup = cleanup_stream;
+   uv_write(&req->req.stream, this->log_handle, &req->buf, 1, (uv_write_cb)on_write);
+}
+
+static void pipe_flush(uv_logger_t *this) {
+   // TODO: just some kind of barrier too (see log_flush_file for explanations)
+}
+
+/**
+ * PIPE is used for logs written to file (not for stdout, see FILE)
+ */
+static uv_logger_fn logger_pipe_fn = {
+   (logger_free_fn)pipe_free,
+   (logger_write_fn)pipe_write,
+   (logger_flush_fn)pipe_flush,
+};
+
+static uv_logger_t *new_logger_file(cad_memory_t memory, const char *filename) {
+   assert(filename != NULL);
+
+   uv_logger_t *result = NULL;
+   uv_fs_t req;
+   uv_file fd = uv_fs_open(uv_default_loop(), &req, filename, O_WRONLY | O_CREAT | O_APPEND, 0600, NULL);
+   if (fd >= 0) {
+      result = memory.malloc(sizeof(uv_logger_t));
+      uv_pipe_t *pipe = memory.malloc(sizeof(uv_pipe_t));
+      uv_pipe_init(uv_default_loop(), pipe, 0);
+      uv_pipe_open(pipe, fd);
+
+      result->fn = logger_pipe_fn;
+      result->memory = memory;
+      result->log_handle = (uv_stream_t*)pipe;
+      result->fd = fd;
+      result->offset = 0;
+   }
+
+   return result;
+}
+
+static uv_logger_t *new_logger_stdout(cad_memory_t memory) {
+   uv_logger_t *result = memory.malloc(sizeof(uv_logger_t));
+   uv_tty_t *tty;
+   uv_pipe_t *pipe;
+   uv_handle_type handle_type = uv_guess_handle(1);
+   result->memory = memory;
+   result->fd = 1;
+   result->offset = 0;
+   switch(handle_type) {
+   case UV_TTY:
+      tty = memory.malloc(sizeof(uv_tty_t));
+      uv_tty_init(uv_default_loop(), tty, 1, 0);
+      uv_tty_set_mode(tty, UV_TTY_MODE_NORMAL);
+      result->fn = logger_tty_fn;
+      result->log_handle = (uv_stream_t*)tty;
+      break;
+   case UV_NAMED_PIPE:
+      pipe = memory.malloc(sizeof(uv_pipe_t));
+      uv_pipe_init(uv_default_loop(), pipe, 0);
+      uv_pipe_open(pipe, 1);
+      result->fn = logger_pipe_fn;
+      result->log_handle = (uv_stream_t*)pipe;
+      break;
+   case UV_FILE:
+      result->fn = logger_file_fn;
+      result->log_handle = NULL;
+      break;
+   default:
+      fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
+      crash();
+   }
+   return result;
+}
+
+/* ---------------------------------------------------------------- */
+
+typedef struct {
+   cad_output_stream_t fn;
+   cad_memory_t memory;
+   uv_logger_t *logger;
+   const char *module;
+   const char *tag;
+} log_file_output_stream;
+
+static void log_free_stream(log_file_output_stream *this) {
+   this->memory.free(this);
+}
+
+static void log_put_stream(log_file_output_stream *this, const char *format, ...) {
    va_list args;
+   write_req_t *req;
    time_t date = time(NULL);
    struct tm *tm = localtime(&date);
    char *message = NULL;
@@ -280,55 +341,182 @@ void circus_log(const char *file, int line, const char *tag, const char *module,
    char *logline = NULL;
 
    va_start(args, format);
-   message = vszprintf(format, args);
+   message = vszprintf(this->memory, NULL, format, args);
    assert(message != NULL);
+
+   n = format_log("", 0, this->logger->format, tm, this->tag, this->module, message);
+   logline = this->memory.malloc(n + 1);
+   assert(logline != NULL);
+   format_log(logline, n + 1, this->logger->format, tm, this->tag, this->module, message);
+   this->memory.free(message);
+
+   req = this->memory.malloc(sizeof(write_req_t));
+   assert(req != NULL);
+   req->buf.base = logline;
+   req->buf.len = n;
+   req->memory = this->memory;
    va_end(args);
 
-   n = format_log("", 0, log_format, tm, file, line, tag, module, message);
-   logline = malloc(n + 1);
-   assert(logline != NULL);
-   format_log(logline, n + 1, log_format, tm, file, line, tag, module, message);
-   free(message);
+   this->logger->fn.write(this->logger, req);
+}
 
-   write_req_t *req = malloc(sizeof(write_req_t));
-   int len = strlen(logline);
-   req->buf.base = logline;
-   req->buf.len = len;
-   switch(log_handle->type) {
-   case UV_TTY:
-   case UV_NAMED_PIPE:
-      req->cleanup = cleanup_stream;
-      uv_write(&req->req.stream, log_handle, &req->buf, 1, (uv_write_cb)on_write);
-      break;
-   case UV_FILE:
-      req->cleanup = cleanup_fs;
-      uv_fs_write(uv_default_loop(), &req->req.fs, fd, &req->buf, 1, offset, (uv_fs_cb)on_write);
-      offset += len;
-      break;
-   default:
-      crash();
+static void log_flush_stream(log_file_output_stream *this) {
+   this->logger->fn.flush(this->logger);
+}
+
+cad_output_stream_t log_stream_fn = {
+   .free  = (cad_output_stream_free_fn)log_free_stream,
+   .put   = (cad_output_stream_put_fn)log_put_stream,
+   .flush = (cad_output_stream_flush_fn)log_flush_stream,
+};
+
+static cad_output_stream_t *new_log_stream(cad_memory_t memory, uv_logger_t *logger, const char *module, const char *tag) {
+   log_file_output_stream *result = memory.malloc(sizeof(log_file_output_stream));
+   result->fn = log_stream_fn;
+   result->memory = memory;
+   result->logger = logger;
+   result->module = module;
+   result->tag = tag;
+   return (cad_output_stream_t*)result;
+}
+
+/* ---------------------------------------------------------------- */
+
+static void null_output_free(cad_output_stream_t *this) {}
+static void null_output_put(cad_output_stream_t *this, const char *format, ...) {}
+static void null_output_flush(cad_output_stream_t *this) {}
+
+static cad_output_stream_t null_output = {null_output_free, null_output_put, null_output_flush};
+
+/* ---------------------------------------------------------------- */
+
+typedef struct {
+   circus_log_t fn;
+   cad_memory_t memory;
+   cad_hash_t *module_streams;
+   log_level_t max_level;
+   uv_logger_t *logger;
+} circus_log_impl;
+
+static cad_output_stream_t **__impl_set_log(circus_log_impl *this, const char *module, log_level_t max_level) {
+   assert(module != NULL);
+   assert(max_level < __LOG_MAX);
+
+   int l;
+
+   cad_output_stream_t **module_streams = this->module_streams->get(this->module_streams, module);
+   if (module_streams == NULL) {
+      module_streams = this->memory.malloc(__LOG_MAX * sizeof(cad_output_stream_t*));
+      assert(module_streams != NULL);
+      this->module_streams->set(this->module_streams, module, module_streams);
+   } else {
+      for (l = 0; l < __LOG_MAX; l++) {
+         module_streams[l]->free(module_streams[l]);
+      }
+   }
+
+   for (l = 0; l < __LOG_MAX; l++) {
+      if (l <= this->max_level && l <= max_level) {
+         module_streams[l] = new_log_stream(this->memory, this->logger, module, level_tag[l]);
+      } else {
+         module_streams[l] = &null_output;
+      }
+   }
+
+   return module_streams;
+}
+
+static void impl_set_log(circus_log_impl *this, const char *module, log_level_t max_level) {
+   __impl_set_log(this, module, max_level);
+}
+
+static int impl_is_log(circus_log_impl *this, const char *module, log_level_t level) {
+   assert(module != NULL);
+   assert(level < __LOG_MAX);
+
+   cad_output_stream_t **module_streams = this->module_streams->get(this->module_streams, module);
+   if (module_streams != NULL) {
+      return module_streams[level] != &null_output;
+   }
+   return level <= this->max_level;
+}
+
+static void impl_set_format(circus_log_impl *this, const char *format) {
+   assert(format != NULL);
+   this->memory.free(this->logger->format);
+   this->logger->format = this->memory.malloc(strlen(format) + 1);
+   strcpy(this->logger->format, format);
+}
+
+static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *module, log_level_t level) {
+   assert(module != NULL);
+   assert(level < __LOG_MAX);
+   assert(this->logger != NULL);
+
+   cad_output_stream_t **module_streams = this->module_streams->get(this->module_streams, module);
+   if (module_streams == NULL) {
+      module_streams = __impl_set_log(this, module, this->max_level);
+   }
+
+   return module_streams[level];
+}
+
+static void impl_module_stream_free_iterator(void *hash, int index, const char *key, cad_output_stream_t **module_streams, circus_log_impl *this) {
+   int l;
+   for (l = 0; l < __LOG_MAX; l++) {
+      module_streams[l]->free(module_streams[l]);
+   }
+   this->memory.free(module_streams);
+}
+
+static void impl_close(circus_log_impl *this) {
+   if (this->logger != NULL) {
+      this->module_streams->clean(this->module_streams, (cad_hash_iterator_fn)impl_module_stream_free_iterator, this);
+      this->module_streams->free(this->module_streams);
+      this->logger->fn.free(this->logger);
+      this->logger = NULL;
    }
 }
 
-void circus_log_end(void) {
-   uv_fs_t* req;
-   if (log_handle) {
-      switch(log_handle->type) {
-      case UV_TTY:
-         uv_tty_reset_mode();
-         break;
-      case UV_NAMED_PIPE:
-         req = malloc(sizeof(uv_fs_t));
-         assert(req);
-         uv_fs_close(uv_default_loop(), req, fd, NULL);
-         free(req);
-         break;
-      case UV_FILE:
-         break;
-      default:
-         crash();
-      }
-      free(log_handle);
-      log_handle = NULL;
-   }
+static void impl_free(circus_log_impl *this) {
+   impl_close(this);
+   this->memory.free(this);
+}
+
+static circus_log_t impl_fn = {
+   (circus_log_set_log_fn)impl_set_log,
+   (circus_log_is_log_fn)impl_is_log,
+   (circus_log_set_format_fn)impl_set_format,
+   (circus_log_stream_fn)impl_stream,
+   (circus_log_close_fn)impl_close,
+   (circus_log_free_fn)impl_free,
+};
+
+circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level) {
+   assert(filename != NULL);
+   assert(max_level < __LOG_MAX);
+
+   circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
+
+   result->fn = impl_fn;
+   result->memory = memory;
+   result->module_streams = cad_new_hash(memory, cad_hash_strings);
+   result->max_level = max_level;
+   result->logger = new_logger_file(memory, filename);
+
+   return (circus_log_t*)result;
+}
+
+circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level) {
+   assert(max_level < __LOG_MAX);
+
+   circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
+
+   result->fn = impl_fn;
+   result->memory = memory;
+   result->module_streams = cad_new_hash(memory, cad_hash_strings);
+   result->max_level = max_level;
+   result->logger = new_logger_stdout(memory);
+
+   return (circus_log_t*)result;
 }

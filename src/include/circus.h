@@ -22,9 +22,9 @@
 #include <stdlib.h>
 
 #ifdef DEBUG
-#define crash() do { int *i = 0; *i = 0; } while(1)
+#define crash() do { int *i ## __LINE__ = 0; *i ## __LINE__ = 0; } while(1)
 #else
-#define crash() exit(1)
+#define crash() do { fprintf(stderr, "Crash in %s:%d\n", __FILE__, __LINE__); exit(-1); } while(1)
 #endif
 
 #define assert(test)                                         \

@@ -1,10 +1,12 @@
 set -e
 
+redo-ifchange main/protocol/messages
+
 function deps_of() {
     egrep -o  "$(pwd)/include/[^[:space:]]+\.h" ${1%.o}.d |
               sed -r 's!'^"$(pwd)"'/include/!!;s!\.h$!!' |
               while read header; do
-                  find main -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
+                  find main -name gen -prune -o -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
               done |
               sed 's!\.c$!.o!'
 }

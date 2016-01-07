@@ -1,0 +1,112 @@
+{
+    "close": {
+        "query": {},
+        "reply": {}
+    },
+    "is_open": {
+        "query": {},
+        "reply": {
+            "is_open": "BOOLEAN"
+        }
+    },
+    "list": {
+        "query_all": {},
+        "query_tag": {
+            "tag": "STRING"
+        },
+        "reply": {
+            "names": "STRINGS"
+        }
+    },
+    "master": {
+        "query": {
+            "master": "STRING"
+        },
+        "reply": {}
+    },
+    "change_master": {
+        "query": {
+            "old": "STRING",
+            "new": "STRING"
+        },
+        "reply": {}
+    },
+    "merge": {
+        "query": {
+            "vault": "STRING",
+            "master": "STRING"
+        },
+        "reply": {
+            "vault": "STRING"
+        }
+    },
+    "pass": {
+        "query_get": {
+            "key": "STRING"
+        },
+        "query_set_recipe": {
+            "key": "STRING",
+            "recipe": "STRING"
+        },
+        "query_set_pass": {
+            "key": "STRING",
+            "pass": "STRING"
+        },
+        "reply": {
+            "key": "STRING",
+            "pass": "STRING",
+            "properties": "STRINGS"
+        }
+    },
+    "ping": {
+        "query": {
+            "id": "STRING"
+        },
+        "reply": {
+            "id": "STRING"
+        }
+    },
+    "property": {
+        "query_set": {
+            "key": "STRING",
+            "property": "STRING",
+            "value": "STRING"
+        },
+        "query_unset": {
+            "key": "STRING",
+            "property": "STRING"
+        },
+        "reply": {
+            "key": "STRING"
+        }
+    },
+    "save": {
+        "query": {},
+        "reply": {}
+    },
+    "stop": {
+        "query": {},
+        "reply": {}
+    },
+    "tags": {
+        "query": {
+        },
+        "reply": {
+            "names": "STRINGS"
+        }
+    },
+    "unset": {
+        "query": {
+            "key": "STRING"
+        },
+        "reply": {
+            "key": "STRING"
+        }
+    },
+    "version": {
+        "query": {},
+        "reply": {
+            "version": "STRING"
+        }
+    }
+}

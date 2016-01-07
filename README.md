@@ -1,10 +1,12 @@
-**Circus** — *Circus Is a Reservoir of Centralized User Stuff*
+**Circus** — *Circus is a Ringmaster, keeping Credentials and User Stuff*
 
-OK, the backronym is contrived. Sorry. (Now removing the red nose.)
+OK, the acronym is a bit contrived. Sorry.
+
+No, I will not remove the red nose.
 
 # What is it?
 
-Circus is –Well, will be– a password manager.
+Circus is –well, will be– a password manager.
 
 It is meant as the successor of the venerable
 [pwd](https://github.com/cadrian/pwd/) but using standard technologies

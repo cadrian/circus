@@ -1,12 +1,12 @@
 set -e
 
-redo-ifchange main/protocol/messages
+redo-ifchange exe/protocol/messages
 
 function deps_of() {
-    egrep -o  "$(pwd)/include/[^[:space:]]+\.h" ${1%.o}.d |
-              sed -r 's!'^"$(pwd)"'/include/!!;s!\.h$!!' |
+    egrep -o  "$(pwd)/inc/[^[:space:]]+\.h" ${1%.o}.d |
+              sed -r 's!'^"$(pwd)"'/inc/!!;s!\.h$!!' |
               while read header; do
-                  find main -name gen -prune -o -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
+                  find exe -name gen -prune -o -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
               done |
               sed 's!\.c$!.o!'
 }

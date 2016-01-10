@@ -25,14 +25,60 @@
 
 #include "circus.h"
 #include "config.h"
+#include "log.h"
+#include "xdg.h"
+
+extern circus_log_t *LOG;
 
 typedef struct {
    circus_config_t fn;
    cad_memory_t memory;
-   char *filename;
    json_object_t *data;
    int dirty;
+   char *filename;
+   int local;
 } config_impl;
+
+typedef struct {
+   FILE *file;
+   char *path;
+   int local;
+} read_t;
+
+static read_t read_xdg_file_from_config_dirs(cad_memory_t memory, const char *filename) {
+   int n = strlen(xdg_config_dirs()) + 1;
+   char *config_dirs = memory.malloc(n);
+   char *next = config_dirs;
+   read_t result = { NULL, NULL, 0 };
+   snprintf(config_dirs, n, "%s", xdg_config_dirs());
+   while (result.file == NULL && next != NULL) {
+      memory.free(result.path);
+      config_dirs = next;
+      next = strchr(config_dirs, ':');
+      if (next != NULL) {
+         *next = '\0';
+         next++;
+      }
+      result.path = szprintf(memory, NULL, "%s/%s", config_dirs, filename);
+      result.file = fopen(result.path, "r");
+   }
+   if (result.file == NULL) {
+      memory.free(result.path);
+   }
+   memory.free(config_dirs);
+   return result;
+}
+
+static read_t read_xdg_file_dirs(cad_memory_t memory, const char *filename) {
+   read_t result = { NULL, NULL, 1 };
+   result.path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+   result.file = fopen(result.path, "r");
+   if (result.file == NULL) {
+      memory.free(result.path);
+      result = read_xdg_file_from_config_dirs(memory, filename);
+   }
+   return result;
+}
 
 static const char *config_get(config_impl *this, const char *section, const char *key) {
    json_string_t *result = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
@@ -84,6 +130,7 @@ static void config_backup(config_impl *this) {
 
 static void config_write(config_impl *this) {
    FILE *file;
+   char *path;
    cad_output_stream_t *stream;
    json_visitor_t *writer;
    int n;
@@ -91,8 +138,10 @@ static void config_write(config_impl *this) {
    if (this->dirty) {
       config_backup(this);
 
-      file = fopen(this->filename, "w");
+      path = szprintf(this->memory, NULL, "%s/%s", xdg_data_home(), this->filename);
+      file = fopen(path, "w");
       if (file == NULL) {
+         log_error(LOG, "config", "Could not write config file: %s", path);
          perror("fopen write config file");
          exit(1);
       }
@@ -106,8 +155,10 @@ static void config_write(config_impl *this) {
       stream->free(stream);
       n = fclose(file);
       assert(n == 0);
+      this->memory.free(path);
 
       this->dirty = 0;
+      this->local = 1;
    }
 }
 
@@ -122,14 +173,15 @@ static circus_config_t impl_fn = {
    (circus_config_free_fn)config_free,
 };
 
-static void config_error(cad_input_stream_t *stream, int line, int column, const char *format, ...) {
-     va_list args;
-     va_start(args, format);
-     fprintf(stderr, "**** Error while reading config file, line %d, column %d: ", line, column);
-     vfprintf(stderr, format, args);
-     fprintf(stderr, "\n");
-     va_end(args);
-     exit(1);
+static void config_error(cad_input_stream_t *stream, int line, int column, void *data, const char *format, ...) {
+   config_impl *this = (config_impl*)data;
+   va_list args;
+   char *log;
+   va_start(args, format);
+   log = vszprintf(this->memory, format, args);
+   va_end(args);
+   log_error(LOG, "config", "Error while reading config file, line %d, column %d: %s", line, column, log);
+   this->memory.free(log);
 }
 
 typedef struct {
@@ -194,7 +246,7 @@ static json_visitor_t config_read_checker_fn = {
 circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    int n = strlen(filename) + 1;
    config_impl *result;
-   FILE *file;
+   read_t read;
    cad_input_stream_t *raw, *stream;
    json_value_t *data;
 
@@ -206,27 +258,33 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    result->filename = (char*)(result + 1);
    strncpy(result->filename, filename, n);
 
-   file = fopen(filename, "r");
-   if (file == NULL) {
+   read = read_xdg_file_dirs(memory, filename);
+   if (read.file == NULL) {
       data = (json_value_t*)json_new_object(memory);
+      result->dirty = 1;
+      result->local = 0;
    } else {
-      raw = new_cad_input_stream_from_file(file, memory);
+      result->local = read.local;
+      raw = new_cad_input_stream_from_file(read.file, memory);
       assert(raw != NULL);
       stream = new_json_utf8_stream(raw, memory);
       assert(stream != NULL);
 
-      data = json_parse(stream, config_error, memory);
+      data = json_parse(stream, config_error, result, memory);
       if (data == NULL) {
-         data = (json_value_t*)json_new_object(memory);
-      } else {
-         config_read_checker checker = { config_read_checker_fn, 0 };
-         data->accept(data, (json_visitor_t*)&checker);
+         log_error(LOG, "config", "JSON parse error in file %s", read.path);
+         exit(1);
       }
+
+      config_read_checker checker = { config_read_checker_fn, 0 };
+      data->accept(data, (json_visitor_t*)&checker);
 
       stream->free(stream);
       raw->free(raw);
-      n = fclose(file);
+      n = fclose(read.file);
       assert(n == 0);
+
+      memory.free(read.path);
    }
    result->data = (json_object_t *)data;
 

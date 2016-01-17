@@ -370,6 +370,7 @@ static void log_flush_stream(log_file_output_stream *this) {
 cad_output_stream_t log_stream_fn = {
    .free  = (cad_output_stream_free_fn)log_free_stream,
    .put   = (cad_output_stream_put_fn)log_put_stream,
+   .vput  = (cad_output_stream_vput_fn)log_vput_stream,
    .flush = (cad_output_stream_flush_fn)log_flush_stream,
 };
 

@@ -17,3 +17,4 @@ It is meant as the successor of the venerable
 * The build system: https://github.com/apenwarr/redo
 * The basic data structures: https://github.com/cadrian/libcad
 * JSON: https://github.com/cadrian/yacjp
+* Encryption routines: libgcrypt

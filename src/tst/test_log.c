@@ -17,7 +17,7 @@ void wait_for_a_while(uv_idle_t* handle) {
    }
 }
 
-int main(int argc, char **argv) {
+int main() {
    uv_idle_t idler;
 
    LOG = circus_new_log_stdout(stdlib_memory, LOG_INFO);

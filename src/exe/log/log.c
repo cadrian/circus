@@ -156,6 +156,7 @@ static void cleanup_fs(write_req_t *req) {
 }
 
 static void on_write(write_req_t* req, int status) {
+   UNUSED(status);
    req->cleanup(req);
    req->memory.free(req);
 }
@@ -225,6 +226,7 @@ static void tty_write(uv_logger_t *this, write_req_t *req) {
 
 static void tty_flush(uv_logger_t *this) {
    // TODO: just some kind of barrier too (see log_flush_file for explanations)
+   UNUSED(this);
 }
 
 /**
@@ -250,6 +252,7 @@ static void pipe_write(uv_logger_t *this, write_req_t *req) {
 
 static void pipe_flush(uv_logger_t *this) {
    // TODO: just some kind of barrier too (see log_flush_file for explanations)
+   UNUSED(this);
 }
 
 /**
@@ -382,9 +385,16 @@ static cad_output_stream_t *new_log_stream(cad_memory_t memory, uv_logger_t *log
 
 /* ---------------------------------------------------------------- */
 
-static void null_output_free(cad_output_stream_t *this) {}
-static void null_output_put(cad_output_stream_t *this, const char *format, ...) {}
-static void null_output_flush(cad_output_stream_t *this) {}
+static void null_output_free(cad_output_stream_t *this) {
+   UNUSED(this);
+}
+static void null_output_put(cad_output_stream_t *this, const char *format, ...) {
+   UNUSED(this);
+   UNUSED(format);
+}
+static void null_output_flush(cad_output_stream_t *this) {
+   UNUSED(this);
+}
 
 static cad_output_stream_t null_output = {null_output_free, null_output_put, null_output_flush};
 
@@ -402,7 +412,7 @@ static cad_output_stream_t **__impl_set_log(circus_log_impl *this, const char *m
    assert(module != NULL);
    assert(max_level < __LOG_MAX);
 
-   int l;
+   log_level_t l;
 
    cad_output_stream_t **module_streams = this->module_streams->get(this->module_streams, module);
    if (module_streams == NULL) {
@@ -462,6 +472,9 @@ static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *modul
 }
 
 static void impl_module_stream_free_iterator(void *hash, int index, const char *key, cad_output_stream_t **module_streams, circus_log_impl *this) {
+   UNUSED(hash);
+   UNUSED(index);
+   UNUSED(key);
    int l;
    for (l = 0; l < __LOG_MAX; l++) {
       module_streams[l]->free(module_streams[l]);

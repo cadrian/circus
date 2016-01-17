@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define UNUSED(x) ((void)(x))
+
 #ifdef DEBUG
 #define crash() do { int *i ## __LINE__ = 0; *i ## __LINE__ = 0; } while(1)
 #else

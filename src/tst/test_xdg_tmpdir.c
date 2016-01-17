@@ -5,7 +5,7 @@
 #include "circus.h"
 #include "xdg.h"
 
-int main(int argc, char **argv) {
+int main() {
    unsetenv("XDG_DATA_DIRS");
    unsetenv("XDG_CONFIG_DIRS");
    unsetenv("XDG_CACHE_HOME");

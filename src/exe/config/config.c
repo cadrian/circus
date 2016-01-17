@@ -48,18 +48,18 @@ typedef struct {
 static read_t read_xdg_file_from_config_dirs(cad_memory_t memory, const char *filename) {
    int n = strlen(xdg_config_dirs()) + 1;
    char *config_dirs = memory.malloc(n);
-   char *next = config_dirs;
+   char *cur = config_dirs, *next=cur;
    read_t result = { NULL, NULL, 0 };
    snprintf(config_dirs, n, "%s", xdg_config_dirs());
    while (result.file == NULL && next != NULL) {
       memory.free(result.path);
-      config_dirs = next;
-      next = strchr(config_dirs, ':');
+      cur = next;
+      next = strchr(cur, ':');
       if (next != NULL) {
          *next = '\0';
          next++;
       }
-      result.path = szprintf(memory, NULL, "%s/%s", config_dirs, filename);
+      result.path = szprintf(memory, NULL, "%s/%s", cur, filename);
       result.file = fopen(result.path, "r");
    }
    if (result.file == NULL) {
@@ -84,15 +84,15 @@ static const char *config_get(config_impl *this, const char *section, const char
    json_string_t *result = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
    static char *buffer = NULL;
    static size_t buflen = 0;
-
-   size_t n = result->utf8(result, buffer, buflen);
-   if (n >= buflen) {
-      buflen = n + 1;
-      buffer = this->memory.realloc(buffer, buflen);
-      n = result->utf8(result, buffer, buflen);
-      assert(n = buflen - 1);
+   if (result != NULL) {
+      size_t n = result->utf8(result, buffer, buflen);
+      if (n >= buflen) {
+         buflen = n + 1;
+         buffer = this->memory.realloc(buffer, buflen);
+         n = result->utf8(result, buffer, buflen);
+         assert(n = buflen - 1);
+      }
    }
-
    return (const char *)buffer;
 }
 

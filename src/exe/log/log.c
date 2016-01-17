@@ -281,6 +281,7 @@ static uv_logger_t *new_logger_file(cad_memory_t memory, const char *filename) {
       result->log_handle = (uv_stream_t*)pipe;
       result->fd = fd;
       result->offset = 0;
+      result->format = DEFAULT_FORMAT;
    }
 
    return result;
@@ -317,6 +318,7 @@ static uv_logger_t *new_logger_stdout(cad_memory_t memory) {
       fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
       crash();
    }
+   result->format = DEFAULT_FORMAT;
    return result;
 }
 

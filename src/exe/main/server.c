@@ -49,4 +49,6 @@ static void set_log(circus_config_t *config) {
 __PUBLIC__ int main() {
    circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
    set_log(config);
+   log_info(LOG, "server", "Server started.");
+   log_info(LOG, "server", "Server stopped.");
 }

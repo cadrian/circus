@@ -39,4 +39,4 @@ LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 fi
-gcc -Wall -Werror -Wpedantic -Werror -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -O2 -g -fsanitize=undefined -o $3 $2.o $DEPS -lcad -luv
+gcc -Wall -Werror -Wpedantic -Werror -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -O2 -g -fsanitize=undefined -o $3 $2.o $DEPS -lcad -lyacjp -luv

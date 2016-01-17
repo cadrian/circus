@@ -334,8 +334,7 @@ static void log_free_stream(log_file_output_stream *this) {
    this->memory.free(this);
 }
 
-static void log_put_stream(log_file_output_stream *this, const char *format, ...) {
-   va_list args;
+static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
    write_req_t *req;
    time_t date = time(NULL);
    struct tm *tm = localtime(&date);
@@ -343,7 +342,6 @@ static void log_put_stream(log_file_output_stream *this, const char *format, ...
    int n;
    char *logline = NULL;
 
-   va_start(args, format);
    message = vszprintf(this->memory, NULL, format, args);
    assert(message != NULL);
 
@@ -358,9 +356,15 @@ static void log_put_stream(log_file_output_stream *this, const char *format, ...
    req->buf.base = logline;
    req->buf.len = n;
    req->memory = this->memory;
-   va_end(args);
 
    this->logger->fn.write(this->logger, req);
+}
+
+static void log_put_stream(log_file_output_stream *this, const char *format, ...) {
+   va_list args;
+   va_start(args, format);
+   log_vput_stream(this, format, args);
+   va_end(args);
 }
 
 static void log_flush_stream(log_file_output_stream *this) {
@@ -386,18 +390,13 @@ static cad_output_stream_t *new_log_stream(cad_memory_t memory, uv_logger_t *log
 
 /* ---------------------------------------------------------------- */
 
-static void null_output_free(cad_output_stream_t *this) {
-   UNUSED(this);
-}
-static void null_output_put(cad_output_stream_t *this, const char *format, ...) {
-   UNUSED(this);
-   UNUSED(format);
-}
-static void null_output_flush(cad_output_stream_t *this) {
-   UNUSED(this);
-}
-
-static cad_output_stream_t null_output = {null_output_free, null_output_put, null_output_flush};
+static void null_output_fn() {}
+static cad_output_stream_t null_output = {
+   (cad_output_stream_free_fn)null_output_fn,
+   (cad_output_stream_put_fn)null_output_fn,
+   (cad_output_stream_vput_fn)null_output_fn,
+   (cad_output_stream_flush_fn)null_output_fn,
+};
 
 /* ---------------------------------------------------------------- */
 

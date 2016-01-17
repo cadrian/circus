@@ -174,6 +174,7 @@ static circus_config_t impl_fn = {
 };
 
 static void config_error(cad_input_stream_t *stream, int line, int column, void *data, const char *format, ...) {
+   UNUSED(stream);
    config_impl *this = (config_impl*)data;
    va_list args;
    char *log;
@@ -191,6 +192,7 @@ typedef struct {
 
 static void config_read_checker_free(config_read_checker *this) {
    // never allocated
+   UNUSED(this);
 }
 
 static void config_read_checker_visit_object(config_read_checker *this, json_object_t *visited) {
@@ -213,11 +215,13 @@ static void config_read_checker_visit_object(config_read_checker *this, json_obj
 }
 
 static void config_read_checker_visit_array(config_read_checker *this, json_array_t *visited) {
+   UNUSED(visited);
    fprintf(stderr, "**** Invalid config, array found at depth %d", this->depth);
    exit(1);
 }
 
 static void config_read_checker_visit_string(config_read_checker *this, json_string_t *visited) {
+   UNUSED(visited);
    if (this->depth != 2) {
       fprintf(stderr, "**** Invalid config, string found at depth %d", this->depth);
       exit(1);
@@ -225,11 +229,13 @@ static void config_read_checker_visit_string(config_read_checker *this, json_str
 }
 
 static void config_read_checker_visit_number(config_read_checker *this, json_number_t *visited) {
+   UNUSED(visited);
    fprintf(stderr, "**** Invalid config, number found at depth %d", this->depth);
    exit(1);
 }
 
 static void config_read_checker_visit_const(config_read_checker *this, json_const_t *visited) {
+   UNUSED(visited);
    fprintf(stderr, "**** Invalid config, const found at depth %d", this->depth);
    exit(1);
 }

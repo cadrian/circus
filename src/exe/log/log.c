@@ -20,7 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include <cad_shared.h>
 #include <cad_hash.h>
@@ -33,9 +33,10 @@
 
 static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG"};
 
-static int format_log(char *buf, const int buflen, const char *format, struct tm *tm, const char *tag, const char *module, const char *message) {
+static int format_log(char *buf, const int buflen, const char *format, const struct timeval *tv, const char *tag, const char *module, const char *message) {
    int result = 0;
    int state = 0;
+   struct tm *tm = localtime(&(tv->tv_sec));
    const char *f;
    for (f = format; *f; f++) {
       switch(state) {
@@ -97,6 +98,13 @@ static int format_log(char *buf, const int buflen, const char *format, struct tm
                result += snprintf(buf + result, buflen - result, "%02d", tm->tm_sec);
             } else {
                result += 2;
+            }
+            break;
+         case 'u':
+            if (result < buflen) {
+               result += snprintf(buf + result, buflen - result, "%03d", (int)(tv->tv_usec / 1000));
+            } else {
+               result += 3;
             }
             break;
          case 'T':
@@ -338,19 +346,21 @@ static void log_free_stream(log_file_output_stream *this) {
 
 static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
    write_req_t *req;
-   time_t date = time(NULL);
-   struct tm *tm = localtime(&date);
+   struct timeval tv;
    char *message = NULL;
-   int n;
+   int n, e;
    char *logline = NULL;
+
+   e = gettimeofday(&tv, NULL);
+   assert(e == 0);
 
    message = vszprintf(this->memory, NULL, format, args);
    assert(message != NULL);
 
-   n = format_log("", 0, this->logger->format, tm, this->tag, this->module, message);
+   n = format_log("", 0, this->logger->format, &tv, this->tag, this->module, message);
    logline = this->memory.malloc(n + 1);
    assert(logline != NULL);
-   format_log(logline, n + 1, this->logger->format, tm, this->tag, this->module, message);
+   format_log(logline, n + 1, this->logger->format, &tv, this->tag, this->module, message);
    this->memory.free(message);
 
    req = this->memory.malloc(sizeof(write_req_t));

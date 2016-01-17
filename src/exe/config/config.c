@@ -178,7 +178,7 @@ static void config_error(cad_input_stream_t *stream, int line, int column, void 
    va_list args;
    char *log;
    va_start(args, format);
-   log = vszprintf(this->memory, format, args);
+   log = vszprintf(this->memory, NULL, format, args);
    va_end(args);
    log_error(LOG, "config", "Error while reading config file, line %d, column %d: %s", line, column, log);
    this->memory.free(log);

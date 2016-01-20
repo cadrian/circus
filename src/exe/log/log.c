@@ -163,8 +163,7 @@ static void cleanup_fs(write_req_t *req) {
    uv_fs_req_cleanup(&req->req.fs);
 }
 
-static void on_write(write_req_t* req, int status) {
-   UNUSED(status);
+static void on_write(write_req_t* req, int UNUSED(status)) {
    req->cleanup(req);
    req->memory.free(req);
 }
@@ -232,9 +231,8 @@ static void tty_write(uv_logger_t *this, write_req_t *req) {
    uv_write(&req->req.stream, this->log_handle, &req->buf, 1, (uv_write_cb)on_write);
 }
 
-static void tty_flush(uv_logger_t *this) {
+static void tty_flush(uv_logger_t *UNUSED(this)) {
    // TODO: just some kind of barrier too (see log_flush_file for explanations)
-   UNUSED(this);
 }
 
 /**
@@ -258,9 +256,8 @@ static void pipe_write(uv_logger_t *this, write_req_t *req) {
    uv_write(&req->req.stream, this->log_handle, &req->buf, 1, (uv_write_cb)on_write);
 }
 
-static void pipe_flush(uv_logger_t *this) {
+static void pipe_flush(uv_logger_t *UNUSED(this)) {
    // TODO: just some kind of barrier too (see log_flush_file for explanations)
-   UNUSED(this);
 }
 
 /**
@@ -483,10 +480,7 @@ static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *modul
    return module_streams[level];
 }
 
-static void impl_module_stream_free_iterator(void *hash, int index, const char *key, cad_output_stream_t **module_streams, circus_log_impl *this) {
-   UNUSED(hash);
-   UNUSED(index);
-   UNUSED(key);
+static void impl_module_stream_free_iterator(void *UNUSED(hash), int UNUSED(index), const char *UNUSED(key), cad_output_stream_t **module_streams, circus_log_impl *this) {
    int l;
    for (l = 0; l < __LOG_MAX; l++) {
       module_streams[l]->free(module_streams[l]);

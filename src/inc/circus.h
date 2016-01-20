@@ -21,7 +21,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define UNUSED(x) ((void)(x))
+#ifdef UNUSED
+#elif defined(__GNUC__)
+#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#else
+#define UNUSED(x) x
+#endif
 
 #ifdef DEBUG
 #define crash() do { int *i ## __LINE__ = 0; *i ## __LINE__ = 0; } while(1)
@@ -40,7 +45,17 @@
    }                                                         \
    while(0)
 
+#define container_of(ptr, type, member) ({                      \
+         const typeof( ((type *)0)->member ) *__mptr = (ptr);   \
+         (type *)( (char *)__mptr - offsetof(type,member) );    \
+      })
+
 char *szprintf(cad_memory_t memory, int *size, const char *format, ...) __attribute__((format(printf, 3, 4)));
 char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args);
+
+// ----------------------------------------------------------------
+// Default configuration
+
+#define DEFAULT_PORT 4793
 
 #endif /* __CIRCUS_CIRCUS_H */

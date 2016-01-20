@@ -14,9 +14,11 @@
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdlib.h>
 #include <string.h>
 #include <uv.h>
 
+#include "channel.h"
 #include "circus.h"
 #include "config.h"
 #include "log.h"
@@ -24,7 +26,7 @@
 circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
-   const char *log_filename = config->get(config, "log", "filename");
+   const char *log_szfilename = config->get(config, "log", "filename");
    const char *log_szlevel = config->get(config, "log", "level");
    log_level_t log_level = LOG_INFO;
    if (log_szlevel != NULL) {
@@ -40,20 +42,25 @@ static void set_log(circus_config_t *config) {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
    }
-   if (log_filename == NULL) {
+   if (log_szfilename == NULL) {
       LOG = circus_new_log_stdout(stdlib_memory, log_level);
    } else {
-      LOG = circus_new_log_file(stdlib_memory, log_filename, log_level);
+      LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }
 }
 
 __PUBLIC__ int main() {
    circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
    set_log(config);
+
+   circus_zmq_t *zmq = circus_zmq_bind(stdlib_memory, config);
+
    log_info(LOG, "server", "Server started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
    log_info(LOG, "server", "Server stopped.");
+
+   zmq->free(zmq);
    LOG->free(LOG);
    config->free(config);
    return 0;

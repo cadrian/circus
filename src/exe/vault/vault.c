@@ -65,9 +65,8 @@ typedef struct {
    json_const_t *constant;
 } vault_read_checker;
 
-static void vault_read_checker_free(vault_read_checker *this) {
+static void vault_read_checker_free(vault_read_checker *UNUSED(this)) {
    // never allocated
-   UNUSED(this);
 }
 
 static void vault_read_checker_visit_object(vault_read_checker *this, json_object_t *visited) {
@@ -159,16 +158,12 @@ static char *key_get_password(key_impl_t *this, const char *enc_key) {
    return result;
 }
 
-static void key_set_password(key_impl_t *this, const char *enc_key, const char *buffer) {
+static void key_set_password(key_impl_t *UNUSED(this), const char *UNUSED(enc_key), const char *UNUSED(buffer)) {
    // TODO
-   UNUSED(this);
-   UNUSED(enc_key);
-   UNUSED(buffer);
 }
 
-static json_object_t *key_properties(key_impl_t *this) {
+static json_object_t *key_properties(key_impl_t *UNUSED(this)) {
    // TODO
-   UNUSED(this);
    return NULL;
 }
 
@@ -227,11 +222,7 @@ static key_impl_t *vault_new(vault_impl_t *this, const char *name) {
    return result;
 }
 
-static void vault_clean(cad_hash_t *hash, int index, const char *name, circus_key_t *key, vault_impl_t *vault) {
-   UNUSED(hash);
-   UNUSED(index);
-   UNUSED(name);
-   UNUSED(vault);
+static void vault_clean(cad_hash_t *UNUSED(hash), int UNUSED(index), const char *UNUSED(name), circus_key_t *key, vault_impl_t *UNUSED(vault)) {
    key->free(key);
 }
 
@@ -305,8 +296,7 @@ static void gcrypt_init(void) {
    assert(err == 0);
 }
 
-static void vault_error(cad_input_stream_t *stream, int line, int column, void *data, const char *format, ...) {
-   UNUSED(stream);
+static void vault_error(cad_input_stream_t *UNUSED(stream), int line, int column, void *data, const char *format, ...) {
    vault_impl_t *this = (vault_impl_t*)data;
    va_list args;
    char *log;
@@ -317,8 +307,7 @@ static void vault_error(cad_input_stream_t *stream, int line, int column, void *
    this->memory.free(log);
 }
 
-circus_vault_t *circus_vault(cad_memory_t memory, const char *enc_key, const char *filename) {
-   UNUSED(enc_key); // TODO
+circus_vault_t *circus_vault(cad_memory_t memory, const char *UNUSED(enc_key), const char *filename) {
    static int init = 0;
    vault_impl_t *result;
    FILE *file;

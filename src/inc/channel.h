@@ -20,26 +20,26 @@
 
 #include "config.h"
 
-typedef struct circus_zmq_s circus_zmq_t;
+typedef struct circus_channel_s circus_channel_t;
 
-typedef void (*circus_zmq_on_read_cb)(circus_zmq_t *this);
-typedef void (*circus_zmq_on_write_cb)(circus_zmq_t *this);
+typedef void (*circus_channel_on_read_cb)(circus_channel_t *this);
+typedef void (*circus_channel_on_write_cb)(circus_channel_t *this);
 
-typedef void (*circus_zmq_on_read_fn)(circus_zmq_t *this, circus_zmq_on_read_cb cb);
-typedef void (*circus_zmq_on_write_fn)(circus_zmq_t *this, circus_zmq_on_write_cb cb);
-typedef int (*circus_zmq_read_fn)(circus_zmq_t *this, char *buffer, size_t buflen);
-typedef void (*circus_zmq_write_fn)(circus_zmq_t *this, const char *buffer, size_t buflen);
-typedef void (*circus_zmq_free_fn)(circus_zmq_t *this);
+typedef void (*circus_channel_on_read_fn)(circus_channel_t *this, circus_channel_on_read_cb cb);
+typedef void (*circus_channel_on_write_fn)(circus_channel_t *this, circus_channel_on_write_cb cb);
+typedef int (*circus_channel_read_fn)(circus_channel_t *this, char *buffer, size_t buflen);
+typedef void (*circus_channel_write_fn)(circus_channel_t *this, const char *buffer, size_t buflen);
+typedef void (*circus_channel_free_fn)(circus_channel_t *this);
 
-struct circus_zmq_s {
-   circus_zmq_on_read_fn on_read;
-   circus_zmq_on_write_fn on_write;
-   circus_zmq_read_fn read;
-   circus_zmq_write_fn write;
-   circus_zmq_free_fn free;
+struct circus_channel_s {
+   circus_channel_on_read_fn on_read;
+   circus_channel_on_write_fn on_write;
+   circus_channel_read_fn read;
+   circus_channel_write_fn write;
+   circus_channel_free_fn free;
 };
 
-__PUBLIC__ circus_zmq_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config);
-__PUBLIC__ circus_zmq_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config);
+__PUBLIC__ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config);
+__PUBLIC__ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config);
 
 #endif /* __CIRCUS_CHANNEL_H */

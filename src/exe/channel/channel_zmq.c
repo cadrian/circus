@@ -25,21 +25,21 @@
 extern circus_log_t *LOG;
 
 typedef struct {
-   circus_zmq_t fn;
+   circus_channel_t fn;
    cad_memory_t memory;
    void *context;
    void *socket;
    char *addr;
    uv_poll_t handle;
-   circus_zmq_on_read_cb read_cb;
-   circus_zmq_on_write_cb write_cb;
+   circus_channel_on_read_cb read_cb;
+   circus_channel_on_write_cb write_cb;
 } zmq_impl_t;
 
-static void impl_on_read(zmq_impl_t *this, circus_zmq_on_read_cb cb) {
+static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb) {
    this->read_cb = cb;
 }
 
-static void impl_on_write(zmq_impl_t *this, circus_zmq_on_write_cb cb) {
+static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb) {
    this->write_cb = cb;
 }
 
@@ -72,12 +72,12 @@ static void impl_free(zmq_impl_t *this) {
    this->memory.free(this);
 }
 
-circus_zmq_t impl_fn = {
-   (circus_zmq_on_read_fn)impl_on_read,
-   (circus_zmq_on_write_fn)impl_on_write,
-   (circus_zmq_read_fn)impl_read,
-   (circus_zmq_write_fn)impl_write,
-   (circus_zmq_free_fn)impl_free,
+circus_channel_t impl_fn = {
+   (circus_channel_on_read_fn)impl_on_read,
+   (circus_channel_on_write_fn)impl_on_write,
+   (circus_channel_read_fn)impl_read,
+   (circus_channel_write_fn)impl_write,
+   (circus_channel_free_fn)impl_free,
 };
 
 static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
@@ -96,13 +96,13 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
 
       if (zevents & ZMQ_POLLIN) {
          if (this->read_cb != NULL) {
-            (this->read_cb)((circus_zmq_t*)this);
+            (this->read_cb)((circus_channel_t*)this);
          }
       }
 
       if (zevents & ZMQ_POLLOUT) {
          if (this->write_cb != NULL) {
-            (this->write_cb)((circus_zmq_t*)this);
+            (this->write_cb)((circus_channel_t*)this);
          }
       }
    }
@@ -155,7 +155,7 @@ static void start(zmq_impl_t *this) {
    assert(n == 0);
 }
 
-circus_zmq_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config) {
+circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config) {
    zmq_impl_t *result;
 
    void *zmq_context = zmq_ctx_new();
@@ -178,10 +178,10 @@ circus_zmq_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config) {
 
    start(result);
 
-   return (circus_zmq_t*)result;
+   return (circus_channel_t*)result;
 }
 
-circus_zmq_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config) {
+circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config) {
    zmq_impl_t *result;
 
    void *zmq_context = zmq_ctx_new();
@@ -204,5 +204,5 @@ circus_zmq_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config) {
 
    start(result);
 
-   return (circus_zmq_t*)result;
+   return (circus_channel_t*)result;
 }

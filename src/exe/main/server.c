@@ -53,14 +53,14 @@ __PUBLIC__ int main() {
    circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
    set_log(config);
 
-   circus_zmq_t *zmq = circus_zmq_bind(stdlib_memory, config);
+   circus_channel_t *channel = circus_zmq_server(stdlib_memory, config);
 
    log_info(LOG, "server", "Server started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
    log_info(LOG, "server", "Server stopped.");
 
-   zmq->free(zmq);
+   channel->free(channel);
    LOG->free(LOG);
    config->free(config);
    return 0;

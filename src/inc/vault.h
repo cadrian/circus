@@ -16,6 +16,8 @@
 #ifndef __CIRCUS_VAULT_H
 #define __CIRCUS_VAULT_H
 
+#include <json.h>
+
 typedef struct circus_key_s circus_key_t;
 
 typedef char *(*circus_key_get_password_fn)(circus_key_t *this, const char *enc_key);

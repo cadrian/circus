@@ -22,11 +22,11 @@
 
 typedef struct circus_channel_s circus_channel_t;
 
-typedef void (*circus_channel_on_read_cb)(circus_channel_t *this);
-typedef void (*circus_channel_on_write_cb)(circus_channel_t *this);
+typedef void (*circus_channel_on_read_cb)(circus_channel_t *this, void *data);
+typedef void (*circus_channel_on_write_cb)(circus_channel_t *this, void *data);
 
-typedef void (*circus_channel_on_read_fn)(circus_channel_t *this, circus_channel_on_read_cb cb);
-typedef void (*circus_channel_on_write_fn)(circus_channel_t *this, circus_channel_on_write_cb cb);
+typedef void (*circus_channel_on_read_fn)(circus_channel_t *this, circus_channel_on_read_cb cb, void *data);
+typedef void (*circus_channel_on_write_fn)(circus_channel_t *this, circus_channel_on_write_cb cb, void *data);
 typedef int (*circus_channel_read_fn)(circus_channel_t *this, char *buffer, size_t buflen);
 typedef void (*circus_channel_write_fn)(circus_channel_t *this, const char *buffer, size_t buflen);
 typedef void (*circus_channel_free_fn)(circus_channel_t *this);

@@ -32,15 +32,19 @@ typedef struct {
    char *addr;
    uv_poll_t handle;
    circus_channel_on_read_cb read_cb;
+   void *read_data;
    circus_channel_on_write_cb write_cb;
+   void *write_data;
 } zmq_impl_t;
 
-static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb) {
+static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *data) {
    this->read_cb = cb;
+   this->read_data = data;
 }
 
-static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb) {
+static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void *data) {
    this->write_cb = cb;
+   this->write_data = data;
 }
 
 static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
@@ -96,13 +100,13 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
 
       if (zevents & ZMQ_POLLIN) {
          if (this->read_cb != NULL) {
-            (this->read_cb)((circus_channel_t*)this);
+            (this->read_cb)((circus_channel_t*)this, this->read_data);
          }
       }
 
       if (zevents & ZMQ_POLLOUT) {
          if (this->write_cb != NULL) {
-            (this->write_cb)((circus_channel_t*)this);
+            (this->write_cb)((circus_channel_t*)this, this->write_data);
          }
       }
    }

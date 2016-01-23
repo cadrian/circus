@@ -23,6 +23,8 @@
 #include "config.h"
 #include "log.h"
 
+#include "../server/message_handler.h"
+
 circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
@@ -54,6 +56,8 @@ __PUBLIC__ int main() {
    set_log(config);
 
    circus_channel_t *channel = circus_zmq_server(stdlib_memory, config);
+   circus_server_message_handler_t *mh = circus_message_handler(stdlib_memory, config);
+   mh->register_to(mh, channel);
 
    log_info(LOG, "server", "Server started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -24,7 +24,6 @@
 typedef struct {
    circus_server_message_handler_t fn;
    cad_memory_t memory;
-   char *vault_filename;
    circus_vault_t *vault;
 } impl_mh_t;
 
@@ -56,18 +55,14 @@ static circus_server_message_handler_t impl_mh_fn = {
 };
 
 circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_config_t *config) {
-   const char *vault_filename = config->get(config, "vault", "filename");
-   if (vault_filename == NULL) {
-      vault_filename = "vault";
-   }
-   impl_mh_t *result = malloc(sizeof(impl_mh_t) + strlen(vault_filename) + 1);
+   impl_mh_t *result;
+
+   result = malloc(sizeof(impl_mh_t));
    assert(result != NULL);
 
    result->fn = impl_mh_fn;
    result->memory = memory;
-   result->vault_filename = (char*)(result+1);
-   result->vault = NULL;
-   strcpy(result->vault_filename, vault_filename);
+   result->vault = circus_vault(memory, config);
 
    return (circus_server_message_handler_t*)result;
 }

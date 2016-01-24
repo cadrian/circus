@@ -18,6 +18,8 @@
 
 #include <json.h>
 
+#include "config.h"
+
 typedef struct circus_key_s circus_key_t;
 
 typedef char *(*circus_key_get_password_fn)(circus_key_t *this, const char *enc_key);
@@ -32,10 +34,22 @@ struct circus_key_s {
    circus_key_free_fn free;
 };
 
+typedef struct circus_user_s circus_user_t;
+
+typedef circus_key_t *(*circus_user_get_fn)(circus_user_t *this, const char *keyname);
+typedef circus_key_t *(*circus_user_new_fn)(circus_user_t *this, const char *keyname);
+typedef void (*circus_user_free_fn)(circus_user_t *this);
+
+struct circus_user_s {
+   circus_user_get_fn get;
+   circus_user_new_fn new;
+   circus_user_free_fn free;
+};
+
 typedef struct circus_vault_s circus_vault_t;
 
-typedef circus_key_t *(*circus_vault_get_fn)(circus_vault_t *this, const char *name);
-typedef circus_key_t *(*circus_vault_new_fn)(circus_vault_t *this, const char *name);
+typedef circus_user_t *(*circus_vault_get_fn)(circus_vault_t *this, const char *username, const char *password);
+typedef circus_user_t *(*circus_vault_new_fn)(circus_vault_t *this, const char *username, const char *password);
 typedef void (*circus_vault_free_fn)(circus_vault_t *this);
 
 struct circus_vault_s {
@@ -44,6 +58,6 @@ struct circus_vault_s {
    circus_vault_free_fn free;
 };
 
-__PUBLIC__ circus_vault_t *circus_vault(cad_memory_t memory, const char *enc_key, const char *filename);
+__PUBLIC__ circus_vault_t *circus_vault(cad_memory_t memory, circus_config_t *config);
 
 #endif /* __CIRCUS_VAULT_H */

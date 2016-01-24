@@ -105,3 +105,9 @@ LOG is a global variable.
 XDG is not an object.
 
 Missing lots of tests.
+
+## TODO
+
+Using `sqlite_open_v2`, define a new vfs layer that uses the uv loop
+instead of sleeping; and maybe more operations such as encryption,
+secure malloc…

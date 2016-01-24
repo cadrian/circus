@@ -27,6 +27,8 @@ It is meant as the successor of the venerable
 A client-server design. The server is responsible of keeping the vault
 data, and ensuring data integrity. Clients ask the server for data.
 
+The server is mutil-user; each user is linked to their own vault.
+
 Communication happens in layers a la OSI: the physical layer is zmq,
 although this is abstracted away in the "*channel*" concept.  Above it
 the message handlers virtually to talk to each other, exchanging the
@@ -63,9 +65,38 @@ The *Client* messages then talk to UI (whatever kind: console, web…)
 while the *Server* messages talk to the vault (that actually keeps the
 passwords).
 
+The messages are protected by a session id and a random token that
+changes at each message exchange, to protect against message
+replay.
+
+The messages themselves are *not* encrypted because the client and the
+server are expected to run on the *same machine*. Remote access but be
+taken care of by using an encrypted protocol (ssh, https…)
+
 Be aware of how many times the sensitive data may be duplicated to
 keep the security as high as we can. Remember that we make *passwords*
 transit through it all!
+
+## Vault
+
+At the beginning, I expected the vault to be implemented as a simple
+encrypted JSON file (same as pwd). Let that change:
+
+* The server file contains all the vaults; it will be an sqlite
+  database.
+
+* The server will provide a mechanism to extract all the passwords of
+  a given user.
+
+# Differences with pwd
+
+But that does not allow multi-user. I want multi-user to allow the
+server to start independently from any client, e.g. from a sysv init
+or systemd. That simplifies the client code and general
+management.
+
+UNIX philosophy: let the right tool do its job. Daemon maintenance is
+not a goal of circus.
 
 ## Known issues
 

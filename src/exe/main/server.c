@@ -112,7 +112,7 @@ static void circus_free(void *ptr) {
 cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
 
 __PUBLIC__ int main() {
-   circus_config_t *config = circus_config_read(MEMORY, "server.conf");
+   circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
    assert(config != NULL);
 
    set_log(config);

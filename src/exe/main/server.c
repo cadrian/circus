@@ -14,9 +14,11 @@
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
+#include <sys/mman.h>
 
 #include "channel.h"
 #include "circus.h"
@@ -51,8 +53,66 @@ static void set_log(circus_config_t *config) {
    }
 }
 
+typedef struct {
+   size_t size;
+   char data[0];
+} mem;
+
+static mem *circus_memalloc(size_t size) {
+   size_t s = sizeof(mem) + size;
+   mem *result = malloc(s);
+   if (result != NULL) {
+      int n = mlock(result, s);
+      if (n != 0) {
+         log_error(LOG, "server", "mlock failed: %s", strerror(errno));
+         free(result);
+      }
+      result->size = size;
+   }
+   return result;
+}
+
+static void circus_memfree(mem *p) {
+   memset(&(p->data), 0, p->size);
+   int n = munlock(p, sizeof(mem) + p->size);
+   if (n != 0) {
+      log_warning(LOG, "server", "munlock failed: %s", strerror(errno));
+   }
+   free(p);
+}
+
+static void *circus_malloc(size_t size) {
+   mem *result = circus_memalloc(size);
+   if (result == NULL) {
+      return NULL;
+   }
+   return &(result->data);
+}
+
+static void *circus_realloc(void *ptr, size_t size) {
+   if (ptr == NULL) {
+      return circus_malloc(size);
+   }
+   mem *p = container_of(ptr, mem, data);
+   if (size <= p->size) {
+      return ptr;
+   }
+   mem *result = circus_memalloc(size);
+   memcpy(&(result->data), &(p->data), p->size);
+   circus_memfree(p);
+   return &(result->data);
+}
+
+static void circus_free(void *ptr) {
+   if (ptr != NULL) {
+      circus_memfree(container_of(ptr, mem, data));
+   }
+}
+
+cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
+
 __PUBLIC__ int main() {
-   circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
+   circus_config_t *config = circus_config_read(MEMORY, "server.conf");
    assert(config != NULL);
 
    set_log(config);
@@ -61,14 +121,14 @@ __PUBLIC__ int main() {
       exit(1);
    }
 
-   circus_channel_t *channel = circus_zmq_server(stdlib_memory, config);
+   circus_channel_t *channel = circus_zmq_server(MEMORY, config);
    if (channel == NULL) {
       log_error(LOG, "server", "Could not allocate channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
    }
-   circus_server_message_handler_t *mh = circus_message_handler(stdlib_memory, config);
+   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, config);
    if (mh == NULL) {
       log_error(LOG, "server", "Could not allocate message handler");
       channel->free(channel);

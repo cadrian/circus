@@ -42,7 +42,6 @@ function rebuild_deps() {
 }
 
 DEPS=$(rebuild_deps $2)
-echo "deps($2): $DEPS" >&2
 LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"

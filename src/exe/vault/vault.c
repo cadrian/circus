@@ -167,6 +167,13 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
          }
       }
 
+      this->memory.free(enckey);
+      this->memory.free(key);
+      this->memory.free(keysalt);
+      this->memory.free(hashpwd);
+      this->memory.free(pwd);
+      this->memory.free(pwdsalt);
+
       n = sqlite3_finalize(stmt);
       if (n != SQLITE_OK) {
          log_warning(LOG, "vault", "Error in finalize: %s", sqlite3_errstr(n));

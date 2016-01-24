@@ -4,7 +4,7 @@ redo-ifchange exe/protocol/messages
 
 function deps_of() {
     egrep -o  "$(pwd)/inc/[^[:space:]]+\.h" ${1%.o}.d |
-              sed -r 's!'^"$(pwd)"'/inc/!!;s!\.h$!!' |
+              sed -r 's!^'"$(pwd)"'/inc/!!;s!\.h$!!' |
               while read header; do
                   find exe -name gen -prune -o -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
               done |

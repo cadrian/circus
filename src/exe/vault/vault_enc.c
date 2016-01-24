@@ -24,9 +24,6 @@
 #include "vault_impl.h"
 
 #define SECURE_MEM_SIZE 65536
-#define SALT_SIZE 16
-#define KEY_SIZE 32 // 256 bits
-#define HASH_SIZE 64 // 512 bits
 
 #define gcrypt(fn) ({                                                   \
          gcry_error_t e ## __LINE__ = gcry_ ## fn;                      \
@@ -58,6 +55,22 @@ char *salted(cad_memory_t memory, const char *salt, const char *value) {
    assert(value != NULL);
    assert(value[0] != 0);
    return szprintf(memory, NULL, "%s:%s", salt, value);
+}
+
+char *unsalted(cad_memory_t memory, const char *salt, const char *value) {
+   assert(strlen(salt) == SALT_SIZE);
+   assert(value != NULL);
+   assert(value[0] != 0);
+
+   char *result = NULL;
+   int n = strlen(value) - SALT_SIZE; /* - 1 (for ':') + 1 (for '\0') */
+
+   if (n > 1 && value[SALT_SIZE] == ':' && memcmp(value, salt, SALT_SIZE) == 0) {
+      result = memory.malloc(n);
+      memcpy(result, value + SALT_SIZE + 1, n);
+   }
+
+   return result;
 }
 
 char *hashed(cad_memory_t memory, const char *value) {
@@ -122,6 +135,44 @@ char *encrypted(cad_memory_t memory, const char *value, const char *b64key) {
    }
    memory.free(raw);
    gcry_cipher_close(hd);
+
+   return result;
+}
+
+char *decrypted(cad_memory_t memory, const char *b64value, const char *b64key) {
+   assert(value != NULL);
+   assert(value[0] != 0);
+
+   char *value = unbase64(memory, b64value);
+   if (value == NULL) {
+      return NULL;
+   }
+
+   char *result = NULL;
+   char *key;
+   gcry_cipher_hd_t hd;
+   gcry_error_t e = gcrypt(cipher_open(&hd, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CFB, GCRY_CIPHER_SECURE));
+   if (e != 0) {
+      return NULL;
+   }
+   int len = ((strlen(b64value) + 3) / 4) * 3;
+   assert(len % KEY_SIZE == 0);
+   key = unbase64(memory, b64key);
+   if (key != NULL) {
+      e = gcrypt(cipher_setkey(hd, key, KEY_SIZE));
+      if (e == 0) {
+         e = gcrypt(cipher_decrypt(hd, value, len, NULL, 0));
+         if (e == 0) {
+            result = value;
+         }
+      }
+      memory.free(key); // TODO try to free it earlier (to be tested)
+   }
+   gcry_cipher_close(hd);
+
+   if (result != value) {
+      memory.free(value);
+   }
 
    return result;
 }

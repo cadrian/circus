@@ -33,7 +33,7 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
 
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
-      const char *sql = "SELECT USERID FROM USERS WHERE USERNAME=?";
+      static const char *sql = "SELECT USERID FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -83,7 +83,7 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
    assert(vault_get(this, username, password) == NULL);
 
    user_impl_t *result = NULL;
-   const char *sql = "INSERT INTO USERS (USERNAME, PWDSALT, HASHPWD, KEYSALT, KEY) values (?, ?, ?, ?, ?)";
+   static const char *sql = "INSERT INTO USERS (USERNAME, PWDSALT, HASHPWD, KEYSALT, KEY) values (?, ?, ?, ?, ?)";
    sqlite3_stmt *stmt;
    int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
    if (n != SQLITE_OK) {

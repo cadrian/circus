@@ -23,15 +23,13 @@
 
 typedef struct circus_key_s circus_key_t;
 
-typedef char *(*circus_key_get_password_fn)(circus_key_t *this, const char *enc_key);
-typedef void (*circus_key_set_password_fn)(circus_key_t *this, const char *enc_key, const char *buffer);
-typedef json_object_t* (*circus_key_properties_fn)(circus_key_t *this);
+typedef char *(*circus_key_get_password_fn)(circus_key_t *this);
+typedef int (*circus_key_set_password_fn)(circus_key_t *this, const char *password);
 typedef void (*circus_key_free_fn)(circus_key_t *this);
 
 struct circus_key_s {
    circus_key_get_password_fn get_password;
    circus_key_set_password_fn set_password;
-   circus_key_properties_fn properties;
    circus_key_free_fn free;
 };
 

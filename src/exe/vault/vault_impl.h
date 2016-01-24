@@ -27,6 +27,10 @@
  * #include <circus_vault.h>
  */
 
+#define SALT_SIZE 16
+#define KEY_SIZE 32 // 256 bits
+#define HASH_SIZE 64 // 512 bits
+
 #define USERS_SCHEMA                                            \
    "CREATE TABLE IF NOT EXISTS USERS ("                         \
    "  USERID    INTEGER PRIMARY KEY AUTOINCREMENT,"             \
@@ -95,8 +99,10 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password);
 
 char *salt(cad_memory_t memory);
 char *salted(cad_memory_t memory, const char *salt, const char *value);
+char *unsalted(cad_memory_t memory, const char *salt, const char *value);
 char *hashed(cad_memory_t memory, const char *value);
 char *new_symmetric_key(cad_memory_t memory);
 char *encrypted(cad_memory_t memory, const char *value, const char *key);
+char *decrypted(cad_memory_t memory, const char *b64value, const char *key);
 
 #endif /* __CIRCUS_VAULT_IMPL_H */

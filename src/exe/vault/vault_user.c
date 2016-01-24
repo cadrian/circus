@@ -29,7 +29,7 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
 
    key_impl_t *result = this->keys->get(this->keys, keyname);
    if (result == NULL) {
-      const char *sql = "SELECT KEYID FROM KEYS WHERE USERID=? AND KEYNAME=?";
+      static const char *sql = "SELECT KEYID FROM KEYS WHERE USERID=? AND KEYNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -84,7 +84,7 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    assert(vault_user_get(this, keyname) == NULL);
 
    key_impl_t *result = NULL;
-   const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, VALUE) VALUES (?, ?, \"\", \"\")";
+   static const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, VALUE) VALUES (?, ?, \"\", \"\")";
    sqlite3_stmt *stmt;
    int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
    if (n != SQLITE_OK) {
@@ -143,7 +143,7 @@ user_impl_t *new_vault_user(cad_memory_t memory, sqlite3_int64 userid, vault_imp
 }
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
-   const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD FROM USERS WHERE USERID=?";
+   static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD FROM USERS WHERE USERID=?";
    sqlite3_stmt *stmt;
    user_impl_t *result = NULL;
    int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);

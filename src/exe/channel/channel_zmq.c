@@ -93,35 +93,38 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    if (events & UV_READABLE) {
       uint32_t zevents;
       size_t zevents_size;
-      int n = zmq_getsockopt(zmq_socket, ZMQ_EVENTS, &zevents, &zevents_size);
-      assert(n == 0);
-      assert(zevents_size = sizeof(uint32_t));
+      int n = zmq_getsockopt(this->socket, ZMQ_EVENTS, &zevents, &zevents_size);
+      if (n < 0) {
+         fprintf(stderr, "Error %d while getting socket events -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
+         crash();
+      } else {
+         assert(zevents_size = sizeof(uint32_t));
 
-      if (zevents & ZMQ_POLLIN) {
-         if (this->read_cb != NULL) {
-            (this->read_cb)((circus_channel_t*)this, this->read_data);
+         if (zevents & ZMQ_POLLIN) {
+            if (this->read_cb != NULL) {
+               (this->read_cb)((circus_channel_t*)this, this->read_data);
+            }
          }
-      }
 
-      if (zevents & ZMQ_POLLOUT) {
-         if (this->write_cb != NULL) {
-            (this->write_cb)((circus_channel_t*)this, this->write_data);
+         if (zevents & ZMQ_POLLOUT) {
+            if (this->write_cb != NULL) {
+               (this->write_cb)((circus_channel_t*)this, this->write_data);
+            }
          }
       }
    }
 }
 
-static char *getaddr(circus_config_t *config) {
+static char *getaddr(cad_memory_t memory, circus_config_t *config, const char *config_ip_name) {
    static int check = 0;
    if (!check) {
       check = 1;
       int major, minor, patch;
       zmq_version(&major, &minor, &patch);
       if (ZMQ_MAKE_VERSION(major, minor, patch) < ZMQ_VERSION) {
-         log_error(LOG, "channel_zmq", "zmq version is too old: %d.%d.%d - expecting at least %d.%d.%d\n",
-                   major, minor, patch,
-                   ZMQ_VERSION_MAJOR, ZMQ_VERSION_MINOR, ZMQ_VERSION_PATCH
-            );
+         fprintf(stderr, "zmq version is too old: %d.%d.%d - expecting at least %d.%d.%d\n",
+                 major, minor, patch,
+                 ZMQ_VERSION_MAJOR, ZMQ_VERSION_MINOR, ZMQ_VERSION_PATCH);
          exit(1);
       }
    }
@@ -130,14 +133,17 @@ static char *getaddr(circus_config_t *config) {
    if (host_szprotocol == NULL) {
       host_szprotocol = "tcp";
    }
-   const char *host_szname = config->get(config, "host", "name");
+   const char *host_szip = config->get(config, "host", config_ip_name);
+   if (host_szip == NULL) {
+      host_szip = "127.0.0.1";
+   }
    const char *host_szport = config->get(config, "host", "port");
    long host_iport = host_szport == NULL ? 0 : strtol(host_szport, NULL, 10);
    if (host_iport <= 0 || host_iport > 65535) {
       host_iport = DEFAULT_PORT;
    }
 
-   char *addr = szprintf(stdlib_memory, NULL, "%s://%s:%ld", host_szprotocol, host_szname, host_iport);
+   char *addr = szprintf(memory, NULL, "%s://%s:%ld", host_szprotocol, host_szip, host_iport);
    assert(addr != NULL);
 
    return addr;
@@ -147,15 +153,19 @@ static void start(zmq_impl_t *this) {
    int fd, n;
    size_t fd_size;
 
-   n = zmq_getsockopt(zmq_socket, ZMQ_FD, &fd, &fd_size);
-   assert(n == 0);
-   assert(fd_size = sizeof(int));
+   n = zmq_getsockopt(this->socket, ZMQ_FD, &fd, &fd_size);
+   if (n < 0) {
+      fprintf(stderr, "Error %d while getting socket fd -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
+      crash();
+   } else {
+      assert(fd_size = sizeof(int));
 
-   n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
-   assert(n == 0);
+      n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
+      assert(n == 0);
 
-   n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
-   assert(n == 0);
+      n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
+      assert(n == 0);
+   }
 }
 
 circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config) {
@@ -167,19 +177,26 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config
    void *zmq_sock = zmq_socket(zmq_context, ZMQ_REP);
    assert(zmq_sock != NULL);
 
-   char *addr = getaddr(config);
+   char *addr = getaddr(memory, config, "bind_ip");
 
    int rc = zmq_bind(zmq_sock, addr);
-   assert(rc == 0);
+   if (rc != 0) {
+      fprintf(stderr, "Error %d while binding to %s -- %s\n", zmq_errno(), addr, zmq_strerror(zmq_errno()));
+      crash();
+   } else {
+      result = malloc(sizeof(zmq_impl_t));
+      if (result == NULL) {
+         log_error(LOG, "channel_zmq", "Could not malloc zmq_server");
+      } else {
+         result->fn = impl_fn;
+         result->memory = memory;
+         result->context = zmq_context;
+         result->socket = zmq_sock;
+         result->addr = addr;
 
-   result = malloc(sizeof(zmq_impl_t));
-   result->fn = impl_fn;
-   result->memory = memory;
-   result->context = zmq_context;
-   result->socket = zmq_sock;
-   result->addr = addr;
-
-   start(result);
+         start(result);
+      }
+   }
 
    return (circus_channel_t*)result;
 }
@@ -193,19 +210,26 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config
    void *zmq_sock = zmq_socket(zmq_context, ZMQ_REQ);
    assert(zmq_sock != NULL);
 
-   char *addr = getaddr(config);
+   char *addr = getaddr(memory, config, "connect_ip");
 
    int rc = zmq_connect(zmq_sock, addr);
-   assert(rc == 0);
+   if (rc != 0) {
+      fprintf(stderr, "Error %d while connecting to %s -- %s\n", zmq_errno(), addr, zmq_strerror(zmq_errno()));
+      crash();
+   } else {
+      result = malloc(sizeof(zmq_impl_t));
+      if (result == NULL) {
+         log_error(LOG, "channel_zmq", "Could not malloc zmq_server");
+      } else {
+         result->fn = impl_fn;
+         result->memory = memory;
+         result->context = zmq_context;
+         result->socket = zmq_sock;
+         result->addr = addr;
 
-   result = malloc(sizeof(zmq_impl_t));
-   result->fn = impl_fn;
-   result->memory = memory;
-   result->context = zmq_context;
-   result->socket = zmq_sock;
-   result->addr = addr;
-
-   start(result);
+         start(result);
+      }
+   }
 
    return (circus_channel_t*)result;
 }

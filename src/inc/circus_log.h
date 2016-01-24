@@ -51,36 +51,9 @@ struct circus_log_s {
 __PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
 __PUBLIC__ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level);
 
-static inline void log_error(circus_log_t *logger, const char *module, const char *format, ...) {
-   va_list arg;
-   cad_output_stream_t *s = (logger)->stream((logger), (module), LOG_ERROR);
-   va_start(arg, format);
-   s->put(s, (format), arg);
-   va_end(arg);
-}
-
-static inline void log_warning(circus_log_t *logger, const char *module, const char *format, ...) {
-   va_list arg;
-   cad_output_stream_t *s = (logger)->stream((logger), (module), LOG_WARNING);
-   va_start(arg, format);
-   s->put(s, (format), arg);
-   va_end(arg);
-}
-
-static inline void log_info(circus_log_t *logger, const char *module, const char *format, ...) {
-   va_list arg;
-   cad_output_stream_t *s = (logger)->stream((logger), (module), LOG_INFO);
-   va_start(arg, format);
-   s->put(s, (format), arg);
-   va_end(arg);
-}
-
-static inline void log_debug(circus_log_t *logger, const char *module, const char *format, ...) {
-   va_list arg;
-   cad_output_stream_t *s = (logger)->stream((logger), (module), LOG_DEBUG);
-   va_start(arg, format);
-   s->put(s, (format), arg);
-   va_end(arg);
-}
+__PUBLIC__ void log_error(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void log_warning(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void log_info(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void log_debug(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
 
 #endif /* __CIRCUS_LOG_H */

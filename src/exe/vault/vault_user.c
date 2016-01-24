@@ -156,9 +156,9 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
       } else {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
-            log_error(LOG, "vault_user", "Error user not found: %ld -- %s", sql, (long int)user->userid, sqlite3_errstr(n));
+            log_error(LOG, "vault_user", "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else if (n != SQLITE_OK) {
-            log_error(LOG, "vault_user", "Error user: %ld -- %s", sql, (long int)user->userid, sqlite3_errstr(n));
+            log_error(LOG, "vault_user", "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else {
             const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);
             const char *hashpwd = (const char*)sqlite3_column_text(stmt, 2);
@@ -175,7 +175,7 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
 
             n = sqlite3_step(stmt);
             if (n != SQLITE_DONE) {
-               log_error(LOG, "vault_user", "Error multiple users not found: %ld -- %s", sql, (long int)user->userid, sqlite3_errstr(n));
+               log_error(LOG, "vault_user", "Error multiple users not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
                result = NULL;
             }
          }

@@ -15,6 +15,8 @@
 */
 
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <circus.h>
 #include <circus_log.h>
@@ -204,6 +206,36 @@ static circus_vault_t vault_fn = {
    (circus_vault_free_fn)vault_free,
 };
 
+static void mkparentdirs(cad_memory_t memory, const char *dir) {
+   char *tmp;
+   char *p = NULL;
+   int len, i;
+
+   tmp = szprintf(memory, &len, "%s", dir);
+   assert(tmp != NULL);
+   if (tmp[len - 1] == '/') {
+      tmp[--len] = 0;
+   }
+   for (i = len - 1; i > 0 && tmp[i] != '/'; i--) {
+      // just looping to find the last '/', to remove the filename
+   }
+   assert(i > 0);
+   assert(tmp[i] == '/');
+   tmp[i] = 0;
+
+   for (p = tmp + 1; *p; p++) {
+      if (*p == '/') {
+         *p = 0;
+         mkdir(tmp, 0770);
+         *p = '/';
+      }
+   }
+   mkdir(tmp, 0700);
+
+   memory.free(tmp);
+}
+
+
 circus_vault_t *circus_vault(cad_memory_t memory, circus_config_t *config) {
    vault_impl_t *result = NULL;
    char *path;
@@ -221,11 +253,12 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_config_t *config) {
    result->users = cad_new_hash(memory, cad_hash_strings);
 
    path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+   mkparentdirs(memory, path);
    n = sqlite3_open_v2(path, &(result->db),
                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,
                        "unix-excl");
    if (n != SQLITE_OK) {
-      log_error(LOG, "vault", "Cannot open database: %s", sqlite3_errmsg(result->db));
+      log_error(LOG, "vault", "Cannot open database: %s -- %s", path, sqlite3_errmsg(result->db));
       sqlite3_close(result->db);
       memory.free(result);
       return NULL;

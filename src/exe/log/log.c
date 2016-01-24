@@ -538,3 +538,35 @@ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level) 
    }
    return (circus_log_t*)result;
 }
+
+void log_error(circus_log_t *logger, const char *module, const char *format, ...) {
+   va_list arg;
+   cad_output_stream_t *s = logger->stream(logger, module, LOG_ERROR);
+   va_start(arg, format);
+   s->vput(s, format, arg);
+   va_end(arg);
+}
+
+void log_warning(circus_log_t *logger, const char *module, const char *format, ...) {
+   va_list arg;
+   cad_output_stream_t *s = logger->stream(logger, module, LOG_WARNING);
+   va_start(arg, format);
+   s->vput(s, format, arg);
+   va_end(arg);
+}
+
+void log_info(circus_log_t *logger, const char *module, const char *format, ...) {
+   va_list arg;
+   cad_output_stream_t *s = logger->stream(logger, module, LOG_INFO);
+   va_start(arg, format);
+   s->vput(s, format, arg);
+   va_end(arg);
+}
+
+void log_debug(circus_log_t *logger, const char *module, const char *format, ...) {
+   va_list arg;
+   cad_output_stream_t *s = logger->stream(logger, module, LOG_DEBUG);
+   va_start(arg, format);
+   s->vput(s, format, arg);
+   va_end(arg);
+}

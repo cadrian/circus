@@ -54,4 +54,4 @@ case $(basename $2) in
         ;;
 esac
 
-gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -O2 -g -fsanitize=undefined -o $3 $2.o $DEPS $libs
+gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -fsanitize=undefined -o $3 $2.o $DEPS $libs

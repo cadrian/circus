@@ -67,6 +67,7 @@ static mem *circus_memalloc(size_t size) {
          log_error(LOG, "server", "mlock failed: %s", strerror(errno));
          free(result);
       }
+      memset(&(result->data), 0, size);
       result->size = size;
    }
    return result;

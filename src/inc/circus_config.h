@@ -16,6 +16,8 @@
 #ifndef __CIRCUS_CONFIG_H
 #define __CIRCUS_CONFIG_H
 
+#include <circus.h>
+
 typedef struct circus_config_s circus_config_t;
 
 typedef const char * (*circus_config_get_fn)(circus_config_t *this, const char *section, const char *key);

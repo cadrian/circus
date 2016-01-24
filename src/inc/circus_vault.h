@@ -18,7 +18,8 @@
 
 #include <json.h>
 
-#include "config.h"
+#include <circus.h>
+#include <circus_config.h>
 
 typedef struct circus_key_s circus_key_t;
 

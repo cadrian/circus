@@ -28,8 +28,7 @@
 
 #include <uv.h>
 
-#include "circus.h"
-#include "log.h"
+#include <circus_log.h>
 
 static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG"};
 

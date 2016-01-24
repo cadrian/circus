@@ -16,7 +16,9 @@
 #ifndef __CIRCUS_LOG_H
 #define __CIRCUS_LOG_H
 
-#include "cad_stream.h"
+#include <cad_stream.h>
+
+#include <circus.h>
 
 typedef struct circus_log_s circus_log_t;
 

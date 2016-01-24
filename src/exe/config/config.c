@@ -23,10 +23,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "circus.h"
-#include "config.h"
-#include "log.h"
-#include "xdg.h"
+#include <circus_config.h>
+#include <circus_log.h>
+#include <circus_xdg.h>
 
 extern circus_log_t *LOG;
 

@@ -19,8 +19,8 @@
 
 #include <cad_shared.h>
 
-#include "channel.h"
-#include "config.h"
+#include <circus_channel.h>
+#include <circus_config.h>
 
 typedef struct circus_server_message_handler_s circus_server_message_handler_t;
 

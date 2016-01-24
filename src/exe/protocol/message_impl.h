@@ -17,7 +17,8 @@
 #ifndef __CIRCUS_MESSAGE_IMPL_H
 #define __CIRCUS_MESSAGE_IMPL_H
 
-#include <message.h>
+#include <circus_message.h>
+
 #include "gen/factory.h"
 
 #endif /* __CIRCUS_MESSAGE_IMPL_H */

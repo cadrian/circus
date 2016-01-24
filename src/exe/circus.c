@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "circus.h"
+#include <circus.h>
 
 char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args) {
    va_list args2;

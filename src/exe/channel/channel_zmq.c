@@ -18,9 +18,8 @@
 #include <uv.h>
 #include <zmq.h>
 
-#include "circus.h"
-#include "channel.h"
-#include "log.h"
+#include <circus_channel.h>
+#include <circus_log.h>
 
 extern circus_log_t *LOG;
 

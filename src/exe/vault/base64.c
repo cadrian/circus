@@ -17,7 +17,7 @@
 #include <circus.h>
 #include <string.h>
 
-#include "base64.h"
+#include <circus_base64.h>
 
 // base64 implementation based on http://www.opensource.apple.com/source/QuickTimeStreamingServer/QuickTimeStreamingServer-452/CommonUtilitiesLib/base64.c
 

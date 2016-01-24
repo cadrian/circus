@@ -16,8 +16,7 @@
 
 #include <string.h>
 
-#include "circus.h"
-#include "xdg.h"
+#include <circus_xdg.h>
 
 const char *xdg_data_dirs(void) {
    static const char *result = NULL;

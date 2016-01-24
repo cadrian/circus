@@ -3,10 +3,10 @@ set -e
 redo-ifchange exe/protocol/messages
 
 function deps_of() {
-    egrep -o  "$(pwd)/inc/[^[:space:]]+\.h" ${1%.o}.d |
-              sed -r 's!^'"$(pwd)"'/inc/!!;s!\.h$!!' |
+    egrep -o  "$(pwd)/inc/circus_[^[:space:]]+\.h" ${1%.o}.d |
+              sed -r 's!^'"$(pwd)"'/inc/circus_([^.]+)\.h$!\1!' |
               while read header; do
-                  find exe -name gen -prune -o -name $header\*.c -exec grep -l '^#include "'$header'.h"$' {} +
+                  find exe -name gen -prune -o -name $header\*.c -exec egrep -l '^\#include <circus_'$header'\.h>$' {} +
               done |
               sed 's!\.c$!.o!'
 }
@@ -14,8 +14,16 @@ function deps_of() {
 function rebuild_deps() {
     # Try to recursively rebuild all deps until fix point
     rm -f $1.dep[s01]
-    # The seed is the target itself
-    echo $1.o > $1.deps
+    {
+        # The seed is the target itself
+        echo $1.o
+        # Force circus.o because deps_of will not find it
+        echo exe/circus.o
+        # Be sure to add all the program-specific modules
+        for f in exe/$(basename $1)/*.c; do
+            echo ${f%.c}.o
+        done
+    } > $1.deps
     # We stop when the list of deps does not change anymore (fix point)
     until diff -q $1.deps $1.dep0 >/dev/null 2>&1; do
         mv $1.deps $1.dep0
@@ -34,9 +42,17 @@ function rebuild_deps() {
 }
 
 DEPS=$(rebuild_deps $2)
-#echo "deps: $DEPS" >&2
+echo "deps($2): $DEPS" >&2
 LD_FLAGS=""
 if [[ "${LDFLAGS-x}" != x ]]; then
     LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 fi
-gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -O2 -g -fsanitize=undefined -o $3 $2.o $DEPS -lcad -lyacjp -luv -lzmq
+
+libs="-lcad -lyacjp -luv -lzmq"
+case $(basename $2) in
+    server)
+        libs="$libs -lsqlite3 -lgcrypt"
+        ;;
+esac
+
+gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -O2 -g -fsanitize=undefined -o $3 $2.o $DEPS $libs

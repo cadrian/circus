@@ -13,8 +13,16 @@
     You should have received a copy of the GNU General Public License
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __CIRCUS_CONTRACT_H
-#define __CIRCUS_CONTRACT_H
+#ifndef __CIRCUS_XDG_H
+#define __CIRCUS_XDG_H
 
+#include <circus.h>
 
-#endif /* __CIRCUS_CONTRACT_H */
+const char *xdg_data_dirs(void);
+const char *xdg_config_dirs(void);
+const char *xdg_cache_home(void);
+const char *xdg_runtime_dir(void);
+const char *xdg_data_home(void);
+const char *xdg_config_home(void);
+
+#endif /* __CIRCUS_XDG_H */

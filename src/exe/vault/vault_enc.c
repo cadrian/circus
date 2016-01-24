@@ -16,9 +16,10 @@
 
 #include <gcrypt.h>
 #include <string.h>
-#include <circus.h>
-#include <log.h>
-#include <base64.h>
+
+#include <circus_base64.h>
+#include <circus_log.h>
+#include <circus_vault.h>
 
 #include "vault_impl.h"
 

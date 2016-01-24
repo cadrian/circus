@@ -19,6 +19,8 @@
 
 #include <json.h>
 
+#include <circus.h>
+
 typedef struct circus_message_s circus_message_t;
 typedef struct circus_message_visitor_s circus_message_visitor_t;
 

@@ -16,5 +16,7 @@
 
 #include <cad_shared.h>
 
+#include <circus.h>
+
 char *base64(cad_memory_t memory, const char *raw, int len);
 char *unbase64(cad_memory_t memory, const char *b64);

@@ -18,7 +18,8 @@
 
 #include <cad_shared.h>
 
-#include "config.h"
+#include <circus.h>
+#include <circus_config.h>
 
 typedef struct circus_channel_s circus_channel_t;
 

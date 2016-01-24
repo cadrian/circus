@@ -20,7 +20,12 @@
 #include <cad_hash.h>
 #include <sqlite3.h>
 
-#include "vault.h"
+/*
+ * Because of how the exe resolver works, it is mandatory that the
+ * following inclusion is performed before including this file:
+ *
+ * #include <circus_vault.h>
+ */
 
 #define USERS_SCHEMA                                            \
    "CREATE TABLE IF NOT EXISTS USERS ("                         \

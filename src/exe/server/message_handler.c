@@ -16,8 +16,7 @@
 
 #include <string.h>
 
-#include "circus.h"
-#include "vault.h"
+#include <circus_vault.h>
 
 #include "message_handler.h"
 

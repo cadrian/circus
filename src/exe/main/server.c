@@ -20,10 +20,9 @@
 #include <uv.h>
 #include <sys/mman.h>
 
-#include "channel.h"
-#include "circus.h"
-#include "config.h"
-#include "log.h"
+#include <circus_channel.h>
+#include <circus_config.h>
+#include <circus_log.h>
 
 #include "../server/message_handler.h"
 

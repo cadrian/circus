@@ -16,10 +16,12 @@
 
 #include <string.h>
 
-#include "circus.h"
-#include "log.h"
+#include <circus.h>
+#include <circus_log.h>
+#include <circus_vault.h>
+#include <circus_xdg.h>
+
 #include "vault_impl.h"
-#include "xdg.h"
 
 extern circus_log_t *LOG;
 

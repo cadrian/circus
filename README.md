@@ -45,10 +45,10 @@ The message handlers are implemented as message "visitors", using the
 OO design pattern.
 
         Client                       Server
-      ----------      message      ----------
-     | Message  | <-------------> | Message  |
-     | handlers |                 | handlers |
-      ----------                   ----------
+      ----------      message      ----------            --------
+     | Message  | <-------------> | Message  | <------> | vault  |
+     | handlers |                 | handlers |          |(sqlite)|
+      ----------                   ----------            --------
      |   JSON   |                 |   JSON   |
       ----------                   ----------
           ^                             ^

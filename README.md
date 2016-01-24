@@ -19,6 +19,7 @@ It is meant as the successor of the venerable
 * JSON: https://github.com/cadrian/yacjp
 * Encryption routines: libgcrypt
 * Communication protocol: zmq
+* Vault database: sqlite
 
 # Design
 
@@ -27,7 +28,7 @@ It is meant as the successor of the venerable
 A client-server design. The server is responsible of keeping the vault
 data, and ensuring data integrity. Clients ask the server for data.
 
-The server is mutil-user; each user is linked to their own vault.
+The server and the vault are multi-user.
 
 Communication happens in layers a la OSI: the physical layer is zmq,
 although this is abstracted away in the "*channel*" concept.  Above it
@@ -82,8 +83,7 @@ transit through it all!
 At the beginning, I expected the vault to be implemented as a simple
 encrypted JSON file (same as pwd). Let that change:
 
-* The server file contains all the vaults; it will be an sqlite
-  database.
+* The server file contains the vault; it will be an sqlite database.
 
 * The server will provide a mechanism to extract all the passwords of
   a given user.

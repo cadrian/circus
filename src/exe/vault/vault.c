@@ -72,9 +72,11 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
       if (n != SQLITE_OK) {
          log_warning(LOG, "vault", "Error in finalize: %s", sqlite3_errstr(n));
       }
-      this->users->set(this->users, username, result);
+      if (result != NULL) {
+         this->users->set(this->users, username, result);
+      }
    }
-   return result == NULL ? NULL : check_user(this, result, password);
+   return result == NULL ? NULL : check_user_password(result, password);
 }
 
 static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password) {
@@ -180,7 +182,6 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
       if (n != SQLITE_OK) {
          log_warning(LOG, "vault", "Error in finalize: %s", sqlite3_errstr(n));
       }
-      this->users->set(this->users, username, result);
    }
 
    return result;
@@ -217,6 +218,7 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_config_t *config) {
    assert(result != NULL);
    result->fn = vault_fn;
    result->memory = memory;
+   result->users = cad_new_hash(memory, cad_hash_strings);
 
    path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
    n = sqlite3_open_v2(path, &(result->db),

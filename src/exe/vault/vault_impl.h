@@ -72,7 +72,7 @@ typedef struct {
 } vault_impl_t;
 
 typedef struct {
-   circus_vault_t fn;
+   circus_user_t fn;
    cad_memory_t memory;
    sqlite3_int64 userid;
    vault_impl_t *vault;
@@ -89,7 +89,7 @@ typedef struct {
 user_impl_t *new_vault_user(cad_memory_t memory, sqlite3_int64 userid, vault_impl_t *vault);
 key_impl_t *new_vault_key(cad_memory_t memory, sqlite3_int64 keyid, user_impl_t *user);
 
-user_impl_t *check_user(vault_impl_t *this, user_impl_t *user, const char *password);
+user_impl_t *check_user_password(user_impl_t *user, const char *password);
 
 /* Encryption routines */
 

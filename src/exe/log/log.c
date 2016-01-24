@@ -516,13 +516,13 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
    assert(max_level < __LOG_MAX);
 
    circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
-
-   result->fn = impl_fn;
-   result->memory = memory;
-   result->module_streams = cad_new_hash(memory, cad_hash_strings);
-   result->max_level = max_level;
-   result->logger = new_logger_file(memory, filename);
-
+   if (result != NULL) {
+      result->fn = impl_fn;
+      result->memory = memory;
+      result->module_streams = cad_new_hash(memory, cad_hash_strings);
+      result->max_level = max_level;
+      result->logger = new_logger_file(memory, filename);
+   }
    return (circus_log_t*)result;
 }
 
@@ -530,12 +530,12 @@ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level) 
    assert(max_level < __LOG_MAX);
 
    circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
-
-   result->fn = impl_fn;
-   result->memory = memory;
-   result->module_streams = cad_new_hash(memory, cad_hash_strings);
-   result->max_level = max_level;
-   result->logger = new_logger_stdout(memory);
-
+   if (result != NULL) {
+      result->fn = impl_fn;
+      result->memory = memory;
+      result->module_streams = cad_new_hash(memory, cad_hash_strings);
+      result->max_level = max_level;
+      result->logger = new_logger_stdout(memory);
+   }
    return (circus_log_t*)result;
 }

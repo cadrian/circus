@@ -53,10 +53,30 @@ static void set_log(circus_config_t *config) {
 
 __PUBLIC__ int main() {
    circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
+   assert(config != NULL);
+
    set_log(config);
+   if (LOG == NULL) {
+      config->free(config);
+      exit(1);
+   }
 
    circus_channel_t *channel = circus_zmq_server(stdlib_memory, config);
+   if (channel == NULL) {
+      log_error(LOG, "server", "Could not allocate channel");
+      LOG->free(LOG);
+      config->free(config);
+      exit(1);
+   }
    circus_server_message_handler_t *mh = circus_message_handler(stdlib_memory, config);
+   if (mh == NULL) {
+      log_error(LOG, "server", "Could not allocate message handler");
+      channel->free(channel);
+      LOG->free(LOG);
+      config->free(config);
+      exit(1);
+   }
+
    mh->register_to(mh, channel);
 
    log_info(LOG, "server", "Server started.");
@@ -64,6 +84,7 @@ __PUBLIC__ int main() {
    uv_loop_close(uv_default_loop());
    log_info(LOG, "server", "Server stopped.");
 
+   mh->free(mh);
    channel->free(channel);
    LOG->free(LOG);
    config->free(config);

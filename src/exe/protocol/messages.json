@@ -1,58 +1,77 @@
 {
     "close": {
-        "query": {},
+        "query": {
+            "sessionid": "STRING",
+            "token": "STRING"
+        },
         "reply": {}
     },
     "is_open": {
-        "query": {},
+        "query": {
+            "sessionid": "STRING",
+            "token": "STRING"
+        },
         "reply": {
+            "token": "STRING",
             "is_open": "BOOLEAN"
         }
     },
     "list": {
-        "query_all": {},
+        "query_all": {
+            "sessionid": "STRING",
+            "token": "STRING"
+        },
         "query_tag": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "tag": "STRING"
         },
         "reply": {
+            "token": "STRING",
             "names": "STRINGS"
         }
     },
-    "master": {
+    "login": {
         "query": {
-            "master": "STRING"
+            "userid": "STRING",
+            "password": "STRING"
         },
-        "reply": {}
+        "reply": {
+            "sessionid": "STRING",
+            "token": "STRING"
+        }
     },
     "change_master": {
         "query": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "old": "STRING",
             "new": "STRING"
         },
-        "reply": {}
-    },
-    "merge": {
-        "query": {
-            "vault": "STRING",
-            "master": "STRING"
-        },
         "reply": {
-            "vault": "STRING"
+            "token": "STRING"
         }
     },
     "pass": {
         "query_get": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING"
         },
         "query_set_recipe": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING",
             "recipe": "STRING"
         },
         "query_set_pass": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING",
             "pass": "STRING"
         },
         "reply": {
+            "token": "STRING",
             "key": "STRING",
             "pass": "STRING",
             "properties": "STRINGS"
@@ -60,47 +79,49 @@
     },
     "ping": {
         "query": {
-            "id": "STRING"
+            "phrase": "STRING"
         },
         "reply": {
-            "id": "STRING"
+            "phrase": "STRING"
         }
     },
     "property": {
         "query_set": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING",
             "property": "STRING",
             "value": "STRING"
         },
         "query_unset": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING",
             "property": "STRING"
         },
         "reply": {
+            "token": "STRING",
             "key": "STRING"
         }
     },
-    "save": {
-        "query": {},
-        "reply": {}
-    },
-    "stop": {
-        "query": {},
-        "reply": {}
-    },
     "tags": {
         "query": {
+            "sessionid": "STRING",
+            "token": "STRING"
         },
         "reply": {
+            "token": "STRING",
             "names": "STRINGS"
         }
     },
     "unset": {
         "query": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "key": "STRING"
         },
         "reply": {
-            "key": "STRING"
+            "token": "STRING"
         }
     },
     "version": {

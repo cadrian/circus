@@ -140,8 +140,8 @@ char *encrypted(cad_memory_t memory, const char *value, const char *b64key) {
 }
 
 char *decrypted(cad_memory_t memory, const char *b64value, const char *b64key) {
-   assert(value != NULL);
-   assert(value[0] != 0);
+   assert(b64value != NULL);
+   assert(b64value[0] != 0);
 
    char *value = unbase64(memory, b64value);
    if (value == NULL) {

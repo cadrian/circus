@@ -84,15 +84,16 @@ circus_channel_t impl_fn = {
 };
 
 static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
-   zmq_impl_t *this = container_of(handle, zmq_impl_t, handle);
+   zmq_impl_t *this = handle->data;
+   assert(this == container_of(handle, zmq_impl_t, handle));
    if (status != 0) {
       log_warning(LOG, "channel_zmq", "impl_zmq_callback: status=%d", status);
       return;
    }
 
    if (events & UV_READABLE) {
-      uint32_t zevents;
-      size_t zevents_size;
+      uint32_t zevents = 0;
+      size_t zevents_size = sizeof(uint32_t);
       int n = zmq_getsockopt(this->socket, ZMQ_EVENTS, &zevents, &zevents_size);
       if (n < 0) {
          fprintf(stderr, "Error %d while getting socket events -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
@@ -150,8 +151,8 @@ static char *getaddr(cad_memory_t memory, circus_config_t *config, const char *c
 }
 
 static void start(zmq_impl_t *this) {
-   int fd, n;
-   size_t fd_size;
+   int fd = 0, n;
+   size_t fd_size = sizeof(int);
 
    n = zmq_getsockopt(this->socket, ZMQ_FD, &fd, &fd_size);
    if (n < 0) {
@@ -162,6 +163,7 @@ static void start(zmq_impl_t *this) {
 
       n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
       assert(n == 0);
+      this->handle.data = this;
 
       n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
@@ -193,6 +195,10 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config
          result->context = zmq_context;
          result->socket = zmq_sock;
          result->addr = addr;
+         result->read_cb = NULL;
+         result->read_data = NULL;
+         result->write_cb = NULL;
+         result->write_data = NULL;
 
          start(result);
       }

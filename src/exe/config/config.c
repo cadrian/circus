@@ -24,14 +24,12 @@
 #include <string.h>
 
 #include <circus_config.h>
-#include <circus_log.h>
 #include <circus_xdg.h>
-
-extern circus_log_t *LOG;
 
 typedef struct {
    circus_config_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    json_object_t *data;
    int dirty;
    char *filename;
@@ -140,7 +138,7 @@ static void config_write(config_impl *this) {
       path = szprintf(this->memory, NULL, "%s/%s", xdg_data_home(), this->filename);
       file = fopen(path, "w");
       if (file == NULL) {
-         log_error(LOG, "config", "Could not write config file: %s", path);
+         log_error(this->log, "config", "Could not write config file: %s", path);
          perror("fopen write config file");
          exit(1);
       }
@@ -179,7 +177,7 @@ static void config_error(cad_input_stream_t *UNUSED(stream), int line, int colum
    va_start(args, format);
    log = vszprintf(this->memory, NULL, format, args);
    va_end(args);
-   log_error(LOG, "config", "Error while reading config file, line %d, column %d: %s", line, column, log);
+   log_error(this->log, "config", "Error while reading config file, line %d, column %d: %s", line, column, log);
    this->memory.free(log);
 }
 
@@ -242,7 +240,7 @@ static json_visitor_t config_read_checker_fn = {
    (json_visit_const_fn)config_read_checker_visit_const,
 };
 
-circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
+circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, const char *filename) {
    int n = strlen(filename) + 1;
    config_impl *result;
    read_t read;
@@ -254,6 +252,7 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
 
    result->fn = impl_fn;
    result->memory = memory;
+   result->log = log;
    result->filename = (char*)(result + 1);
    strncpy(result->filename, filename, n);
 
@@ -271,7 +270,7 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
 
       data = json_parse(stream, config_error, result, memory);
       if (data == NULL) {
-         log_error(LOG, "config", "JSON parse error in file %s", read.path);
+         log_error(log, "config", "JSON parse error in file %s", read.path);
          exit(1);
       }
 

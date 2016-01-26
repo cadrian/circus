@@ -19,13 +19,11 @@
 #include <zmq.h>
 
 #include <circus_channel.h>
-#include <circus_log.h>
-
-extern circus_log_t *LOG;
 
 typedef struct {
    circus_channel_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    void *context;
    void *socket;
    char *addr;
@@ -87,7 +85,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    zmq_impl_t *this = handle->data;
    assert(this == container_of(handle, zmq_impl_t, handle));
    if (status != 0) {
-      log_warning(LOG, "channel_zmq", "impl_zmq_callback: status=%d", status);
+      log_warning(this->log, "channel_zmq", "impl_zmq_callback: status=%d", status);
       return;
    }
 
@@ -170,7 +168,7 @@ static void start(zmq_impl_t *this) {
    }
 }
 
-circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config) {
+circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
    zmq_impl_t *result;
 
    void *zmq_context = zmq_ctx_new();
@@ -188,10 +186,11 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config
    } else {
       result = malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
-         log_error(LOG, "channel_zmq", "Could not malloc zmq_server");
+         log_error(log, "channel_zmq", "Could not malloc zmq_server");
       } else {
          result->fn = impl_fn;
          result->memory = memory;
+         result->log = log;
          result->context = zmq_context;
          result->socket = zmq_sock;
          result->addr = addr;
@@ -207,7 +206,7 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config
    return (circus_channel_t*)result;
 }
 
-circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config) {
+circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
    zmq_impl_t *result;
 
    void *zmq_context = zmq_ctx_new();
@@ -225,13 +224,18 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config
    } else {
       result = malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
-         log_error(LOG, "channel_zmq", "Could not malloc zmq_server");
+         log_error(log, "channel_zmq", "Could not malloc zmq_server");
       } else {
          result->fn = impl_fn;
          result->memory = memory;
+         result->log = log;
          result->context = zmq_context;
          result->socket = zmq_sock;
          result->addr = addr;
+         result->read_cb = NULL;
+         result->read_data = NULL;
+         result->write_cb = NULL;
+         result->write_data = NULL;
 
          start(result);
       }

@@ -71,6 +71,7 @@
 typedef struct {
    circus_vault_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    sqlite3 *db;
    cad_hash_t *users;
 } vault_impl_t;
@@ -78,6 +79,7 @@ typedef struct {
 typedef struct {
    circus_user_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    sqlite3_int64 userid;
    vault_impl_t *vault;
    cad_hash_t *keys;
@@ -86,23 +88,24 @@ typedef struct {
 typedef struct {
    circus_key_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    sqlite3_int64 keyid;
    user_impl_t *user;
 } key_impl_t;
 
-user_impl_t *new_vault_user(cad_memory_t memory, sqlite3_int64 userid, vault_impl_t *vault);
-key_impl_t *new_vault_key(cad_memory_t memory, sqlite3_int64 keyid, user_impl_t *user);
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, vault_impl_t *vault);
+key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user);
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);
 
 /* Encryption routines */
 
-char *salt(cad_memory_t memory);
-char *salted(cad_memory_t memory, const char *salt, const char *value);
-char *unsalted(cad_memory_t memory, const char *salt, const char *value);
-char *hashed(cad_memory_t memory, const char *value);
-char *new_symmetric_key(cad_memory_t memory);
-char *encrypted(cad_memory_t memory, const char *value, const char *key);
-char *decrypted(cad_memory_t memory, const char *b64value, const char *key);
+char *salt(cad_memory_t memory, circus_log_t *log);
+char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value);
+char *unsalted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value);
+char *hashed(cad_memory_t memory, circus_log_t *log, const char *value);
+char *new_symmetric_key(cad_memory_t memory, circus_log_t *log);
+char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const char *key);
+char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, const char *key);
 
 #endif /* __CIRCUS_VAULT_IMPL_H */

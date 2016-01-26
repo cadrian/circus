@@ -23,6 +23,7 @@
 typedef struct {
    circus_server_message_handler_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    circus_vault_t *vault;
 } impl_mh_t;
 
@@ -53,7 +54,7 @@ static circus_server_message_handler_t impl_mh_fn = {
    (circus_server_message_handler_free_fn) impl_free,
 };
 
-circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_config_t *config) {
+circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
    impl_mh_t *result;
 
    result = malloc(sizeof(impl_mh_t));
@@ -61,7 +62,8 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
 
    result->fn = impl_mh_fn;
    result->memory = memory;
-   result->vault = circus_vault(memory, config);
+   result->log = log;
+   result->vault = circus_vault(memory, log, config);
 
    return (circus_server_message_handler_t*)result;
 }

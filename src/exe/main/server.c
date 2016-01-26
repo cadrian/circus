@@ -26,7 +26,7 @@
 
 #include "../server/message_handler.h"
 
-circus_log_t *LOG;
+static circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
    const char *log_szfilename = config->get(config, "log", "filename");
@@ -109,10 +109,10 @@ static void circus_free(void *ptr) {
    }
 }
 
-cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
+static cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
 
 __PUBLIC__ int main() {
-   circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
+   circus_config_t *config = circus_config_read(stdlib_memory, LOG, "server.conf");
    assert(config != NULL);
 
    set_log(config);
@@ -121,14 +121,14 @@ __PUBLIC__ int main() {
       exit(1);
    }
 
-   circus_channel_t *channel = circus_zmq_server(MEMORY, config);
+   circus_channel_t *channel = circus_zmq_server(MEMORY, LOG, config);
    if (channel == NULL) {
       log_error(LOG, "server", "Could not allocate channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
    }
-   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, config);
+   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
       log_error(LOG, "server", "Could not allocate message handler");
       channel->free(channel);

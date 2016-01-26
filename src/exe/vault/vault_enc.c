@@ -18,7 +18,6 @@
 #include <string.h>
 
 #include <circus_base64.h>
-#include <circus_log.h>
 #include <circus_vault.h>
 
 #include "vault_impl.h"
@@ -28,7 +27,7 @@
 #define gcrypt(fn) ({                                                   \
          gcry_error_t e ## __LINE__ = gcry_ ## fn;                      \
          if (e ## __LINE__) {                                           \
-            log_error(LOG, "vault_enc", "%s:%d - %s/%s",                \
+            log_error(log, "vault_enc", "%s:%d - %s/%s",                \
                       __FILE__, __LINE__,                               \
                       gcry_strsource(e ## __LINE__),                    \
                       gcry_strerror(e ## __LINE__));                    \
@@ -36,28 +35,31 @@
          e ## __LINE__;                                                 \
       })
 
-extern circus_log_t *LOG;
-
-char *salt(cad_memory_t memory) {
+char *salt(cad_memory_t memory, circus_log_t *log) {
+   char *result = NULL;
    char *raw = memory.malloc(SALT_SIZE);
    if (raw == NULL) {
-      log_error(LOG, "vault_enc", "Could not allocate memory for salt");
+      log_error(log, "vault_enc", "Could not allocate memory for salt");
    } else {
       gcry_randomize(raw, SALT_SIZE, GCRY_STRONG_RANDOM);
+      result = base64(memory, raw, SALT_SIZE);
+      memory.free(raw);
    }
-   char *result = base64(memory, raw, SALT_SIZE);
-   memory.free(raw);
    return result;
 }
 
-char *salted(cad_memory_t memory, const char *salt, const char *value) {
+char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
    assert(strlen(salt) == SALT_SIZE);
    assert(value != NULL);
    assert(value[0] != 0);
-   return szprintf(memory, NULL, "%s:%s", salt, value);
+   char *result = szprintf(memory, NULL, "%s:%s", salt, value);
+   if (result == NULL) {
+      log_error(log, "vault_enc", "Could not allocate memory for salted");
+   }
+   return result;
 }
 
-char *unsalted(cad_memory_t memory, const char *salt, const char *value) {
+char *unsalted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
    assert(strlen(salt) == SALT_SIZE);
    assert(value != NULL);
    assert(value[0] != 0);
@@ -68,18 +70,21 @@ char *unsalted(cad_memory_t memory, const char *salt, const char *value) {
    if (n > 1 && value[SALT_SIZE] == ':' && memcmp(value, salt, SALT_SIZE) == 0) {
       result = memory.malloc(n);
       memcpy(result, value + SALT_SIZE + 1, n);
+   } else {
+      log_error(log, "vault_enc", "Tampered salted value!!");
    }
 
    return result;
 }
 
-char *hashed(cad_memory_t memory, const char *value) {
+char *hashed(cad_memory_t memory, circus_log_t *log, const char *value) {
    assert(value != NULL);
    assert(value[0] != 0);
 
    gcry_md_hd_t hd;
    gcry_error_t e = gcrypt(md_open(&hd, GCRY_MD_SHA512, GCRY_MD_FLAG_SECURE));
    if (e != 0) {
+      log_error(log, "vault_enc", "Could not open hash algorithm");
       return NULL;
    }
    gcry_md_write(hd, value, strlen(value));
@@ -95,10 +100,10 @@ char *hashed(cad_memory_t memory, const char *value) {
    return result;
 }
 
-char *new_symmetric_key(cad_memory_t memory) {
+char *new_symmetric_key(cad_memory_t memory, circus_log_t *log) {
    char *raw = memory.malloc(KEY_SIZE);
    if (raw == NULL) {
-      log_error(LOG, "vault_enc", "Could not allocate memory for symmetric key");
+      log_error(log, "vault_enc", "Could not allocate memory for symmetric key");
    } else {
       gcry_randomize(raw, KEY_SIZE, GCRY_VERY_STRONG_RANDOM);
    }
@@ -107,7 +112,7 @@ char *new_symmetric_key(cad_memory_t memory) {
    return result;
 }
 
-char *encrypted(cad_memory_t memory, const char *value, const char *b64key) {
+char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const char *b64key) {
    assert(value != NULL);
    assert(value[0] != 0);
 
@@ -139,7 +144,7 @@ char *encrypted(cad_memory_t memory, const char *value, const char *b64key) {
    return result;
 }
 
-char *decrypted(cad_memory_t memory, const char *b64value, const char *b64key) {
+char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, const char *b64key) {
    assert(b64value != NULL);
    assert(b64value[0] != 0);
 

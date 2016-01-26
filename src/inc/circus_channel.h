@@ -20,6 +20,7 @@
 
 #include <circus.h>
 #include <circus_config.h>
+#include <circus_log.h>
 
 typedef struct circus_channel_s circus_channel_t;
 
@@ -40,7 +41,7 @@ struct circus_channel_s {
    circus_channel_free_fn free;
 };
 
-__PUBLIC__ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_config_t *config);
-__PUBLIC__ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_config_t *config);
+__PUBLIC__ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circus_config_t *config);
+__PUBLIC__ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circus_config_t *config);
 
 #endif /* __CIRCUS_CHANNEL_H */

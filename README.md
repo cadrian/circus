@@ -100,8 +100,6 @@ not a goal of circus.
 
 ## Known issues
 
-LOG is a global variable.
-
 XDG is not an object.
 
 Missing lots of tests.

@@ -22,7 +22,9 @@
 #include <circus.h>
 
 typedef struct circus_message_s circus_message_t;
-typedef struct circus_message_visitor_s circus_message_visitor_t;
+typedef union circus_message_visitor_s circus_message_visitor_t;
+typedef struct circus_message_visitor_query_s circus_message_visitor_query_t;
+typedef struct circus_message_visitor_reply_s circus_message_visitor_reply_t;
 
 typedef const char *(*circus_message_type_fn)(circus_message_t *this);
 typedef const char *(*circus_message_command_fn)(circus_message_t *this);

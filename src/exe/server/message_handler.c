@@ -19,13 +19,132 @@
 #include <circus_vault.h>
 
 #include "message_handler.h"
+#include "../protocol/message_impl.h"
 
 typedef struct {
    circus_server_message_handler_t fn;
+   circus_message_visitor_query_t vfn;
    cad_memory_t memory;
    circus_log_t *log;
    circus_vault_t *vault;
+   int running;
 } impl_mh_t;
+
+static void visit_query_change_master(circus_message_visitor_query_t *visitor, circus_message_query_change_master_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_close(circus_message_visitor_query_t *visitor, circus_message_query_close_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_is_open(circus_message_visitor_query_t *visitor, circus_message_query_is_open_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_all_list(circus_message_visitor_query_t *visitor, circus_message_query_all_list_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_tag_list(circus_message_visitor_query_t *visitor, circus_message_query_tag_list_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_login(circus_message_visitor_query_t *visitor, circus_message_query_login_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus_message_query_get_pass_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_set_pass_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_pass_pass_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_recipe_pass_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_ping(circus_message_visitor_query_t *visitor, circus_message_query_ping_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_set_property(circus_message_visitor_query_t *visitor, circus_message_query_set_property_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_unset_property(circus_message_visitor_query_t *visitor, circus_message_query_unset_property_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_message_query_stop_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   const char *reason = visited->reason(visited);
+   log_error(this->log, "message_handler", "Stopping: %s", reason);
+   this->running = 0;
+}
+
+static void visit_query_tags(circus_message_visitor_query_t *visitor, circus_message_query_tags_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_unset(circus_message_visitor_query_t *visitor, circus_message_query_unset_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static void visit_query_version(circus_message_visitor_query_t *visitor, circus_message_query_version_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
+static circus_message_visitor_query_t visitor_fn = {
+   (circus_message_visitor_query_change_master_fn)visit_query_change_master,
+   (circus_message_visitor_query_close_fn)visit_query_close,
+   (circus_message_visitor_query_is_open_fn)visit_query_is_open,
+   (circus_message_visitor_query_all_list_fn)visit_query_all_list,
+   (circus_message_visitor_query_tag_list_fn)visit_query_tag_list,
+   (circus_message_visitor_query_login_fn)visit_query_login,
+   (circus_message_visitor_query_get_pass_fn)visit_query_get_pass,
+   (circus_message_visitor_query_set_pass_pass_fn)visit_query_set_pass_pass,
+   (circus_message_visitor_query_set_recipe_pass_fn)visit_query_set_recipe_pass,
+   (circus_message_visitor_query_ping_fn)visit_query_ping,
+   (circus_message_visitor_query_set_property_fn)visit_query_set_property,
+   (circus_message_visitor_query_unset_property_fn)visit_query_unset_property,
+   (circus_message_visitor_query_stop_fn)visit_query_stop,
+   (circus_message_visitor_query_tags_fn)visit_query_tags,
+   (circus_message_visitor_query_unset_fn)visit_query_unset,
+   (circus_message_visitor_query_version_fn)visit_query_version,
+};
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
    // TODO
@@ -40,6 +159,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel) {
    channel->on_read(channel, (circus_channel_on_read_cb)impl_mh_read, this);
    channel->on_write(channel, (circus_channel_on_write_cb)impl_mh_write, this);
+   this->running = 1;
 }
 
 static void impl_free(impl_mh_t *this) {
@@ -61,6 +181,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    assert(result != NULL);
 
    result->fn = impl_mh_fn;
+   result->vfn = visitor_fn;
    result->memory = memory;
    result->log = log;
    result->vault = circus_vault(memory, log, config);

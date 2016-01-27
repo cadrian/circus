@@ -12,8 +12,10 @@ set -u
 #     - msg/$type/impl.h
 #         - $msg.h
 #     - factory/$type/impl.h
-#     - visitor_struct.h
-#         - visitor.h
+#     - visitor_struct_query.h
+#         - visitor_query.h
+#     - visitor_struct_reply.h
+#         - visitor_reply.h
 #
 # - factory.c
 #     - msg/$type/impl.c
@@ -230,21 +232,31 @@ function do_visitorh() {
     {
         :
     } >> $visitorh
-    local visitorstructh=$(init_file visitor_struct.h)
+    local visitorstructqueryh=$(init_file visitor_struct_query.h)
     {
         echo "#include \"visitor.h\""
-        echo "struct circus_message_visitor_s {"
-    } >> $visitorstructh
+        echo "struct circus_message_visitor_query_s {"
+    } >> $visitorstructqueryh
+    local visitorstructreplyh=$(init_file visitor_struct_reply.h)
+    {
+        echo "#include \"visitor.h\""
+        echo "struct circus_message_visitor_reply_s {"
+    } >> $visitorstructreplyh
 }
 
 function od_visitorh() {
-    local visitorstructh=$(init_file visitor_struct.h)
+    local visitorstructqueryh=$(init_file visitor_struct_query.h)
     {
         echo "};"
-    } >> $visitorstructh
+    } >> $visitorstructqueryh
+    local visitorstructreplyh=$(init_file visitor_struct_reply.h)
+    {
+        echo "};"
+    } >> $visitorstructreplyh
     local factoryh=$(init_file factory.h)
     {
-        echo "#include \"visitor_struct.h\""
+        echo "#include \"visitor_struct_query.h\""
+        echo "#include \"visitor_struct_reply.h\""
     } >> $factoryh
 }
 
@@ -261,12 +273,22 @@ function msg_visitorh() {
     local msg=$2
     local visitorh=$(init_file visitor.h)
     {
-        echo "typedef void (*circus_message_visitor_${msg}_${type}_fn)(circus_message_visitor_t *this, circus_message_${msg}_${type}_t *visited);"
+        echo "typedef void (*circus_message_visitor_${msg}_${type}_fn)(circus_message_visitor_${msg%%_*}_t *this, circus_message_${msg}_${type}_t *visited);"
     } >> $visitorh
-    local visitorstructh=$(init_file visitor_struct.h)
-    {
-        echo "    circus_message_visitor_${msg}_${type}_fn visit_${msg}_${type};"
-    } >> $visitorstructh
+    case $msg in
+        query*)
+            local visitorstructqueryh=$(init_file visitor_struct_query.h)
+            {
+                echo "    circus_message_visitor_${msg}_${type}_fn visit_${msg}_${type};"
+            } >> $visitorstructqueryh
+            ;;
+        reply*)
+            local visitorstructreplyh=$(init_file visitor_struct_reply.h)
+            {
+                echo "    circus_message_visitor_${msg}_${type}_fn visit_${msg}_${type};"
+            } >> $visitorstructreplyh
+            ;;
+    esac
 }
 
 function gsm_visitorh() {
@@ -327,7 +349,7 @@ function msg_factoryc() {
         echo "static const char *${type}_${msg}_type_impl_fn(${type}_${msg}_impl_t *this) { return \"$type\"; }"
         echo "static const char *${type}_${msg}_command_impl_fn(${type}_${msg}_impl_t *this) { return \"$msg\"; }"
         echo "static const char *${type}_${msg}_error_impl_fn(${type}_${msg}_impl_t *this) { return this->error; }"
-        echo "static void ${type}_${msg}_accept_impl_fn(${type}_${msg}_impl_t *this, circus_message_visitor_t *visitor) {"
+        echo "static void ${type}_${msg}_accept_impl_fn(${type}_${msg}_impl_t *this, circus_message_visitor_${msg%%_*}_t *visitor) {"
         echo "    visitor->visit_${msg}_${type}(visitor, (circus_message_${msg}_${type}_t*)this);"
         echo "}"
         echo "json_object_t *${type}_${msg}_serialize_impl_fn(${type}_${msg}_impl_t *this) {"

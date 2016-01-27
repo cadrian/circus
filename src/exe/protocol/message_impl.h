@@ -22,4 +22,9 @@
 
 #include "gen/factory.h"
 
+union circus_message_visitor_s {
+   circus_message_visitor_query_t query;
+   circus_message_visitor_reply_t reply;
+};
+
 #endif /* __CIRCUS_MESSAGE_IMPL_H */

@@ -17,6 +17,7 @@
 #ifndef __CIRCUS_MESSAGE_IMPL_H
 #define __CIRCUS_MESSAGE_IMPL_H
 
+#include <cad_array.h>
 #include <circus_message.h>
 
 #include "gen/factory.h"

@@ -104,6 +104,12 @@
             "key": "STRING"
         }
     },
+    "stop": {
+        "query": {
+            "reason": "STRING"
+        },
+        "reply": {}
+    },
     "tags": {
         "query": {
             "sessionid": "STRING",

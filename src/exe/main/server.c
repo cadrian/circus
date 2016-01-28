@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-#include <sys/mman.h>
 
 #include <circus_channel.h>
 #include <circus_config.h>
 #include <circus_log.h>
+#include <circus_memory.h>
 
 #include "../server/message_handler.h"
 
@@ -51,65 +51,6 @@ static void set_log(circus_config_t *config) {
       LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }
 }
-
-typedef struct {
-   size_t size;
-   char data[0];
-} mem;
-
-static mem *circus_memalloc(size_t size) {
-   size_t s = sizeof(mem) + size;
-   mem *result = malloc(s);
-   if (result != NULL) {
-      int n = mlock(result, s);
-      if (n != 0) {
-         log_error(LOG, "server", "mlock failed: %s", strerror(errno));
-         free(result);
-      }
-      memset(&(result->data), 0, size);
-      result->size = size;
-   }
-   return result;
-}
-
-static void circus_memfree(mem *p) {
-   memset(&(p->data), 0, p->size);
-   int n = munlock(p, sizeof(mem) + p->size);
-   if (n != 0) {
-      log_warning(LOG, "server", "munlock failed: %s", strerror(errno));
-   }
-   free(p);
-}
-
-static void *circus_malloc(size_t size) {
-   mem *result = circus_memalloc(size);
-   if (result == NULL) {
-      return NULL;
-   }
-   return &(result->data);
-}
-
-static void *circus_realloc(void *ptr, size_t size) {
-   if (ptr == NULL) {
-      return circus_malloc(size);
-   }
-   mem *p = container_of(ptr, mem, data);
-   if (size <= p->size) {
-      return ptr;
-   }
-   mem *result = circus_memalloc(size);
-   memcpy(&(result->data), &(p->data), p->size);
-   circus_memfree(p);
-   return &(result->data);
-}
-
-static void circus_free(void *ptr) {
-   if (ptr != NULL) {
-      circus_memfree(container_of(ptr, mem, data));
-   }
-}
-
-static cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
 
 __PUBLIC__ int main() {
    circus_config_t *config = circus_config_read(stdlib_memory, LOG, "server.conf");

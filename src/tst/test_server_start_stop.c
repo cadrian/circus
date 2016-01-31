@@ -3,6 +3,7 @@
 #include <circus.h>
 #include <circus_message_impl.h>
 #include <errno.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -30,17 +31,17 @@ static void send_message() {
    /* NOTE: we use low-level here, another test should use a proper zmq channel */
    void *zmq_context = zmq_ctx_new();
    if (!zmq_context) {
-      fprintf(stderr, "zmq_ctx_new failed\n");
+      printf("zmq_ctx_new failed\n");
       exit(EXIT_BUG_ERROR);
    }
    void *zmq_sock = zmq_socket(zmq_context, ZMQ_REQ);
    if (!zmq_sock) {
-      fprintf(stderr, "zmq_socket failed\n");
+      printf("zmq_socket failed\n");
       exit(EXIT_BUG_ERROR);
    }
    int rc = zmq_connect(zmq_sock, "tcp://127.0.0.1:4793");
    if (rc) {
-      fprintf(stderr, "zmq_connect failed\n");
+      printf("zmq_connect failed\n");
       exit(EXIT_BUG_ERROR);
    }
    zmq_msg_t msg;
@@ -56,33 +57,82 @@ static void send_message() {
    out->free(out);
    jstop->free(jstop);
    I(stop)->free(I(stop));
+
+   zmq_close(zmq_sock);
+   zmq_ctx_term(zmq_context);
 }
 
 int main() {
-   pid_t child = fork();
-   if (child < 0) {
-      fprintf(stderr, "fork: %s\n", strerror(errno));
+   pid_t pid_server = fork();
+   if (pid_server < 0) {
+      printf("fork (server): %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
-   if (child == 0) {
+   if (pid_server == 0) {
       /* I am the child */
+      sleep(1);
       int e = execl("../exe/main/server.exe", "server.exe", NULL);
       if (e < 0) {
-         fprintf(stderr, "execl: %s\n", strerror(errno));
+         printf("execl: %s\n", strerror(errno));
          exit(EXIT_BUG_ERROR);
       }
    }
-   sleep(5);
-   send_message();
-   int status;
-   pid_t p = waitpid(child, &status, 0);
-   if (p != child) {
-      fprintf(stderr, "waitpid: pid %d != %d\n", child, p);
+   pid_t pid_client = fork();
+   if (pid_client < 0) {
+      printf("fork (client): %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
-   if (WIFSIGNALED(status)) {
-      fprintf(stderr, "waitpid: child was signalled\n");
-      exit(EXIT_TEST_FAILED);
+   if (pid_client == 0) {
+      sleep(2);
+      send_message();
+      exit(0);
    }
-   return EXIT_SUCCESS;
+   int status, st;
+   pid_t p;
+
+   int res = EXIT_SUCCESS;
+
+   sleep(3);
+   p = waitpid(pid_client, &status, WNOHANG);
+   if (p == 0) {
+      printf("waitpid: pid_client %d did not finish\n", pid_client);
+      res = EXIT_TEST_FAILED;
+      kill(pid_client, 15);
+   } else if (p != pid_client) {
+      printf("waitpid: pid_client %d != %d\n", pid_client, p);
+      res = EXIT_BUG_ERROR;
+   } else if (WIFSIGNALED(status)) {
+      printf("waitpid: pid_client was killed by signal %d\n", WTERMSIG(status));
+      res = EXIT_TEST_FAILED;
+   } else {
+      st = WEXITSTATUS(status);
+      if (st != 0) {
+         printf("waitpid: pid_client exited with status %d\n", st);
+         res = EXIT_TEST_FAILED;
+      }
+   }
+   printf("pid_client: OK\n");
+
+   sleep(2);
+   p = waitpid(pid_server, &status, WNOHANG);
+   if (p == 0) {
+      printf("waitpid: pid_server %d did not finish\n", pid_server);
+      res = EXIT_TEST_FAILED;
+      kill(pid_server, 15);
+   } else if (p != pid_server) {
+      printf("waitpid: pid_server %d != %d\n", pid_server, p);
+      res = EXIT_BUG_ERROR;
+   } else if (WIFSIGNALED(status)) {
+      printf("waitpid: pid_server was killed by signal %d\n", WTERMSIG(status));
+      res = EXIT_TEST_FAILED;
+   } else {
+      st = WEXITSTATUS(status);
+      if (st != 0) {
+         printf("waitpid: pid_server exited with status %d\n", st);
+         res = EXIT_TEST_FAILED;
+      }
+   }
+   printf("pid_server: OK\n");
+
+   return res;
 }

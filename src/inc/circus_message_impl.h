@@ -20,7 +20,7 @@
 #include <cad_array.h>
 #include <circus_message.h>
 
-#include "gen/factory.h"
+#include "../exe/protocol/gen/factory.h"
 
 union circus_message_visitor_s {
    circus_message_visitor_query_t query;

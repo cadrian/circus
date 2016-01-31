@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define I(obj) (&(obj->fn))
+
 #ifdef UNUSED
 #elif defined(__GNUC__)
 #define UNUSED(x) UNUSED_ ## x __attribute__((unused))

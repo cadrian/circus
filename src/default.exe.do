@@ -1,14 +1,15 @@
 set -e
+#set -x
 
 redo-ifchange exe/protocol/messages
 
 function deps_of() {
     egrep -o  "$(pwd)/inc/circus_[^[:space:]]+\.h" ${1%.o}.d |
-              sed -r 's!^'"$(pwd)"'/inc/circus_([^.]+)\.h$!\1!' |
-              while read header; do
-                  find exe -name gen -prune -o -name $header\*.c -exec egrep -l '^\#include <circus_'$header'\.h>$' {} +
-              done |
-              sed 's!\.c$!.o!'
+        sed -r 's!^'"$(pwd)"'/inc/circus_([^.]+)\.h$!\1!' |
+        while read header; do
+            find exe -name gen -prune -o -name $header\*.c -exec egrep -l '^\#include <circus_'$header'\.h>$' {} + || true
+        done |
+        sed 's!\.c$!.o!'
 }
 
 function rebuild_deps() {
@@ -21,7 +22,7 @@ function rebuild_deps() {
         echo exe/circus.o
         # Be sure to add all the program-specific modules
         for f in exe/$(basename $1)/*.c; do
-            echo ${f%.c}.o
+            test -r "$f" && echo ${f%.c}.o
         done
     } > $1.deps
     # We stop when the list of deps does not change anymore (fix point)
@@ -49,7 +50,7 @@ fi
 
 libs="-lcad -lyacjp -luv -lzmq"
 case $(basename $2) in
-    server)
+    test_server*|server)
         libs="$libs -lsqlite3 -lgcrypt"
         ;;
 esac

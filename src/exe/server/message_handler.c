@@ -14,12 +14,16 @@
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cad_stream.h>
+#include <json.h>
 #include <string.h>
+#include <uv.h>
 
+#include <circus_log.h>
+#include <circus_message_impl.h>
 #include <circus_vault.h>
 
 #include "message_handler.h"
-#include "../protocol/message_impl.h"
 
 typedef struct {
    circus_server_message_handler_t fn;
@@ -107,6 +111,7 @@ static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_mes
    const char *reason = visited->reason(visited);
    log_error(this->log, "message_handler", "Stopping: %s", reason);
    this->running = 0;
+   uv_stop(uv_default_loop());
 }
 
 static void visit_query_tags(circus_message_visitor_query_t *visitor, circus_message_query_tags_t *visited) {
@@ -147,8 +152,44 @@ static circus_message_visitor_query_t visitor_fn = {
 };
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
-   // TODO
-   (void)channel; (void)this;
+   int buflen = 4096;
+   int nbuf = 0;
+   char *buf = this->memory.malloc(buflen);
+   assert(buf != NULL);
+   int n;
+   do {
+      n = channel->read(channel, buf + nbuf, buflen - nbuf);
+      if (n > 0) {
+         if (n + nbuf == buflen) {
+            size_t bl = buflen * 2;
+            buf = this->memory.realloc(buf, bl);
+            buflen = bl;
+         }
+         nbuf += n;
+      }
+   } while (n > 0);
+
+   cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
+   if (in == NULL) {
+      // TODO
+   } else {
+      json_value_t *jmsg = json_parse(in, NULL, this, this->memory);
+      if (jmsg == NULL) {
+         // TODO
+      } else {
+         circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
+         if (msg == NULL) {
+            // TODO
+         } else {
+            msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
+            msg->free(msg);
+         }
+         jmsg->free(jmsg);
+      }
+      in->free(in);
+   }
+
+   this->memory.free(buf);
 }
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
@@ -177,7 +218,7 @@ static circus_server_message_handler_t impl_mh_fn = {
 circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
    impl_mh_t *result;
 
-   result = malloc(sizeof(impl_mh_t));
+   result = memory.malloc(sizeof(impl_mh_t));
    assert(result != NULL);
 
    result->fn = impl_mh_fn;

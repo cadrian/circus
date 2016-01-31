@@ -18,8 +18,7 @@
 #include <cad_shared.h>
 #include <string.h>
 #include <circus.h>
-
-#include "message_impl.h"
+#include <circus_message_impl.h>
 
 static char *dup_string(cad_memory_t memory, const char *string) {
    int n = strlen(string) + 1;
@@ -41,7 +40,7 @@ static cad_array_t *dup_strings(cad_memory_t memory, cad_array_t *strings) {
    return result;
 }
 
-static int dup_boolean(cad_memory_t memory, int boolean) {
+static int dup_boolean(cad_memory_t UNUSED(memory), int boolean) {
    return boolean;
 }
 

@@ -49,7 +49,7 @@ static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
    zmq_msg_init_size(&request, buflen);
    int result = zmq_msg_recv(&request, this->socket, 0);
    if (result > 0) {
-      memcpy(zmq_msg_data(&request), buffer, result);
+      memcpy(buffer, zmq_msg_data(&request), result);
    }
    zmq_msg_close(&request);
    return result;
@@ -184,7 +184,7 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circ
       fprintf(stderr, "Error %d while binding to %s -- %s\n", zmq_errno(), addr, zmq_strerror(zmq_errno()));
       crash();
    } else {
-      result = malloc(sizeof(zmq_impl_t));
+      result = memory.malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
          log_error(log, "channel_zmq", "Could not malloc zmq_server");
       } else {
@@ -222,7 +222,7 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
       fprintf(stderr, "Error %d while connecting to %s -- %s\n", zmq_errno(), addr, zmq_strerror(zmq_errno()));
       crash();
    } else {
-      result = malloc(sizeof(zmq_impl_t));
+      result = memory.malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
          log_error(log, "channel_zmq", "Could not malloc zmq_server");
       } else {

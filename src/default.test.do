@@ -1,5 +1,11 @@
 set -e
 
+case $(basename $2) in
+    test_server*)
+        redo-ifchange $(dirname $2)/../exe/main/server.exe
+        ;;
+esac
+
 lognew=$2.log.new
 logref=$2.log.ref
 
@@ -8,7 +14,10 @@ redo-ifchange $exe
 if [[ ${LIBUV_DIR-x} != x ]]; then
     export LD_LIBRARY_PATH=$LIBUV_DIR/lib:{LD_LIBRARY_PATH-}
 fi
-$exe >$lognew || {
+(
+    cd $(dirname $exe)
+    exec $(basename $exe)
+) >$lognew || {
     echo "**** Exited with status $?" >>$lognew
     echo "cat $lognew" >&2
     exit 1

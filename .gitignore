@@ -7,3 +7,6 @@ target
 *.log.new
 debian
 .redo
+*.dep0
+*.dep1
+*.tmp

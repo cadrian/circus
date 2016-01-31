@@ -42,4 +42,6 @@ struct circus_message_s {
    circus_message_free_fn free;
 };
 
+__PUBLIC__ circus_message_t *deserialize_circus_message(cad_memory_t memory,json_object_t *object);
+
 #endif /* __CIRCUS_MESSAGE_H */

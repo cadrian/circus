@@ -307,11 +307,32 @@ function key_visitorh() {
 # FACTORY CODE
 
 function do_factoryc() {
-    :
+    local file=$(init_file factory.c)
+    {
+        echo '#include <json.h>'
+    } >> $file
+    local deserfile=$(init_file factory_deserialize.c)
+    {
+        echo "    circus_message_t *result = NULL;"
+        echo "    json_string_t *jtype = (json_string_t*)object->get(object, \"type\");"
+        echo "    int ntype = jtype->utf8(jtype, \"\", 0) + 1;"
+        echo "    char *type = memory.malloc(ntype);"
+        echo "    jtype->utf8(jtype, type, ntype);"
+    } >> $deserfile
 }
 
 function od_factoryc() {
-    :
+    local file=$(init_file factory.c)
+    {
+        echo "circus_message_t *deserialize_circus_message(cad_memory_t memory,json_object_t *object) {"
+        echo '#include "factory_deserialize.c"'
+        echo "}"
+    } >> $file
+    local deserfile=$(init_file factory_deserialize.c)
+    {
+        echo "    memory.free(type);"
+        echo "    return result;"
+    } >> $deserfile
 }
 
 function type_factoryc() {
@@ -338,6 +359,12 @@ function epyt_factoryc() {
 function msg_factoryc() {
     local type=$1
     local msg=$2
+    local deserfile=$(init_file factory_deserialize.c)
+    {
+        echo "    if (result == NULL && !strcmp(type, \"${msg}_${type}\")) {"
+        echo "        result = (circus_message_t*)deserialize_circus_message_${msg}_${type}(memory, object);"
+        echo "    }"
+    } >> $deserfile
     local impl_file=$(init_file msg/$type/impl.c)
     {
         echo "#include \"$msg.c\""
@@ -346,8 +373,8 @@ function msg_factoryc() {
     {
         echo "typedef struct ${type}_${msg}_impl_s ${type}_${msg}_impl_t;"
         echo "#include \"$msg.struct.c\""
-        echo "static const char *${type}_${msg}_type_impl_fn(${type}_${msg}_impl_t *this) { return \"$type\"; }"
-        echo "static const char *${type}_${msg}_command_impl_fn(${type}_${msg}_impl_t *this) { return \"$msg\"; }"
+        echo "static const char *${type}_${msg}_type_impl_fn(${type}_${msg}_impl_t *UNUSED(this)) { return \"$type\"; }"
+        echo "static const char *${type}_${msg}_command_impl_fn(${type}_${msg}_impl_t *UNUSED(this)) { return \"$msg\"; }"
         echo "static const char *${type}_${msg}_error_impl_fn(${type}_${msg}_impl_t *this) { return this->error; }"
         echo "static void ${type}_${msg}_accept_impl_fn(${type}_${msg}_impl_t *this, circus_message_visitor_${msg%%_*}_t *visitor) {"
         echo "    visitor->visit_${msg}_${type}(visitor, (circus_message_${msg}_${type}_t*)this);"
@@ -363,6 +390,12 @@ function msg_factoryc() {
     local serialize_file=$(init_file msg/$type/$msg.serialize.c)
     {
         echo "    json_object_t *result = json_new_object(this->memory);"
+        echo "    json_string_t *jtype = json_new_string(this->memory);"
+        echo "    jtype->add_string(jtype, \"%s\", \"${msg}_${type}\");"
+        echo "    result->set(result, \"type\", (json_value_t*)jtype);"
+        echo "    json_string_t *jerror = json_new_string(this->memory);"
+        echo "    jerror->add_string(jerror, \"%s\", this->error);"
+        echo "    result->set(result, \"error\", (json_value_t*)jerror);"
     } >> $serialize_file
     local struct_file=$(init_file msg/$type/$msg.struct.c)
     {
@@ -392,7 +425,7 @@ function msg_factoryc() {
     } >> $factory_file
     local new_file=$(init_file factory/$type/new_$msg.c)
     {
-        echo "    ${type}_${msg}_impl_t *result = malloc(sizeof(${type}_${msg}_impl_t));"
+        echo "    ${type}_${msg}_impl_t *result = memory.malloc(sizeof(${type}_${msg}_impl_t));"
         echo "    if (result) {"
         echo "        result->fn = ${type}_${msg}_impl_fn;"
         echo "        result->memory = memory;"
@@ -400,7 +433,7 @@ function msg_factoryc() {
     } >> $new_file
     local deserialize_file=$(init_file factory/$type/deserialize_$msg.c)
     {
-        echo "    ${type}_${msg}_impl_t *result = malloc(sizeof(${type}_${msg}_impl_t));"
+        echo "    ${type}_${msg}_impl_t *result = memory.malloc(sizeof(${type}_${msg}_impl_t));"
         echo "    if (result) {"
         echo "        result->fn = ${type}_${msg}_impl_fn;"
         echo "        result->memory = memory;"
@@ -420,6 +453,10 @@ function gsm_factoryc() {
     {
         echo "};"
     } >> $struct_file
+    local free_file=$(init_file msg/$type/$msg.free.c)
+    {
+        echo "this->memory.free(this);"
+    } >> $free_file
     local serialize_file=$(init_file msg/$type/$msg.serialize.c)
     {
         echo "    return result;"

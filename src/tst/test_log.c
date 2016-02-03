@@ -12,6 +12,8 @@
 
     You should have received a copy of the GNU General Public License
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
+
+    Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
 #include <unistd.h>

@@ -211,7 +211,7 @@ static void file_flush(uv_logger_t *this) {
 }
 
 /**
- * FILE is used when stdout was redirected
+ * FILE is used when stderr was redirected
  */
 static uv_logger_fn logger_file_fn = {
    (logger_free_fn)file_free,
@@ -235,7 +235,7 @@ static void tty_flush(uv_logger_t *UNUSED(this)) {
 }
 
 /**
- * TTY is used for normal tty-attached stdout
+ * TTY is used for normal tty-attached stderr
  */
 static uv_logger_fn logger_tty_fn = {
    (logger_free_fn)tty_free,
@@ -260,7 +260,7 @@ static void pipe_flush(uv_logger_t *UNUSED(this)) {
 }
 
 /**
- * PIPE is used for logs written to file (not for stdout, see FILE)
+ * PIPE is used for logs written to file (not for stderr, see FILE)
  */
 static uv_logger_fn logger_pipe_fn = {
    (logger_free_fn)pipe_free,
@@ -291,13 +291,13 @@ static uv_logger_t *new_logger_file(cad_memory_t memory, const char *filename) {
    return result;
 }
 
-static uv_logger_t *new_logger_stdout(cad_memory_t memory) {
+static uv_logger_t *new_logger_stderr(cad_memory_t memory) {
    uv_logger_t *result = memory.malloc(sizeof(uv_logger_t));
    uv_tty_t *tty;
    uv_pipe_t *pipe;
    uv_handle_type handle_type = uv_guess_handle(1);
    result->memory = memory;
-   result->fd = 1;
+   result->fd = 2; // stderr
    result->offset = 0;
    switch(handle_type) {
    case UV_TTY:
@@ -525,7 +525,7 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
    return (circus_log_t*)result;
 }
 
-circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level) {
+circus_log_t *circus_new_log_stderr(cad_memory_t memory, log_level_t max_level) {
    assert(max_level < __LOG_MAX);
 
    circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
@@ -534,7 +534,7 @@ circus_log_t *circus_new_log_stdout(cad_memory_t memory, log_level_t max_level) 
       result->memory = memory;
       result->module_streams = cad_new_hash(memory, cad_hash_strings);
       result->max_level = max_level;
-      result->logger = new_logger_stdout(memory);
+      result->logger = new_logger_stderr(memory);
    }
    return (circus_log_t*)result;
 }

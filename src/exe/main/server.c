@@ -46,7 +46,7 @@ static void set_log(circus_config_t *config) {
       }
    }
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_stdout(stdlib_memory, log_level);
+      LOG = circus_new_log_stderr(stdlib_memory, log_level);
    } else {
       LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }

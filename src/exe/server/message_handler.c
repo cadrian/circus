@@ -171,15 +171,15 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
 
    cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
    if (in == NULL) {
-      // TODO
+      log_error(this->log, "message_handler", "Could not allocate input stream");
    } else {
       json_value_t *jmsg = json_parse(in, NULL, this, this->memory);
       if (jmsg == NULL) {
-         // TODO
+         log_error(this->log, "message_handler", "Could not parse JSON");
       } else {
          circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
          if (msg == NULL) {
-            // TODO
+            log_error(this->log, "message_handler", "Could not deserialize message");
          } else {
             msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
             msg->free(msg);

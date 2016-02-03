@@ -50,8 +50,11 @@ fi
 
 libs="-lcad -lyacjp -luv -lzmq"
 case $(basename $2) in
-    test_server*|server)
+    server)
         libs="$libs -lsqlite3 -lgcrypt"
+        ;;
+    test_server*)
+        libs="$(dirname $2)/_test_server.o $libs -lsqlite3 -lgcrypt"
         ;;
 esac
 

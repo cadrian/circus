@@ -5,6 +5,7 @@ target
 *.exe
 *.log
 *.log.new
+*.log.err
 debian
 .redo
 *.dep0

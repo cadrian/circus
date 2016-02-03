@@ -25,6 +25,6 @@ static int send_stop() {
    return 0;
 }
 
-int main() {
-   return test(send_stop);
+int main(int argc, char **argv) {
+   return test(argc, argv, send_stop);
 }

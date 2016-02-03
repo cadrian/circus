@@ -57,28 +57,36 @@ static void send(circus_message_t *message, void *zmq_sock) {
 static circus_message_t *recv(void *zmq_sock) {
    circus_message_t *result = NULL;
 
+   size_t len = 0;
+   char *szin = NULL;
+
    /* wait for the message */
    zmq_msg_t msg;
    zmq_msg_init(&msg);
-   zmq_msg_recv(&msg, zmq_sock, 0);
-
-   /* copy the message */
-   size_t len = zmq_msg_size(&msg);
-   char *szin = stdlib_memory.malloc(len + 1);
-   memcpy(szin, zmq_msg_data(&msg), len);
-   szin[len] = 0;
+   int n = zmq_msg_recv(&msg, zmq_sock, 0);
+   if (n < 0) {
+      printf("zmq_msg_recv failed: %d\n", n);
+   } else {
+      /* copy the message */
+      len = zmq_msg_size(&msg);
+      szin = stdlib_memory.malloc(len + 1);
+      memcpy(szin, zmq_msg_data(&msg), len);
+      szin[len] = 0;
+   }
    zmq_msg_close(&msg);
 
-   printf("<<<< %s\n", szin);
+   if (szin != NULL) {
+      printf("<<<< %*s\n", (int)len, szin);
 
-   cad_input_stream_t *in = new_cad_input_stream_from_string(szin, stdlib_memory);
-   json_object_t *jin = (json_object_t*)json_parse(in, NULL, NULL, stdlib_memory);
-   result = deserialize_circus_message(stdlib_memory, jin);
+      cad_input_stream_t *in = new_cad_input_stream_from_string(szin, stdlib_memory);
+      json_object_t *jin = (json_object_t*)json_parse(in, NULL, NULL, stdlib_memory);
+      result = deserialize_circus_message(stdlib_memory, jin);
 
-   /* at last free the memory */
-   jin->free(jin);
-   in->free(in);
-   stdlib_memory.free(szin);
+      /* at last free the memory */
+      jin->free(jin);
+      in->free(in);
+      stdlib_memory.free(szin);
+   }
 
    return result;
 }
@@ -102,9 +110,13 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
       exit(EXIT_BUG_ERROR);
    }
 
+   printf("Sending query...\n");
    send(query, zmq_sock);
+   printf("Query sent.\n");
    if (reply != NULL) {
+      printf("Waiting for reply...\n");
       *reply = recv(zmq_sock);
+      printf("Reply received.\n");
    }
 
    zmq_close(zmq_sock);
@@ -114,7 +126,35 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
 static pid_t pid_server;
 static pid_t pid_client;
 
-int test(int (*fn)(void)) {
+static void run_server(void) {
+   int e = execl("../exe/main/server.exe", "server.exe", NULL);
+   if (e < 0) {
+      printf("execl: %s\n", strerror(errno));
+      exit(EXIT_BUG_ERROR);
+   }
+}
+
+static void run_client(int (*fn)(void)) {
+   exit(fn());
+}
+
+int test(int argc, char **argv, int (*fn)(void)) {
+   if (argc > 1) {
+      /* --server or --client are useful to debug independant pieces of a server test */
+      if (!strcmp("--server", argv[1])) {
+         run_server();
+         return 0;
+      }
+      if (!strcmp("--client", argv[1])) {
+         run_client(fn);
+         return 0;
+      }
+      printf("Invalid argument: %s\n", argv[1]);
+      return 1;
+   }
+
+   /* nominal test run */
+
    pid_server = fork();
    if (pid_server < 0) {
       printf("fork (server): %s\n", strerror(errno));
@@ -122,12 +162,7 @@ int test(int (*fn)(void)) {
    }
    if (pid_server == 0) {
       /* I am the child */
-      sleep(1);
-      int e = execl("../exe/main/server.exe", "server.exe", NULL);
-      if (e < 0) {
-         printf("execl: %s\n", strerror(errno));
-         exit(EXIT_BUG_ERROR);
-      }
+      run_server();
    }
 
    pid_client = fork();
@@ -136,8 +171,7 @@ int test(int (*fn)(void)) {
       exit(EXIT_BUG_ERROR);
    }
    if (pid_client == 0) {
-      sleep(2);
-      exit(fn());
+      run_client(fn);
    }
 
    int status, st;

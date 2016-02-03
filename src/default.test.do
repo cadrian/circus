@@ -9,6 +9,7 @@ esac
 
 lognew=$2.log.new
 logref=$2.log.ref
+logerr=$2.log.err
 
 exe=$2.exe
 redo $exe
@@ -18,7 +19,7 @@ fi
 (
     cd $(dirname $exe)
     exec $(basename $exe)
-) >$lognew || {
+) >$lognew 2>$logerr || {
     echo "**** Exited with status $?" >>$lognew
     echo "cat $lognew" >&2
     exit 1

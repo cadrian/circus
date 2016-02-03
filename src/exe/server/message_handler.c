@@ -32,6 +32,7 @@ typedef struct {
    circus_log_t *log;
    circus_vault_t *vault;
    int running;
+   circus_message_t *reply;
 } impl_mh_t;
 
 static void visit_query_change_master(circus_message_visitor_query_t *visitor, circus_message_query_change_master_t *visited) {
@@ -90,8 +91,10 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
 
 static void visit_query_ping(circus_message_visitor_query_t *visitor, circus_message_query_ping_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *phrase = visited->phrase(visited);
+   log_info(this->log, "message_handler", "Ping: %s", phrase);
+   circus_message_reply_ping_t *ping = new_circus_message_reply_ping(this->memory, "", phrase);
+   this->reply = I(ping);
 }
 
 static void visit_query_set_property(circus_message_visitor_query_t *visitor, circus_message_query_set_property_t *visited) {
@@ -109,7 +112,7 @@ static void visit_query_unset_property(circus_message_visitor_query_t *visitor, 
 static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_message_query_stop_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *reason = visited->reason(visited);
-   log_error(this->log, "message_handler", "Stopping: %s", reason);
+   log_warning(this->log, "message_handler", "Stopping: %s", reason);
    this->running = 0;
    uv_stop(uv_default_loop());
 }
@@ -152,49 +155,79 @@ static circus_message_visitor_query_t visitor_fn = {
 };
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
-   int buflen = 4096;
-   int nbuf = 0;
-   char *buf = this->memory.malloc(buflen);
-   assert(buf != NULL);
-   int n;
-   do {
-      n = channel->read(channel, buf + nbuf, buflen - nbuf);
-      if (n > 0) {
-         if (n + nbuf == buflen) {
-            size_t bl = buflen * 2;
-            buf = this->memory.realloc(buf, bl);
-            buflen = bl;
+   if (this->reply == NULL) {
+      int buflen = 4096;
+      int nbuf = 0;
+      char *buf = this->memory.malloc(buflen);
+      assert(buf != NULL);
+      int n;
+      do {
+         n = channel->read(channel, buf + nbuf, buflen - nbuf);
+         if (n > 0) {
+            if (n + nbuf == buflen) {
+               size_t bl = buflen * 2;
+               buf = this->memory.realloc(buf, bl);
+               buflen = bl;
+            }
+            nbuf += n;
          }
-         nbuf += n;
-      }
-   } while (n > 0);
+      } while (n > 0);
 
-   cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
-   if (in == NULL) {
-      log_error(this->log, "message_handler", "Could not allocate input stream");
-   } else {
-      json_value_t *jmsg = json_parse(in, NULL, this, this->memory);
-      if (jmsg == NULL) {
-         log_error(this->log, "message_handler", "Could not parse JSON");
+      cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
+      if (in == NULL) {
+         log_error(this->log, "message_handler", "Could not allocate input stream");
       } else {
-         circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
-         if (msg == NULL) {
-            log_error(this->log, "message_handler", "Could not deserialize message");
+         json_value_t *jmsg = json_parse(in, NULL, this, this->memory);
+         if (jmsg == NULL) {
+            log_error(this->log, "message_handler", "Could not parse JSON");
          } else {
-            msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
-            msg->free(msg);
+            circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
+            if (msg == NULL) {
+               log_error(this->log, "message_handler", "Could not deserialize message");
+            } else {
+               msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
+               msg->free(msg);
+            }
+            jmsg->free(jmsg);
          }
-         jmsg->free(jmsg);
+         in->free(in);
       }
-      in->free(in);
-   }
 
-   this->memory.free(buf);
+      this->memory.free(buf);
+   }
 }
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
-   // TODO
-   (void)channel; (void)this;
+   char *szout = NULL;
+   if (this->reply != NULL) {
+      json_object_t *reply = this->reply->serialize(this->reply);
+      if (reply == NULL) {
+         log_error(this->log, "message_handler", "Could not serialize message");
+      } else {
+         cad_output_stream_t *out = new_cad_output_stream_from_string(&szout, this->memory);
+         if (out == NULL) {
+            log_error(this->log, "message_handler", "Could not allocate output stream");
+         } else {
+            json_visitor_t *writer = json_write_to(out, this->memory, json_compact);
+            if (writer == NULL) {
+               log_error(this->log, "message_handler", "Could not allocate JSON writer");
+            } else {
+               reply->accept(reply, writer);
+               reply->free(reply);
+            }
+            writer->free(writer);
+         }
+         out->free(out);
+      }
+
+      if (szout != NULL) {
+         channel->write(channel, szout, strlen(szout));
+         this->memory.free(szout);
+      }
+
+      this->reply->free(this->reply);
+      this->reply = NULL;
+   }
 }
 
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel) {
@@ -226,6 +259,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->memory = memory;
    result->log = log;
    result->vault = circus_vault(memory, log, config);
+   result->reply = NULL;
 
    return (circus_server_message_handler_t*)result;
 }

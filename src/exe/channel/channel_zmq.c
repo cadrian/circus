@@ -20,6 +20,11 @@
 
 #include <circus_channel.h>
 
+typedef enum {
+   reading = 0,
+   writing
+} channel_state_t;
+
 typedef struct {
    circus_channel_t fn;
    cad_memory_t memory;
@@ -32,6 +37,10 @@ typedef struct {
    void *read_data;
    circus_channel_on_write_cb write_cb;
    void *write_data;
+   char *read_buffer;
+   int read_size;
+   int read_index;
+   channel_state_t state;
 } zmq_impl_t;
 
 static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *data) {
@@ -45,13 +54,35 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void 
 }
 
 static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
-   zmq_msg_t request;
-   zmq_msg_init_size(&request, buflen);
-   int result = zmq_msg_recv(&request, this->socket, 0);
-   if (result > 0) {
-      memcpy(buffer, zmq_msg_data(&request), result);
+   int result = 0;
+   if (this->read_buffer == NULL) {
+      zmq_msg_t query;
+      zmq_msg_init_size(&query, buflen);
+      int n = zmq_msg_recv(&query, this->socket, 0);
+      if (n < 0) {
+         log_error(this->log, "channel_zmq", "Error %d while receiving message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
+      } else {
+         this->read_buffer = this->memory.malloc(n + 1);
+         memcpy(this->read_buffer, zmq_msg_data(&query), n);
+         this->read_buffer[n] = 0;
+         this->read_size = n;
+         this->read_index = 0;
+      }
+      zmq_msg_close(&query);
    }
-   zmq_msg_close(&request);
+   if (this->read_buffer != NULL) {
+      int left = this->read_size - this->read_index;
+      if ((size_t)left > buflen) {
+         left = buflen;
+      }
+      memcpy(buffer, this->read_buffer + this->read_index, left);
+      this->read_index += left;
+      result = left;
+      if (result == 0) {
+         this->memory.free(this->read_buffer);
+         this->read_buffer = NULL;
+      }
+   }
    return result;
 }
 
@@ -59,7 +90,10 @@ static void impl_write(zmq_impl_t *this, const char *buffer, size_t buflen) {
    zmq_msg_t reply;
    zmq_msg_init_size(&reply, buflen);
    memcpy(zmq_msg_data(&reply), buffer, buflen);
-   zmq_msg_send(&reply, this->socket, 0);
+   int n = zmq_msg_send(&reply, this->socket, 0);
+   if (n < 0) {
+      log_error(this->log, "channel_zmq", "Error %d while sending message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
+   }
    zmq_msg_close(&reply);
 }
 
@@ -90,27 +124,36 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    }
 
    if (events & UV_READABLE) {
-      uint32_t zevents = 0;
-      size_t zevents_size = sizeof(uint32_t);
-      int n = zmq_getsockopt(this->socket, ZMQ_EVENTS, &zevents, &zevents_size);
-      if (n < 0) {
-         fprintf(stderr, "Error %d while getting socket events -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
-         crash();
-      } else {
-         assert(zevents_size = sizeof(uint32_t));
+      int more;
+      do {
+         uint32_t zevents = 0;
+         size_t zevents_size = sizeof(uint32_t);
+         int n = zmq_getsockopt(this->socket, ZMQ_EVENTS, &zevents, &zevents_size);
 
-         if (zevents & ZMQ_POLLIN) {
-            if (this->read_cb != NULL) {
-               (this->read_cb)((circus_channel_t*)this, this->read_data);
+         more = 0;
+
+         if (n < 0) {
+            fprintf(stderr, "Error %d while getting socket events -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
+            crash();
+         } else {
+            assert(zevents_size = sizeof(uint32_t));
+
+            if (this->state == reading && (zevents & ZMQ_POLLIN)) {
+               if (this->read_cb != NULL) {
+                  (this->read_cb)((circus_channel_t*)this, this->read_data);
+               }
+               this->state = writing;
+               more = 1;
+            }
+            if (this->state == writing && (zevents & ZMQ_POLLOUT)) {
+               if (this->write_cb != NULL) {
+                  (this->write_cb)((circus_channel_t*)this, this->write_data);
+               }
+               this->state = reading;
+               more = 1;
             }
          }
-
-         if (zevents & ZMQ_POLLOUT) {
-            if (this->write_cb != NULL) {
-               (this->write_cb)((circus_channel_t*)this, this->write_data);
-            }
-         }
-      }
+      } while (more);
    }
 }
 
@@ -236,6 +279,10 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
          result->read_data = NULL;
          result->write_cb = NULL;
          result->write_data = NULL;
+         result->read_buffer = NULL;
+         result->read_size = 0;
+         result->read_index = 0;
+         result->state = reading;
 
          start(result);
       }

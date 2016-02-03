@@ -1,0 +1,11 @@
+Sending query...
+>>>> {"error":"","type":"query_ping","phrase":"Use the force, Luke."}
+Query sent.
+Waiting for reply...
+<<<< {"error":"","type":"reply_ping","phrase":"Use the force, Luke."}
+Reply received.
+Sending query...
+>>>> {"reason":"test","error":"","type":"query_stop"}
+Query sent.
+pid_client: OK
+pid_server: OK

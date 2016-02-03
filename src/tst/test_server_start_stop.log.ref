@@ -1,3 +1,5 @@
+Sending query...
 >>>> {"reason":"test","error":"","type":"query_stop"}
+Query sent.
 pid_client: OK
 pid_server: OK

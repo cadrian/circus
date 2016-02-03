@@ -19,6 +19,6 @@
 
 void send_message(circus_message_t *query, circus_message_t **reply);
 
-int test(int (*fn)(void));
+int test(int argc, char **argv, int (*fn)(void));
 
 #endif /* __CIRCUS__TEST_H */

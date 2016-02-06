@@ -27,15 +27,10 @@
 
 #include "vault_impl.h"
 
-static user_impl_t *vault_get(vault_impl_t *this, const char *username, const char *password) {
-   assert(username != NULL);
-   assert(username[0] != 0);
-   assert(password != NULL);
-   assert(password[0] != 0);
-
+static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password) {
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
-      static const char *sql = "SELECT USERID FROM USERS WHERE USERNAME=?";
+      static const char *sql = "SELECT USERID, PERMISSIONS FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -57,7 +52,8 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
                      done = 1;
                   } else {
                      sqlite3_int64 userid = sqlite3_column_int64(stmt, 0);
-                     result = new_vault_user(this->memory, this->log, userid, this);
+                     int permissions = (int)sqlite3_column_int64(stmt, 1);
+                     result = new_vault_user(this->memory, this->log, userid, permissions, this);
                   }
                   break;
                case SQLITE_DONE:
@@ -78,14 +74,20 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
          this->users->set(this->users, username, result);
       }
    }
-   return result == NULL ? NULL : check_user_password(result, password);
+   return result == NULL ? NULL : password == NULL ? result : check_user_password(result, password);
 }
 
-static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password) {
-   assert(vault_get(this, username, password) == NULL);
+static user_impl_t *vault_get(vault_impl_t *this, const char *username, const char *password) {
+   assert(username != NULL);
+   assert(username[0] != 0);
+   assert(password != NULL);
+   assert(password[0] != 0);
+   return vault_get_(this, username, password);
+}
 
+static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const char *password, int permissions) {
    user_impl_t *result = NULL;
-   static const char *sql = "INSERT INTO USERS (USERNAME, PWDSALT, HASHPWD, KEYSALT, KEY) values (?, ?, ?, ?, ?)";
+   static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, KEYSALT, KEY) values (?, ?, ?, ?, ?, ?)";
    sqlite3_stmt *stmt;
    int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
    if (n != SQLITE_OK) {
@@ -99,13 +101,20 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
             ok=0;
          }
       }
+      if (ok) {
+         n = sqlite3_bind_int64(stmt, 2, (sqlite3_int64)permissions);
+         if (n != SQLITE_OK) {
+            log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+            ok=0;
+         }
+      }
       char *pwdsalt=NULL;
       if (ok) {
          pwdsalt = salt(this->memory, this->log);
          if (pwdsalt == NULL) {
             ok=0;
          } else {
-            n = sqlite3_bind_text(stmt, 2, pwdsalt, -1, SQLITE_TRANSIENT);
+            n = sqlite3_bind_text(stmt, 3, pwdsalt, -1, SQLITE_TRANSIENT);
             if (n != SQLITE_OK) {
                log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
@@ -123,7 +132,7 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
             if (hashpwd == NULL) {
                ok=0;
             } else {
-               n = sqlite3_bind_text(stmt, 3, hashpwd, -1, SQLITE_TRANSIENT);
+               n = sqlite3_bind_text(stmt, 4, hashpwd, -1, SQLITE_TRANSIENT);
                if (n != SQLITE_OK) {
                   log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                   ok=0;
@@ -137,7 +146,7 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
          if (keysalt == NULL) {
             ok=0;
          } else {
-            n = sqlite3_bind_text(stmt, 4, keysalt, -1, SQLITE_TRANSIENT);
+            n = sqlite3_bind_text(stmt, 5, keysalt, -1, SQLITE_TRANSIENT);
             if (n != SQLITE_OK) {
                log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
@@ -160,7 +169,7 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
                if (key == NULL) {
                   ok=0;
                } else {
-                  n = sqlite3_bind_text(stmt, 5, key, -1, SQLITE_TRANSIENT);
+                  n = sqlite3_bind_text(stmt, 6, key, -1, SQLITE_TRANSIENT);
                   if (n != SQLITE_OK) {
                      log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                      ok=0;
@@ -196,6 +205,82 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
    return result;
 }
 
+static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password) {
+   assert(vault_get(this, username, password) == NULL);
+   return vault_new_(this, username, password, PERMISSION_USER);
+}
+
+static int vault_install(vault_impl_t *this, const char *admin_username, const char *admin_password) {
+   int status = 0;
+   int n;
+   char *err;
+
+   n = sqlite3_exec(this->db, META_SCHEMA, NULL, NULL, &err);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault", "Error creating META table: %s", err);
+      sqlite3_free(err);
+      sqlite3_close(this->db);
+      status = 1;
+   }
+
+   n = sqlite3_exec(this->db, USERS_SCHEMA, NULL, NULL, &err);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault", "Error creating USERS table: %s", err);
+      sqlite3_free(err);
+      sqlite3_close(this->db);
+      status = 1;
+   }
+
+   n = sqlite3_exec(this->db, KEYS_SCHEMA, NULL, NULL, &err);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault", "Error creating KEYS table: %s", err);
+      sqlite3_free(err);
+      sqlite3_close(this->db);
+      status = 1;
+   }
+
+   n = sqlite3_exec(this->db, TAGS_SCHEMA, NULL, NULL, &err);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault", "Error creating TAGS table: %s", err);
+      sqlite3_free(err);
+      sqlite3_close(this->db);
+      status = 1;
+   }
+
+   static const char *sql = "INSERT INTO META (KEY, VALUE) VALUES ('VERSION', ?)";
+   sqlite3_stmt *stmt;
+   n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+      status = 1;
+   } else {
+      n = sqlite3_bind_text(stmt, 1, DB_VERSION, -1, SQLITE_STATIC);
+      if (n != SQLITE_OK) {
+         log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+         status = 1;
+      } else {
+         n = sqlite3_step(stmt);
+         if (n != SQLITE_OK && n != SQLITE_DONE) {
+            log_error(this->log, "vault", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+            status = 1;
+         }
+      }
+      n = sqlite3_finalize(stmt);
+      if (n != SQLITE_OK) {
+         log_warning(this->log, "vault", "Error in finalize: %s", sqlite3_errstr(n));
+      }
+   }
+
+   user_impl_t *admin = vault_get_(this, admin_username, NULL);
+   if (admin == NULL) {
+      admin = vault_new_(this, admin_username, admin_password, PERMISSION_ADMIN);
+   } else {
+      log_warning(this->log, "User %s already exists, ignoring password change", admin_username);
+   }
+
+   return status;
+}
+
 static void vault_clean(cad_hash_t *UNUSED(hash), int UNUSED(index), const char *UNUSED(name), user_impl_t *user, vault_impl_t *UNUSED(vault)) {
    user->fn.free(&(user->fn));
 }
@@ -210,6 +295,7 @@ static void vault_free(vault_impl_t *this) {
 static circus_vault_t vault_fn = {
    (circus_vault_get_fn)vault_get,
    (circus_vault_new_fn)vault_new,
+   (circus_vault_install_fn)vault_install,
    (circus_vault_free_fn)vault_free,
 };
 
@@ -247,7 +333,6 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    vault_impl_t *result = NULL;
    char *path;
    int n;
-   char *err;
    const char *filename = config->get(config, "vault", "filename");
    if (filename == NULL || filename[0] == 0) {
       filename = "vault";
@@ -272,33 +357,6 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
       return NULL;
    }
    memory.free(path);
-
-   n = sqlite3_exec(result->db, USERS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(log, "vault", "Error creating USERS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(result->db);
-      memory.free(result);
-      return NULL;
-   }
-
-   n = sqlite3_exec(result->db, KEYS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(log, "vault", "Error creating KEYS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(result->db);
-      memory.free(result);
-      return NULL;
-   }
-
-   n = sqlite3_exec(result->db, TAGS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(log, "vault", "Error creating TAGS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(result->db);
-      memory.free(result);
-      return NULL;
-   }
 
    return (circus_vault_t*)result;
 }

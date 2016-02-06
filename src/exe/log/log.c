@@ -270,6 +270,12 @@ static uv_logger_fn logger_pipe_fn = {
    (logger_flush_fn)pipe_flush,
 };
 
+static void logger_set_format(uv_logger_t *this, const char *format) {
+   this->memory.free(this->format);
+   this->format = this->memory.malloc(strlen(format) + 1);
+   strcpy(this->format, format);
+}
+
 static uv_logger_t *new_logger_file(cad_memory_t memory, const char *filename) {
    assert(filename != NULL);
 
@@ -287,19 +293,20 @@ static uv_logger_t *new_logger_file(cad_memory_t memory, const char *filename) {
       result->log_handle = (uv_stream_t*)pipe;
       result->fd = fd;
       result->offset = 0;
-      result->format = DEFAULT_FORMAT;
+      result->format = NULL;
+      logger_set_format(result, DEFAULT_FORMAT);
    }
 
    return result;
 }
 
-static uv_logger_t *new_logger_stderr(cad_memory_t memory) {
+static uv_logger_t *new_logger_fd(cad_memory_t memory, int fd) {
    uv_logger_t *result = memory.malloc(sizeof(uv_logger_t));
    uv_tty_t *tty;
    uv_pipe_t *pipe;
    uv_handle_type handle_type = uv_guess_handle(1);
    result->memory = memory;
-   result->fd = 2; // stderr
+   result->fd = fd;
    result->offset = 0;
    switch(handle_type) {
    case UV_TTY:
@@ -324,7 +331,8 @@ static uv_logger_t *new_logger_stderr(cad_memory_t memory) {
       fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
       crash();
    }
-   result->format = DEFAULT_FORMAT;
+   result->format = NULL;
+   logger_set_format(result, DEFAULT_FORMAT);
    return result;
 }
 
@@ -463,9 +471,7 @@ static int impl_is_log(circus_log_impl *this, const char *module, log_level_t le
 
 static void impl_set_format(circus_log_impl *this, const char *format) {
    assert(format != NULL);
-   this->memory.free(this->logger->format);
-   this->logger->format = this->memory.malloc(strlen(format) + 1);
-   strcpy(this->logger->format, format);
+   logger_set_format(this->logger, format);
 }
 
 static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *module, log_level_t level) {
@@ -527,7 +533,7 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
    return (circus_log_t*)result;
 }
 
-circus_log_t *circus_new_log_stderr(cad_memory_t memory, log_level_t max_level) {
+circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t max_level, int fd) {
    assert(max_level < __LOG_MAX);
 
    circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
@@ -536,7 +542,7 @@ circus_log_t *circus_new_log_stderr(cad_memory_t memory, log_level_t max_level) 
       result->memory = memory;
       result->module_streams = cad_new_hash(memory, cad_hash_strings);
       result->max_level = max_level;
-      result->logger = new_logger_stderr(memory);
+      result->logger = new_logger_fd(memory, fd);
    }
    return (circus_log_t*)result;
 }

@@ -20,8 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "circus.h"
-#include "xdg.h"
+#include <circus_xdg.h>
 
 int main() {
    setenv("XDG_DATA_DIRS", "/xdg/data/dirs", 1);

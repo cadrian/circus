@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <uv.h>
 
-#include "log.h"
+#include <circus_log.h>
 
 circus_log_t *LOG;
 
@@ -38,7 +38,7 @@ void wait_for_a_while(uv_idle_t* handle) {
 int main() {
    uv_idle_t idler;
 
-   LOG = circus_new_log_stdout(stdlib_memory, LOG_INFO);
+   LOG = circus_new_log_file_descriptor(stdlib_memory, LOG_INFO, 1);
 
    uv_idle_init(uv_default_loop(), &idler);
    uv_idle_start(&idler, wait_for_a_while);

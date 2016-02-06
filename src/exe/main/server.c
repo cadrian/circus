@@ -25,6 +25,7 @@
 #include <circus_config.h>
 #include <circus_log.h>
 #include <circus_memory.h>
+#include <circus_vault.h>
 
 #include "../server/message_handler.h"
 
@@ -48,22 +49,27 @@ static void set_log(circus_config_t *config) {
       }
    }
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_stderr(stdlib_memory, log_level);
+      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, 2);
    } else {
       LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }
 }
 
-__PUBLIC__ int main() {
-   circus_config_t *config = circus_config_read(stdlib_memory, LOG, "server.conf");
-   assert(config != NULL);
+static void usage(const char *cmd, FILE *out) {
+   fprintf(out,
+           "Usage: %s [--install <username> <password>|--help]\n"
+           "\n"
+           "Usually called without arguments; just start the Circus server.\n"
+           "\n"
+           "Calling with --install is usually done by installation procedures\n"
+           "(package managers and so on).\n"
+           "It checks that the database exists, is in the good version, and\n"
+           "creates the administrator user with the given name and password.\n",
+           cmd
+   );
+}
 
-   set_log(config);
-   if (LOG == NULL) {
-      config->free(config);
-      exit(1);
-   }
-
+static void run(circus_config_t *config, circus_vault_t *vault) {
    circus_channel_t *channel = circus_zmq_server(MEMORY, LOG, config);
    if (channel == NULL) {
       log_error(LOG, "server", "Could not allocate channel");
@@ -71,7 +77,8 @@ __PUBLIC__ int main() {
       config->free(config);
       exit(1);
    }
-   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
+
+   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, LOG, vault, config);
    if (mh == NULL) {
       log_error(LOG, "server", "Could not allocate message handler");
       channel->free(channel);
@@ -89,7 +96,49 @@ __PUBLIC__ int main() {
 
    mh->free(mh);
    channel->free(channel);
+}
+
+__PUBLIC__ int main(int argc, const char* const* argv) {
+   circus_config_t *config = circus_config_read(stdlib_memory, LOG, "server.conf");
+   int status = 0;
+
+   assert(config != NULL);
+
+   set_log(config);
+   if (LOG == NULL) {
+      config->free(config);
+      exit(1);
+   }
+
+   circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
+   switch (argc) {
+   case 1:
+      run(config, vault);
+      assert(0 == status);
+      break;
+   case 2:
+      if (0 == strcmp("--help", argv[1])) {
+         usage(argv[0], stdout);
+      } else {
+         usage(argv[0], stderr);
+         status = 1;
+      }
+      break;
+   case 4:
+      if (0 == strcmp("--install", argv[1])) {
+         status = vault->install(vault, argv[2], argv[3]);
+      } else {
+         usage(argv[0], stderr);
+         status = 1;
+      }
+      break;
+   default:
+      usage(argv[0], stderr);
+      status = 1;
+      break;
+   }
+
    LOG->free(LOG);
    config->free(config);
-   return 0;
+   return status;
 }

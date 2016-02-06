@@ -250,7 +250,7 @@ static circus_server_message_handler_t impl_mh_fn = {
    (circus_server_message_handler_free_fn) impl_free,
 };
 
-circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
+circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_vault_t *vault, circus_config_t *UNUSED(config)) {
    impl_mh_t *result;
 
    result = memory.malloc(sizeof(impl_mh_t));
@@ -260,7 +260,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->vfn = visitor_fn;
    result->memory = memory;
    result->log = log;
-   result->vault = circus_vault(memory, log, config);
+   result->vault = vault;
    result->reply = NULL;
 
    return (circus_server_message_handler_t*)result;

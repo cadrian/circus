@@ -27,6 +27,11 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
    assert(keyname != NULL);
    assert(keyname[0] != 0);
 
+   if (((this->permissions) & PERMISSION_USER) == 0) {
+      log_error(this->log, "vault_user", "User %ld does not have permission to get keys", (long int)this->userid);
+      return NULL;
+   }
+
    key_impl_t *result = this->keys->get(this->keys, keyname);
    if (result == NULL) {
       static const char *sql = "SELECT KEYID FROM KEYS WHERE USERID=? AND KEYNAME=?";
@@ -83,6 +88,11 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
 static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    assert(vault_user_get(this, keyname) == NULL);
 
+   if (((this->permissions) & PERMISSION_USER) == 0) {
+      log_error(this->log, "vault_user", "User %ld does not have permission to get keys", (long int)this->userid);
+      return NULL;
+   }
+
    key_impl_t *result = NULL;
    static const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, VALUE) VALUES (?, ?, \"\", \"\")";
    sqlite3_stmt *stmt;
@@ -98,6 +108,7 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
          if (n != SQLITE_OK) {
             log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
          } else {
+            n = sqlite3_step(stmt);
             if (n == SQLITE_OK || n == SQLITE_DONE) {
                result = vault_user_get(this, keyname);
             } else {
@@ -114,6 +125,10 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    return result;
 }
 
+static int vault_user_is_admin(user_impl_t *this) {
+   return ((this->permissions) & PERMISSION_ADMIN) != 0;
+}
+
 static void user_clean(cad_hash_t *UNUSED(hash), int UNUSED(index), const char *UNUSED(name), key_impl_t *key, user_impl_t *UNUSED(user)) {
    key->fn.free(&(key->fn));
 }
@@ -127,16 +142,18 @@ static void vault_user_free(user_impl_t *this) {
 static circus_user_t vault_user_fn = {
    (circus_user_get_fn)vault_user_get,
    (circus_user_new_fn)vault_user_new,
+   (circus_user_is_admin_fn)vault_user_is_admin,
    (circus_user_free_fn)vault_user_free,
 };
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, vault_impl_t *vault) {
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, vault_impl_t *vault) {
    user_impl_t *result = memory.malloc(sizeof(user_impl_t));
    if (result != NULL) {
       result->fn = vault_user_fn;
       result->memory = memory;
       result->log = log;
       result->userid = userid;
+      result->permissions = permissions;
       result->vault = vault;
       result->keys = cad_new_hash(memory, cad_hash_strings);
    }

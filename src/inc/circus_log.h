@@ -52,7 +52,7 @@ struct circus_log_s {
 };
 
 __PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
-__PUBLIC__ circus_log_t *circus_new_log_stderr(cad_memory_t memory, log_level_t max_level);
+__PUBLIC__ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t max_level, int fd);
 
 __PUBLIC__ void log_error(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
 __PUBLIC__ void log_warning(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));

@@ -33,6 +33,6 @@ struct circus_server_message_handler_s {
    circus_server_message_handler_free_fn free;
 };
 
-__PUBLIC__ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *config);
+__PUBLIC__ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_vault_t *vault, circus_config_t *config);
 
 #endif /* __CIRCUS_SERVER_MESSAGE_HANDLER_H */

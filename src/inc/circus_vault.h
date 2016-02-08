@@ -41,12 +41,14 @@ typedef struct circus_user_s circus_user_t;
 
 typedef circus_key_t *(*circus_user_get_fn)(circus_user_t *this, const char *keyname);
 typedef circus_key_t *(*circus_user_new_fn)(circus_user_t *this, const char *keyname);
+typedef int (*circus_user_set_password_fn)(circus_user_t *this, const char *password);
 typedef int (*circus_user_is_admin_fn)(circus_user_t *this);
 typedef void (*circus_user_free_fn)(circus_user_t *this);
 
 struct circus_user_s {
    circus_user_get_fn get;
    circus_user_new_fn new;
+   circus_user_set_password_fn set_password;
    circus_user_is_admin_fn is_admin;
    circus_user_free_fn free;
 };

@@ -125,6 +125,77 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    return result;
 }
 
+static int vault_user_set_password(user_impl_t *this, const char *password) {
+   static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=? WHERE USERID=?";
+   sqlite3_stmt *stmt;
+   int result = 0;
+   int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault_user", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+   } else {
+      int ok=1;
+      char *pwdsalt=NULL;
+      if (ok) {
+         pwdsalt = salt(this->memory, this->log);
+         if (pwdsalt == NULL) {
+            ok=0;
+         } else {
+            n = sqlite3_bind_text(stmt, 1, pwdsalt, -1, SQLITE_TRANSIENT);
+            if (n != SQLITE_OK) {
+               log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+               ok=0;
+            }
+         }
+      }
+      char *pwd=NULL;
+      char *hashpwd=NULL;
+      if (ok) {
+         pwd = salted(this->memory, this->log, pwdsalt, password);
+         if (pwd == NULL) {
+            ok=0;
+         } else {
+            hashpwd = hashed(this->memory, this->log, pwd);
+            if (hashpwd == NULL) {
+               ok=0;
+            } else {
+               n = sqlite3_bind_text(stmt, 2, hashpwd, -1, SQLITE_TRANSIENT);
+               if (n != SQLITE_OK) {
+                  log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+                  ok=0;
+               }
+            }
+         }
+      }
+      if (ok) {
+         n = sqlite3_bind_int64(stmt, 3, this->userid);
+         if (n != SQLITE_OK) {
+            log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+            ok=0;
+         }
+      }
+
+      if (ok) {
+         n = sqlite3_step(stmt);
+         if (n == SQLITE_OK || n == SQLITE_DONE) {
+            result = 1;
+         } else {
+            log_error(this->log, "vault_user", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+         }
+      }
+
+      this->memory.free(hashpwd);
+      this->memory.free(pwd);
+      this->memory.free(pwdsalt);
+
+      n = sqlite3_finalize(stmt);
+      if (n != SQLITE_OK) {
+         log_warning(this->log, "vault_user", "Error in finalize: %s", sqlite3_errstr(n));
+      }
+   }
+
+   return result;
+}
+
 static int vault_user_is_admin(user_impl_t *this) {
    return ((this->permissions) & PERMISSION_ADMIN) != 0;
 }
@@ -142,6 +213,7 @@ static void vault_user_free(user_impl_t *this) {
 static circus_user_t vault_user_fn = {
    (circus_user_get_fn)vault_user_get,
    (circus_user_new_fn)vault_user_new,
+   (circus_user_set_password_fn)vault_user_set_password,
    (circus_user_is_admin_fn)vault_user_is_admin,
    (circus_user_free_fn)vault_user_free,
 };

@@ -18,6 +18,7 @@
 
 #include <string.h>
 
+#include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_vault.h>
 
@@ -125,6 +126,10 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    return result;
 }
 
+static const char *vault_user_name(user_impl_t *this) {
+   return this->name;
+}
+
 static int vault_user_set_password(user_impl_t *this, const char *password) {
    static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=? WHERE USERID=?";
    sqlite3_stmt *stmt;
@@ -213,21 +218,24 @@ static void vault_user_free(user_impl_t *this) {
 static circus_user_t vault_user_fn = {
    (circus_user_get_fn)vault_user_get,
    (circus_user_new_fn)vault_user_new,
+   (circus_user_name_fn)vault_user_name,
    (circus_user_set_password_fn)vault_user_set_password,
    (circus_user_is_admin_fn)vault_user_is_admin,
    (circus_user_free_fn)vault_user_free,
 };
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, vault_impl_t *vault) {
-   user_impl_t *result = memory.malloc(sizeof(user_impl_t));
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, const char *name, vault_impl_t *vault) {
+   user_impl_t *result = memory.malloc(sizeof(user_impl_t) + strlen(name) + 1);
    if (result != NULL) {
       result->fn = vault_user_fn;
       result->memory = memory;
       result->log = log;
       result->userid = userid;
       result->permissions = permissions;
+      result->name = (char*)(result + 1);
       result->vault = vault;
       result->keys = cad_new_hash(memory, cad_hash_strings);
+      strcpy(result->name, name);
    }
    return result;
 }

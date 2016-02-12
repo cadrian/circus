@@ -288,5 +288,5 @@ circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, cons
    }
    result->data = (json_object_t *)data;
 
-   return (circus_config_t*)result;
+   return I(result);
 }

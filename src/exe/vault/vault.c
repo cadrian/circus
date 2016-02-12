@@ -21,6 +21,7 @@
 #include <sys/types.h>
 
 #include <circus.h>
+#include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_vault.h>
 #include <circus_xdg.h>
@@ -30,7 +31,7 @@
 static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password) {
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
-      static const char *sql = "SELECT USERID, PERMISSIONS FROM USERS WHERE USERNAME=?";
+      static const char *sql = "SELECT USERID, PERMISSIONS, USERNAME FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -53,7 +54,8 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                   } else {
                      sqlite3_int64 userid = sqlite3_column_int64(stmt, 0);
                      int permissions = (int)sqlite3_column_int64(stmt, 1);
-                     result = new_vault_user(this->memory, this->log, userid, permissions, this);
+                     const char *name = (const char*)sqlite3_column_text(stmt, 3);
+                     result = new_vault_user(this->memory, this->log, userid, permissions, name, this);
                   }
                   break;
                case SQLITE_DONE:
@@ -358,5 +360,5 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    }
    memory.free(path);
 
-   return (circus_vault_t*)result;
+   return I(result);
 }

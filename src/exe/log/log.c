@@ -530,7 +530,7 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
       result->max_level = max_level;
       result->logger = new_logger_file(memory, filename);
    }
-   return (circus_log_t*)result;
+   return I(result);
 }
 
 circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t max_level, int fd) {
@@ -544,7 +544,7 @@ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t ma
       result->max_level = max_level;
       result->logger = new_logger_fd(memory, fd);
    }
-   return (circus_log_t*)result;
+   return I(result);
 }
 
 void log_error(circus_log_t *logger, const char *module, const char *format, ...) {

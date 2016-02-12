@@ -20,10 +20,11 @@
 #include <string.h>
 
 #include <circus_base64.h>
-#include <circus_vault.h>
+#include <circus_crypt.h>
 
-#include "vault_impl.h"
-
+#define SALT_SIZE 16
+#define KEY_SIZE 32 // 256 bits
+#define HASH_SIZE 64 // 512 bits
 #define SECURE_MEM_SIZE 65536
 
 #define gcrypt(fn) ({                                                   \
@@ -182,4 +183,21 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
    }
 
    return result;
+}
+
+static char *szrandom_level(cad_memory_t memory, size_t len, enum gcry_random_level level) {
+   assert(len > 0);
+   char *raw = memory.malloc(len + 1);
+   gcry_randomize(raw, len, level);
+   char *result = base64(memory, raw, len);
+   memory.free(raw);
+   return result;
+}
+
+char *szrandom(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_STRONG_RANDOM);
+}
+
+char *szrandom_strong(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM);
 }

@@ -248,7 +248,7 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circ
       }
    }
 
-   return (circus_channel_t*)result;
+   return I(result);
 }
 
 circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
@@ -290,5 +290,5 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
       }
    }
 
-   return (circus_channel_t*)result;
+   return I(result);
 }

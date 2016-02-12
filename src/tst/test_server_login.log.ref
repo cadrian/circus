@@ -1,0 +1,12 @@
+Sending query...
+>>>> {"userid":"****","type":"query_login","password":"foo","error":""}
+Query sent.
+Waiting for reply...
+<<<< {"sessionid":"","type":"reply_login","error":"Invalid credentials","token":""}
+Reply received.
+Expected login error: Invalid credentials
+Sending query...
+>>>> {"reason":"test","error":"","type":"query_stop"}
+Query sent.
+pid_client: OK
+pid_server: OK

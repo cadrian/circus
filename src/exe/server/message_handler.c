@@ -23,6 +23,7 @@
 
 #include <circus_log.h>
 #include <circus_message_impl.h>
+#include <circus_session.h>
 #include <circus_vault.h>
 
 #include "message_handler.h"
@@ -33,6 +34,7 @@ typedef struct {
    cad_memory_t memory;
    circus_log_t *log;
    circus_vault_t *vault;
+   circus_session_t *session;
    int running;
    circus_message_t *reply;
 } impl_mh_t;
@@ -69,8 +71,18 @@ static void visit_query_tag_list(circus_message_visitor_query_t *visitor, circus
 
 static void visit_query_login(circus_message_visitor_query_t *visitor, circus_message_query_login_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *userid = visited->userid(visited);
+   const char *password = visited->password(visited);
+   log_info(this->log, "message_handler", "Login: user %s", userid);
+   circus_user_t *user = this->vault->get(this->vault, userid, password);
+   circus_message_reply_login_t *reply = NULL;
+   if (user == NULL) {
+      reply = new_circus_message_reply_login(this->memory, "Invalid credentials", "", "");
+   } else {
+      circus_session_data_t *data = this->session->set(this->session, user);
+      reply = new_circus_message_reply_login(this->memory, "", data->sessionid(data), data->token(data));
+   }
+   this->reply = I(reply);
 }
 
 static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus_message_query_get_pass_t *visited) {
@@ -242,6 +254,7 @@ static void impl_free(impl_mh_t *this) {
    if (this->vault != NULL) {
       this->vault->free(this->vault);
    }
+   this->session->free(this->session);
    this->memory.free(this);
 }
 
@@ -261,7 +274,10 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->memory = memory;
    result->log = log;
    result->vault = vault;
+   result->session = circus_session(memory, log);
    result->reply = NULL;
 
-   return (circus_server_message_handler_t*)result;
+   assert(result->session != NULL);
+
+   return I(result);
 }

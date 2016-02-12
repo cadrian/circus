@@ -490,12 +490,12 @@ function gsm_factoryc() {
     local new_file=$(init_file factory/$type/new_$msg.c)
     {
         echo "    }"
-        echo "    return (circus_message_${msg}_${type}_t*)result;"
+        echo "    return I(result);"
     } >> $new_file
     local deserialize_file=$(init_file factory/$type/deserialize_$msg.c)
     {
         echo "    }"
-        echo "    return (circus_message_${msg}_${type}_t*)result;"
+        echo "    return I(result);"
     } >> $deserialize_file
 }
 

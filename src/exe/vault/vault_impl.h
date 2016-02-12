@@ -31,10 +31,6 @@
 
 #define DB_VERSION "1"
 
-#define SALT_SIZE 16
-#define KEY_SIZE 32 // 256 bits
-#define HASH_SIZE 64 // 512 bits
-
 #define PERMISSION_USER 1
 #define PERMISSION_ADMIN 2
 
@@ -96,6 +92,7 @@ typedef struct {
    circus_log_t *log;
    sqlite3_int64 userid;
    int permissions;
+   char *name;
    vault_impl_t *vault;
    cad_hash_t *keys;
 } user_impl_t;
@@ -108,19 +105,9 @@ typedef struct {
    user_impl_t *user;
 } key_impl_t;
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, vault_impl_t *vault);
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, const char *name, vault_impl_t *vault);
 key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user);
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);
-
-/* Encryption routines */
-
-char *salt(cad_memory_t memory, circus_log_t *log);
-char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value);
-char *unsalted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value);
-char *hashed(cad_memory_t memory, circus_log_t *log, const char *value);
-char *new_symmetric_key(cad_memory_t memory, circus_log_t *log);
-char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const char *key);
-char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, const char *key);
 
 #endif /* __CIRCUS_VAULT_IMPL_H */

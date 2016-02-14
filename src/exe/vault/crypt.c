@@ -52,7 +52,7 @@ char *salt(cad_memory_t memory, circus_log_t *log) {
 }
 
 char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
-   assert(strlen(salt) == SALT_SIZE);
+   assert(strlen(salt) == b64_size(SALT_SIZE));
    assert(value != NULL);
    assert(value[0] != 0);
    char *result = szprintf(memory, NULL, "%s:%s", salt, value);
@@ -200,4 +200,11 @@ char *szrandom(cad_memory_t memory, size_t len) {
 
 char *szrandom_strong(cad_memory_t memory, size_t len) {
    return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM);
+}
+
+void __wrap_gcry_randomize(unsigned char *buffer, size_t length, enum gcry_random_level UNUSED(level)) {
+   static unsigned char c = 0;
+   for (size_t i = 0; i < length; i++) {
+      buffer[i] = c++;
+   }
 }

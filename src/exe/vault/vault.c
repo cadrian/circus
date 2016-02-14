@@ -31,7 +31,8 @@
 static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password) {
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
-      static const char *sql = "SELECT USERID, PERMISSIONS, USERNAME FROM USERS WHERE USERNAME=?";
+      log_info(this->log, "vault", "User %s not found in dict, loading from db", username);
+      static const char *sql = "SELECT USERID, PERMISSIONS FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -46,6 +47,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                n = sqlite3_step(stmt);
                switch(n) {
                case SQLITE_OK:
+               case SQLITE_ROW:
                   if (result != NULL) {
                      log_error(this->log, "vault", "Error: multiple entries for user %s", username);
                      result->fn.free(&(result->fn));
@@ -54,15 +56,17 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                   } else {
                      sqlite3_int64 userid = sqlite3_column_int64(stmt, 0);
                      int permissions = (int)sqlite3_column_int64(stmt, 1);
-                     const char *name = (const char*)sqlite3_column_text(stmt, 3);
-                     result = new_vault_user(this->memory, this->log, userid, permissions, name, this);
+                     result = new_vault_user(this->memory, this->log, userid, permissions, username, this);
                   }
                   break;
                case SQLITE_DONE:
+                  if (result == NULL) {
+                     log_warning(this->log, "vault", "User not found: %s", username);
+                  }
                   done = 1;
                   break;
                default:
-                  log_error(this->log, "vault", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+                  log_error(this->log, "vault", "Error stepping statement: %s -- %d: %s", sql, n, sqlite3_errstr(n));
                   done = 1;
                }
             } while (!done);

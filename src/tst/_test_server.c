@@ -17,6 +17,7 @@
 */
 
 #include <circus_message.h>
+#include <circus_xdg.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -125,15 +126,87 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
    zmq_ctx_term(zmq_context);
 }
 
+void database(const char *query, int (*fn)(sqlite3_stmt*)) {
+   sqlite3 *db;
+   char *path = szprintf(stdlib_memory, NULL, "%s/vault", xdg_data_home());
+   int n = sqlite3_open_v2(path, &db,
+                           SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,
+                           "unix-excl");
+   if (n != SQLITE_OK) {
+      printf("error opening database: %s\n", sqlite3_errstr(n));
+      return;
+   }
+   sqlite3_stmt *stmt;
+   n = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+   if (n != SQLITE_OK) {
+      printf("error preparing database statement: %s\n", sqlite3_errstr(n));
+      return;
+   }
+
+   int done = 0;
+   do {
+      n = sqlite3_step(stmt);
+      switch(n) {
+      case SQLITE_OK:
+         done = !fn(stmt);
+         break;
+      case SQLITE_DONE:
+         done = 1;
+         break;
+      default:
+         printf("database error: %s\n", sqlite3_errstr(n));
+         done = 1;
+      }
+   } while (!done);
+
+   sqlite3_finalize(stmt);
+   sqlite3_close(db);
+}
+
 static pid_t pid_server;
 static pid_t pid_client;
 
-static void run_server(void) {
-   int e = execl("../exe/main/server.exe", "server.exe", NULL);
-   if (e < 0) {
+static void run_server_install(void) {
+   const char *h = xdg_data_home();
+   if (h == NULL) {
+      printf("xdg_data_home is NULL\n");
+      exit(EXIT_BUG_ERROR);
+   }
+   char *vault_path = szprintf(stdlib_memory, NULL, "%s/vault", h);
+   if (vault_path == NULL) {
+      printf("vault_path is NULL\n");
+      exit(EXIT_BUG_ERROR);
+   }
+   int n = unlink(vault_path);
+   if (n != 0 && errno != ENOENT) {
+      printf("unlink %s failed: %s\n", vault_path, strerror(errno));
+      exit(EXIT_BUG_ERROR);
+   }
+   stdlib_memory.free(vault_path);
+   pid_t pid_install = fork();
+   if (pid_install == 0) {
+      execl("../exe/main/server.exe", "server.exe", "--install", "test", "pass", NULL);
       printf("execl: %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
+   int st;
+   pid_t p = waitpid(pid_install, &st, 0);
+   if (p != pid_install) {
+      printf("wait: %ld != %ld\n", (long int)p, (long int)pid_install);
+      exit(EXIT_BUG_ERROR);
+   } else if (WEXITSTATUS(st) != 0) {
+      printf("server install exited with status %d\n", WEXITSTATUS(st));
+      exit(EXIT_BUG_ERROR);
+   } else if (WIFSIGNALED(st)) {
+      printf("server install was killed by signal %d\n", WTERMSIG(st));
+      exit(EXIT_BUG_ERROR);
+   }
+}
+
+static void run_server(void) {
+   execl("../exe/main/server.exe", "server.exe", NULL);
+   printf("execl: %s\n", strerror(errno));
+   exit(EXIT_BUG_ERROR);
 }
 
 static void run_client(int (*fn)(void)) {
@@ -156,6 +229,8 @@ int test(int argc, char **argv, int (*fn)(void)) {
    }
 
    /* nominal test run */
+
+   run_server_install();
 
    pid_server = fork();
    if (pid_server < 0) {

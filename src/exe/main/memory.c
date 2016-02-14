@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <errno.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -64,6 +65,7 @@ typedef struct {
 } mem;
 
 static void circus_memfree(mem *p) {
+   assert(p->size > 0);
    max_bzero(p->size);
    force_bzero(p->data, p->size);
    munlock(p, sizeof(mem) + p->size);
@@ -74,13 +76,14 @@ static mem *circus_memalloc(size_t size) {
    size_t s = sizeof(mem) + size;
    mem *result = malloc(s);
    if (result != NULL) {
+      result->size = size;
       int n = mlock(result, s);
       if (n != 0) {
+         fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
          circus_memfree(result);
          result = NULL;
       } else {
          memset(&(result->data), 0, size);
-         result->size = size;
       }
    }
    return result;
@@ -121,3 +124,11 @@ static void circus_free(void *ptr) {
 cad_memory_t MEMORY = {circus_malloc, circus_realloc, circus_free};
 
 #pragma GCC pop_options
+
+int __wrap_mlock(const void *UNUSED(addr), size_t UNUSED(len)) {
+   return 0;
+}
+
+int __wrap_munlock(const void *UNUSED(addr), size_t UNUSED(len)) {
+   return 0;
+}

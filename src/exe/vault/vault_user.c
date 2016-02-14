@@ -54,6 +54,7 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
                   n = sqlite3_step(stmt);
                   switch(n) {
                   case SQLITE_OK:
+                  case SQLITE_ROW:
                      if (result != NULL) {
                         log_error(this->log, "vault_user", "Error: multiple entries for user %ld key %s", (long int)this->userid, keyname);
                         result->fn.free(&(result->fn));
@@ -255,7 +256,7 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
             log_error(user->log, "vault_user", "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
-         } else if (n != SQLITE_OK) {
+         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
             log_error(user->log, "vault_user", "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else {
             const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);

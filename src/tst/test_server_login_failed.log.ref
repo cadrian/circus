@@ -1,5 +1,5 @@
 Sending query...
->>>> {"userid":"****","type":"query_login","password":"foo","error":""}
+>>>> {"userid":"foo","type":"query_login","password":"****","error":""}
 Query sent.
 Waiting for reply...
 <<<< {"sessionid":"","type":"reply_login","error":"Invalid credentials","token":""}

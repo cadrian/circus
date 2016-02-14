@@ -40,7 +40,7 @@ static char *get_symmetric_key(user_impl_t *user) {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
             log_error(user->log, "vault_key", "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
-         } else if (n != SQLITE_OK) {
+         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
             log_error(user->log, "vault_key", "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else {
             const char *keysalt = (const char*)sqlite3_column_text(stmt, 1);
@@ -90,6 +90,7 @@ static char *vault_key_get_password(key_impl_t *this) {
                n = sqlite3_step(stmt);
                switch(n) {
                case SQLITE_OK:
+               case SQLITE_ROW:
                   if (result != NULL) {
                      log_error(this->log, "vault_key", "Error: multiple entries for key %ld", (long int)this->keyid);
                      this->memory.free(result);

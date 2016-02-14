@@ -17,7 +17,11 @@
 #ifndef __CIRCUS__TEST_H
 #define __CIRCUS__TEST_H
 
+#include <sqlite3.h>
+
 void send_message(circus_message_t *query, circus_message_t **reply);
+
+void database(const char *query, int (*fn)(sqlite3_stmt*));
 
 int test(int argc, char **argv, int (*fn)(void));
 

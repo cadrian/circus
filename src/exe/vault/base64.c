@@ -23,10 +23,14 @@
 
 // base64 implementation based on http://www.opensource.apple.com/source/QuickTimeStreamingServer/QuickTimeStreamingServer-452/CommonUtilitiesLib/base64.c
 
+size_t b64_size(int len) {
+   return ((len + 2) / 3 * 4);
+}
+
 char *base64(cad_memory_t memory, const char *raw, int len) {
    static char *ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    static char PAD = '=';
-   int n = ((len + 2) / 3 * 4) + 1;
+   int n = b64_size(len) + 1;
    char *result = memory.malloc(n);
    if (result != NULL) {
       int i;
@@ -76,7 +80,7 @@ char *unbase64(cad_memory_t memory, const char *b64) {
       64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
    };
    int len = strlen(b64);
-   assert(len % 3 == 0);
+   assert(len % 4 == 0);
    int n = ((len + 3) / 4) * 3 + 1;
    char *result = memory.malloc(n);
    if (result != NULL) {

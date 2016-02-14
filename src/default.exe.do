@@ -43,10 +43,7 @@ function rebuild_deps() {
 }
 
 DEPS=$(rebuild_deps $2)
-LD_FLAGS=""
-if [[ "${LDFLAGS-x}" != x ]]; then
-    LD_FLAGS="$(echo $LDFLAGS | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
-fi
+export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 
 libs="-lcad -lyacjp -luv -lzmq"
 case $(basename $2) in
@@ -54,7 +51,8 @@ case $(basename $2) in
         libs="$libs -lsqlite3 -lgcrypt"
         ;;
     test_server*)
-        libs="$(dirname $2)/_test_server.o $libs -lsqlite3 -lgcrypt"
+        redo-ifchange exe/config/xdg.o
+        libs="$(dirname $2)/_test_server.o exe/config/xdg.o $libs -lsqlite3 -lgcrypt"
         ;;
 esac
 

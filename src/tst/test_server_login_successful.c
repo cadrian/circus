@@ -23,11 +23,11 @@
 #include "_test_server.h"
 
 static int send_login() {
-   static const char *userid = "foo";
-   static const char *pass = "****";
+   static const char *userid = "test";
+   static const char *pass = "pass";
    int result = 0;
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", userid, pass);
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", pass, userid);
    circus_message_t *reply = NULL;
    send_message(I(login), &reply);
    if (reply == NULL) {
@@ -41,13 +41,12 @@ static int send_login() {
          printf("Invalid login reply: command is \"%s\"\n", reply->command(reply));
          result = 1;
       } else {
-         circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
          const char *error = reply->error(reply);
-         if (!strcmp(error, "")) {
-            printf("Unexpected valid login reply, sessionid=%s, token=%s\n", loggedin->sessionid(loggedin), loggedin->token(loggedin));
+         if (strcmp(error, "")) {
+            printf("Unexpected login error: %s\n", error);
             result = 2;
          } else {
-            printf("Expected login error: %s\n", error);
+            printf("Login OK.\n");
          }
       }
       reply->free(reply);

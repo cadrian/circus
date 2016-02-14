@@ -1,3 +1,4 @@
 redo-ifchange exe/protocol/messages
 redo-ifchange _test
-# will redo executables (WIP, no exe yet)
+#TODO: redo executables
+#redo $(dirname $2)/exe/main/server.exe

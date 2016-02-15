@@ -126,9 +126,29 @@ static void visit_query_unset_property(circus_message_visitor_query_t *visitor, 
 static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_message_query_stop_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *reason = visited->reason(visited);
-   log_warning(this->log, "message_handler", "Stopping: %s", reason);
-   this->running = 0;
-   uv_stop(uv_default_loop());
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   int ok = 0;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "message_handler", "Stop query REFUSED, unknown session or invalid token");
+      token = "";
+   } else {
+      circus_user_t *user = data->user(data);
+      if (!user->is_admin(user)) {
+         log_error(this->log, "message_handler", "Stop query REFUSED, user %s not admin", user->name(user));
+      } else {
+         log_warning(this->log, "message_handler", "Stopping: %s", reason);
+         this->running = 0;
+         uv_stop(uv_default_loop());
+         ok = 1;
+      }
+      token = data->set_token(data);
+   }
+
+   circus_message_reply_stop_t *stop = new_circus_message_reply_stop(this->memory, ok ? "" : "refused", token);
+   this->reply = I(stop);
 }
 
 static void visit_query_tags(circus_message_visitor_query_t *visitor, circus_message_query_tags_t *visited) {

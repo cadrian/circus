@@ -114,21 +114,16 @@ typedef struct {
    cad_hash_t *per_sessionid;
 } session_impl_t;
 
-static circus_session_data_t *session_get(session_impl_t *this, circus_user_t *user, const char *sessionid, const char *token) {
-   data_t *data_session = this->per_sessionid->get(this->per_sessionid, sessionid);
-   if (data_session == NULL) {
+static circus_session_data_t *session_get(session_impl_t *this, const char *sessionid, const char *token) {
+   data_t *data = this->per_sessionid->get(this->per_sessionid, sessionid);
+   if (data == NULL) {
       return NULL;
    }
-   assert(strncmp(data_session->sessionid, sessionid, SESSIONID_LENGTH) == 0);
-   data_t *data_user = this->per_user->get(this->per_user, user);
-   if (data_user != data_session) {
+   assert(strncmp(data->sessionid, sessionid, SESSIONID_LENGTH) == 0);
+   if (strncmp(token, data->token, TOKEN_LENGTH) != 0) {
       return NULL;
    }
-   assert(data_user->user == user);
-   if (strncmp(token, data_user->token, TOKEN_LENGTH) != 0) {
-      return NULL;
-   }
-   return I(data_user);
+   return I(data);
 }
 
 static circus_session_data_t *session_set(session_impl_t *this, circus_user_t *user) {

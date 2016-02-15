@@ -12,7 +12,7 @@ logref=$2.log.ref
 logerr=$2.log.err
 
 exe=$2.exe
-redo $exe
+redo-ifchange $exe
 if [[ ${LIBUV_DIR-x} != x ]]; then
     export LD_LIBRARY_PATH=$LIBUV_DIR/lib:{LD_LIBRARY_PATH-}
 fi

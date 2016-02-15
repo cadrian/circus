@@ -106,9 +106,13 @@
     },
     "stop": {
         "query": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "reason": "STRING"
         },
-        "reply": {}
+        "reply": {
+            "token": "STRING"
+        }
     },
     "tags": {
         "query": {

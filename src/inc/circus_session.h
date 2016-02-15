@@ -45,7 +45,7 @@ typedef struct circus_session_s circus_session_t;
  * may be freed by subsequent calls to the following functions.
  */
 
-typedef circus_session_data_t *(*circus_session_get_fn)(circus_session_t *this, circus_user_t *user, const char *sessionid, const char *token);
+typedef circus_session_data_t *(*circus_session_get_fn)(circus_session_t *this, const char *sessionid, const char *token);
 typedef circus_session_data_t *(*circus_session_set_fn)(circus_session_t *this, circus_user_t *user);
 typedef void (*circus_session_free_fn)(circus_session_t *this);
 

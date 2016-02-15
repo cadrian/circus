@@ -27,6 +27,9 @@ static int send_login() {
    static const char *pass = "pass";
    int result = 0;
 
+   const char *sessionid = NULL;
+   const char *token = NULL;
+
    circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", pass, userid);
    circus_message_t *reply = NULL;
    send_message(I(login), &reply);
@@ -46,14 +49,17 @@ static int send_login() {
             printf("Unexpected login error: %s\n", error);
             result = 2;
          } else {
+            circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
             printf("Login OK.\n");
+            sessionid = loggedin->sessionid(loggedin);
+            token = loggedin->token(loggedin);
          }
       }
       reply->free(reply);
       I(login)->free(I(login));
    }
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", "test", sessionid, token);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
 

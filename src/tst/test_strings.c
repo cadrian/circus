@@ -18,7 +18,7 @@
 
 #include <string.h>
 
-#include "circus.h"
+#include <circus.h>
 
 int main() {
    int len;

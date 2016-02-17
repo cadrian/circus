@@ -23,6 +23,7 @@
 #include <circus_message_impl.h>
 
 static char *dup_string(cad_memory_t memory, const char *string) {
+   if (string == NULL) return NULL;
    int n = strlen(string) + 1;
    char *result = memory.malloc(n);
    assert(result != NULL);

@@ -211,6 +211,13 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
    return result;
 }
 
+static int vault_user_set_email(user_impl_t *this, const char *email) {
+   int result = 0;
+   // TODO
+   (void)this;(void)email;
+   return result;
+}
+
 static int vault_user_is_admin(user_impl_t *this) {
    return ((this->permissions) & PERMISSION_ADMIN) != 0;
 }
@@ -230,6 +237,7 @@ static circus_user_t vault_user_fn = {
    (circus_user_new_fn)vault_user_new,
    (circus_user_name_fn)vault_user_name,
    (circus_user_set_password_fn)vault_user_set_password,
+   (circus_user_set_email_fn)vault_user_set_email,
    (circus_user_is_admin_fn)vault_user_is_admin,
    (circus_user_free_fn)vault_user_free,
 };

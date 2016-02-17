@@ -24,18 +24,18 @@
 static int send_stop() {
    circus_message_t *reply = NULL;
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", "test", "sessionid", "token");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", "sessionid", "token", "test");
    send_message(I(stop), &reply);
    if (strcmp("refused", reply->error(reply)) != 0) {
       printf("Should have been rejected\n");
    }
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", "pass", "test");
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", "test", "pass");
    send_message(I(login), &reply);
    circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
    I(login)->free(I(login));
 
-   stop = new_circus_message_query_stop(stdlib_memory, "", "test", loggedin->sessionid(loggedin), loggedin->token(loggedin));
+   stop = new_circus_message_query_stop(stdlib_memory, "", loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));

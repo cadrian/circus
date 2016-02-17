@@ -27,7 +27,7 @@ static int send_login() {
    static const char *pass = "****";
    int result = 0;
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", pass, userid);
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", userid, pass);
    circus_message_t *reply = NULL;
    send_message(I(login), &reply);
    if (reply == NULL) {
@@ -54,12 +54,12 @@ static int send_login() {
       I(login)->free(I(login));
    }
 
-   login = new_circus_message_query_login(stdlib_memory, "", "pass", "test");
+   login = new_circus_message_query_login(stdlib_memory, "", "test", "pass");
    send_message(I(login), &reply);
    circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
    I(login)->free(I(login));
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", "test", loggedin->sessionid(loggedin), loggedin->token(loggedin));
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));

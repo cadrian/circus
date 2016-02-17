@@ -93,7 +93,7 @@ function for_all() {
                 msg_$fn $type $msg
             done
             {
-                jq '.["'$type'"]["'$msg'"] | keys' | while read key; do
+                jq '.["'$type'"]["'$msg'"] | keys_unsorted' | while read key; do
                     echo $key $(jq '.["'$type'"]["'$msg'"]["'$key'"]')
                 done
             } | while read key keytype; do

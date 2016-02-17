@@ -19,14 +19,18 @@
 #include <cad_stream.h>
 #include <json.h>
 #include <string.h>
+#include <time.h>
 #include <uv.h>
 
+#include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_message_impl.h>
 #include <circus_session.h>
 #include <circus_vault.h>
 
 #include "message_handler.h"
+
+#define VALIDITY_FORMAT "%Y/%m/%d %H-%M-%S" // TODO hard-coded value, put in config instead
 
 typedef struct {
    circus_server_message_handler_t fn;
@@ -165,8 +169,60 @@ static void visit_query_unset(circus_message_visitor_query_t *visitor, circus_me
 
 static void visit_query_user(circus_message_visitor_query_t *visitor, circus_message_query_user_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   int ok = 0;
+   char *password = NULL;
+   char *validity = NULL;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "message_handler", "Stop query REFUSED, unknown session or invalid token");
+      token = "";
+   } else {
+      circus_user_t *user = data->user(data);
+      if (!user->is_admin(user)) {
+         log_error(this->log, "message_handler", "Stop query REFUSED, user %s not admin", user->name(user));
+      } else {
+         const char *username = visited->username(visited);
+         const char *email = visited->username(visited);
+         const char *permissions = visited->permissions(visited);
+         if (strcmp(permissions, "user") != 0) {
+            log_error(this->log, "message_handler", "User permissions must be \"user\" for now.");
+         } else {
+            password = szrandom(this->memory, 128); // TODO hard-coded temporary password length, put in config instead
+            if (password != NULL) {
+               uint64_t valid = (uint64_t)900; // TODO hard-coded validity, put in config instead
+               circus_user_t *new_user = this->vault->get(this->vault, username, NULL);
+               if (new_user == NULL) {
+                  new_user = this->vault->new(this->vault, username, password, valid);
+                  ok = new_user != NULL;
+               } else {
+                  this->session->set(this->session, new_user); // invalidates any currently running session for that user
+                  ok = new_user->set_password(new_user, password, valid);
+               }
+               if (ok) {
+                  assert(new_user != NULL);
+                  ok = new_user->set_email(new_user, email);
+                  // TODO send email with the password
+               }
+               if (ok) {
+                  struct tm tm = { (time_t)valid, 0 };
+                  size_t n = strftime("", 0, VALIDITY_FORMAT, &tm) + 1;
+                  validity = this->memory.malloc(n);
+                  strftime(validity, n, VALIDITY_FORMAT, &tm);
+               }
+            }
+         }
+      }
+      token = data->set_token(data);
+   }
+
+   circus_message_reply_user_t *userr = new_circus_message_reply_user(this->memory, ok ? "" : "refused", token,
+                                                                      password == NULL ? "" : password, validity == NULL ? "" : validity);
+   this->memory.free(password);
+   this->memory.free(validity);
+   this->reply = I(userr);
 }
 
 static void visit_query_version(circus_message_visitor_query_t *visitor, circus_message_query_version_t *visited) {

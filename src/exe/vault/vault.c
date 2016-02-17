@@ -88,8 +88,6 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
 static user_impl_t *vault_get(vault_impl_t *this, const char *username, const char *password) {
    assert(username != NULL);
    assert(username[0] != 0);
-   assert(password != NULL);
-   assert(password[0] != 0);
    return vault_get_(this, username, password);
 }
 

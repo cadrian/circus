@@ -32,7 +32,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
       log_info(this->log, "vault", "User %s not found in dict, loading from db", username);
-      static const char *sql = "SELECT USERID, PERMISSIONS FROM USERS WHERE USERNAME=?";
+      static const char *sql = "SELECT USERID, PERMISSIONS, EMAIL, PWDVALID FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
@@ -56,7 +56,9 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                   } else {
                      sqlite3_int64 userid = sqlite3_column_int64(stmt, 0);
                      int permissions = (int)sqlite3_column_int64(stmt, 1);
-                     result = new_vault_user(this->memory, this->log, userid, permissions, username, this);
+                     const char *email = (const char*)sqlite3_column_text(stmt, 2);
+                     sqlite3_int64 validity = sqlite3_column_int64(stmt, 3);
+                     result = new_vault_user(this->memory, this->log, userid, validity, permissions, email, username, this);
                   }
                   break;
                case SQLITE_DONE:
@@ -91,9 +93,9 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
    return vault_get_(this, username, password);
 }
 
-static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const char *password, int permissions) {
+static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const char *password, uint64_t validity, int permissions) {
    user_impl_t *result = NULL;
-   static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, KEYSALT, KEY) values (?, ?, ?, ?, ?, ?)";
+   static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, PWDVALID, KEYSALT, KEY) values (?, ?, ?, ?, ?, ?, ?)";
    sqlite3_stmt *stmt;
    int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
    if (n != SQLITE_OK) {
@@ -146,13 +148,20 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
             }
          }
       }
+      if (ok) {
+         n = sqlite3_bind_int64(stmt, 5, (sqlite3_int64)validity);
+         if (n != SQLITE_OK) {
+            log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+            ok=0;
+         }
+      }
       char *keysalt=NULL;
       if (ok) {
          keysalt = salt(this->memory, this->log);
          if (keysalt == NULL) {
             ok=0;
          } else {
-            n = sqlite3_bind_text(stmt, 5, keysalt, -1, SQLITE_TRANSIENT);
+            n = sqlite3_bind_text(stmt, 6, keysalt, -1, SQLITE_TRANSIENT);
             if (n != SQLITE_OK) {
                log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
@@ -175,7 +184,7 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
                if (key == NULL) {
                   ok=0;
                } else {
-                  n = sqlite3_bind_text(stmt, 6, key, -1, SQLITE_TRANSIENT);
+                  n = sqlite3_bind_text(stmt, 7, key, -1, SQLITE_TRANSIENT);
                   if (n != SQLITE_OK) {
                      log_error(this->log, "vault", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                      ok=0;
@@ -211,9 +220,9 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
    return result;
 }
 
-static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password) {
+static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password, uint64_t validity) {
    assert(vault_get(this, username, password) == NULL);
-   return vault_new_(this, username, password, PERMISSION_USER);
+   return vault_new_(this, username, password, validity, PERMISSION_USER);
 }
 
 static int vault_install(vault_impl_t *this, const char *admin_username, const char *admin_password) {
@@ -279,7 +288,7 @@ static int vault_install(vault_impl_t *this, const char *admin_username, const c
 
    user_impl_t *admin = vault_get_(this, admin_username, NULL);
    if (admin == NULL) {
-      admin = vault_new_(this, admin_username, admin_password, PERMISSION_ADMIN);
+      admin = vault_new_(this, admin_username, admin_password, 0, PERMISSION_ADMIN);
    } else {
       log_warning(this->log, "User %s already exists, ignoring password change", admin_username);
    }

@@ -134,6 +134,20 @@
             "token": "STRING"
         }
     },
+    "user": {
+        "query": {
+            "sessionid": "STRING",
+            "token": "STRING",
+            "username": "STRING",
+            "email": "STRING",
+            "permissions": "STRING"
+        },
+        "reply": {
+            "token": "STRING",
+            "password": "STRING",
+            "validity": "STRING"
+        }
+    },
     "version": {
         "query": {},
         "reply": {

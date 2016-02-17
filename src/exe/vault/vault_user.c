@@ -17,6 +17,7 @@
 */
 
 #include <string.h>
+#include <time.h>
 
 #include <circus_crypt.h>
 #include <circus_log.h>
@@ -131,8 +132,8 @@ static const char *vault_user_name(user_impl_t *this) {
    return this->name;
 }
 
-static int vault_user_set_password(user_impl_t *this, const char *password) {
-   static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=? WHERE USERID=?";
+static int vault_user_set_password(user_impl_t *this, const char *password, uint64_t validity) {
+   static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=?, PWDVALID=? WHERE USERID=?";
    sqlite3_stmt *stmt;
    int result = 0;
    int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
@@ -173,7 +174,14 @@ static int vault_user_set_password(user_impl_t *this, const char *password) {
          }
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 3, this->userid);
+         n = sqlite3_bind_int64(stmt, 4, validity);
+         if (n != SQLITE_OK) {
+            log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+            ok=0;
+         }
+      }
+      if (ok) {
+         n = sqlite3_bind_int64(stmt, 4, this->userid);
          if (n != SQLITE_OK) {
             log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
             ok=0;
@@ -183,6 +191,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password) {
       if (ok) {
          n = sqlite3_step(stmt);
          if (n == SQLITE_OK || n == SQLITE_DONE) {
+            this->validity = (sqlite3_int64)validity;
             result = 1;
          } else {
             log_error(this->log, "vault_user", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
@@ -225,7 +234,8 @@ static circus_user_t vault_user_fn = {
    (circus_user_free_fn)vault_user_free,
 };
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, const char *name, vault_impl_t *vault) {
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, sqlite3_int64 validity, int permissions,
+                            const char *email, const char *name, vault_impl_t *vault) {
    user_impl_t *result = memory.malloc(sizeof(user_impl_t) + strlen(name) + 1);
    if (result != NULL) {
       result->fn = vault_user_fn;
@@ -236,13 +246,15 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
       result->name = (char*)(result + 1);
       result->vault = vault;
       result->keys = cad_new_hash(memory, cad_hash_strings);
+      result->email = email == NULL ? NULL : szprintf(memory, NULL, "%s", email);
+      result->validity = validity;
       strcpy(result->name, name);
    }
    return result;
 }
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
-   static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD FROM USERS WHERE USERID=?";
+   static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID FROM USERS WHERE USERID=?";
    sqlite3_stmt *stmt;
    user_impl_t *result = NULL;
    int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
@@ -261,17 +273,20 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
          } else {
             const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);
             const char *hashpwd = (const char*)sqlite3_column_text(stmt, 2);
-
-            char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
-            char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
-            if (strcmp(hashedpwd, hashpwd) == 0) {
-               result = user;
+            sqlite3_int64 validity = sqlite3_column_int64(stmt, 3);
+            if ((validity == 0) || ((time_t)validity > time(NULL))) {
+               char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
+               char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
+               if (strcmp(hashedpwd, hashpwd) == 0) {
+                  result = user;
+               } else {
+                  log_warning(user->log, "vault_user", "Invalid password for user %s", sqlite3_column_text(stmt, 0));
+               }
+               user->memory.free(hashedpwd);
+               user->memory.free(saltedpwd);
             } else {
-               log_warning(user->log, "vault_user", "Invalid password for user %s", sqlite3_column_text(stmt, 0));
+               log_warning(user->log, "vault_user", "Stale password for user %s", sqlite3_column_text(stmt, 0));
             }
-            user->memory.free(hashedpwd);
-            user->memory.free(saltedpwd);
-
             n = sqlite3_step(stmt);
             if (n != SQLITE_DONE) {
                log_error(user->log, "vault_user", "Error multiple users not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));

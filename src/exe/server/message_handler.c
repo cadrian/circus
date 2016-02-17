@@ -163,6 +163,12 @@ static void visit_query_unset(circus_message_visitor_query_t *visitor, circus_me
    (void)visited; (void)this;
 }
 
+static void visit_query_user(circus_message_visitor_query_t *visitor, circus_message_query_user_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
 static void visit_query_version(circus_message_visitor_query_t *visitor, circus_message_query_version_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    // TODO
@@ -185,6 +191,7 @@ static circus_message_visitor_query_t visitor_fn = {
    (circus_message_visitor_query_stop_fn)visit_query_stop,
    (circus_message_visitor_query_tags_fn)visit_query_tags,
    (circus_message_visitor_query_unset_fn)visit_query_unset,
+   (circus_message_visitor_query_user_fn)visit_query_user,
    (circus_message_visitor_query_version_fn)visit_query_version,
 };
 

@@ -31,8 +31,9 @@
 
 #define DB_VERSION "1"
 
-#define PERMISSION_USER 1
-#define PERMISSION_ADMIN 2
+#define PERMISSION_REVOKED 0
+#define PERMISSION_USER    1
+#define PERMISSION_ADMIN   2
 
 #define META_SCHEMA                                        \
    "CREATE TABLE IF NOT EXISTS META ("                     \
@@ -44,9 +45,11 @@
    "CREATE TABLE IF NOT EXISTS USERS ("                    \
    "  USERID        INTEGER PRIMARY KEY AUTOINCREMENT,"    \
    "  USERNAME      TEXT NOT NULL,"                        \
+   "  EMAIL         TEXT,"                                 \
    "  PERMISSIONS   INTEGER NOT NULL,"                     \
    "  PWDSALT       TEXT NOT NULL,"                        \
    "  HASHPWD       TEXT NOT NULL,"                        \
+   "  PWDVALID      INTEGER,"                              \
    "  KEYSALT       TEXT NOT NULL,"                        \
    "  KEY           TEST NOT NULL"                         \
    ");"                                                    \
@@ -91,8 +94,10 @@ typedef struct {
    cad_memory_t memory;
    circus_log_t *log;
    sqlite3_int64 userid;
+   sqlite3_int64 validity;
    int permissions;
    char *name;
+   char *email;
    vault_impl_t *vault;
    cad_hash_t *keys;
 } user_impl_t;
@@ -105,7 +110,8 @@ typedef struct {
    user_impl_t *user;
 } key_impl_t;
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, int permissions, const char *name, vault_impl_t *vault);
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, sqlite3_int64 validity, int permissions,
+                            const char *email, const char *name, vault_impl_t *vault);
 key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user);
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);

@@ -177,12 +177,12 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
 
    circus_session_data_t *data = this->session->get(this->session, sessionid, token);
    if (data == NULL) {
-      log_error(this->log, "message_handler", "Stop query REFUSED, unknown session or invalid token");
+      log_error(this->log, "message_handler", "User query REFUSED, unknown session or invalid token");
       token = "";
    } else {
       circus_user_t *user = data->user(data);
       if (!user->is_admin(user)) {
-         log_error(this->log, "message_handler", "Stop query REFUSED, user %s not admin", user->name(user));
+         log_error(this->log, "message_handler", "User query REFUSED, user %s not admin", user->name(user));
       } else {
          const char *username = visited->username(visited);
          const char *email = visited->username(visited);
@@ -191,20 +191,33 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
             log_error(this->log, "message_handler", "User permissions must be \"user\" for now.");
          } else {
             password = szrandom(this->memory, 128); // TODO hard-coded temporary password length, put in config instead
-            if (password != NULL) {
+            if (password == NULL) {
+               log_error(this->log, "message_handler", "User error: could not allocate random password.");
+            } else {
                uint64_t valid = (uint64_t)900; // TODO hard-coded validity, put in config instead
                circus_user_t *new_user = this->vault->get(this->vault, username, NULL);
                if (new_user == NULL) {
                   new_user = this->vault->new(this->vault, username, password, valid);
-                  ok = new_user != NULL;
+                  if (new_user == NULL) {
+                     log_error(this->log, "message_handler", "User error: could not allocate user.");
+                  } else {
+                     ok = 1;
+                  }
                } else {
                   this->session->set(this->session, new_user); // invalidates any currently running session for that user
-                  ok = new_user->set_password(new_user, password, valid);
+                  if (new_user->set_password(new_user, password, valid)) {
+                     ok = 1;
+                  } else {
+                     log_error(this->log, "message_handler", "User error: could not set password.");
+                  }
                }
                if (ok) {
                   assert(new_user != NULL);
-                  ok = new_user->set_email(new_user, email);
-                  // TODO send email with the password
+                  if (new_user->set_email(new_user, email)) {
+                     // TODO send email with the password
+                  } else {
+                     log_warning(this->log, "message_handler", "User error: could not set email.");
+                  }
                }
                if (ok) {
                   struct tm tm = { (time_t)valid, 0 };

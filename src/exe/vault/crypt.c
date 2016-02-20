@@ -188,6 +188,7 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
 static char *szrandom_level(cad_memory_t memory, size_t len, enum gcry_random_level level) {
    assert(len > 0);
    char *raw = memory.malloc(len + 1);
+   if (raw == NULL) return NULL;
    gcry_randomize(raw, len, level);
    char *result = base64(memory, raw, len);
    memory.free(raw);

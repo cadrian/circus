@@ -17,7 +17,9 @@
 */
 
 #include <cad_stream.h>
+#include <errno.h>
 #include <json.h>
+#include <limits.h>
 #include <string.h>
 #include <time.h>
 #include <uv.h>
@@ -30,13 +32,16 @@
 
 #include "message_handler.h"
 
-#define VALIDITY_FORMAT "%Y/%m/%d %H-%M-%S" // TODO hard-coded value, put in config instead
+#define DEFAULT_VALIDITY_FORMAT "%Y/%m/%d %H-%M-%S"
 
 typedef struct {
    circus_server_message_handler_t fn;
    circus_message_visitor_query_t vfn;
    cad_memory_t memory;
    circus_log_t *log;
+   char *validity_format;
+   size_t tmppwd_len;
+   uint64_t tmppwd_validity;
    circus_vault_t *vault;
    circus_session_t *session;
    int running;
@@ -190,11 +195,11 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
          if (strcmp(permissions, "user") != 0) {
             log_error(this->log, "message_handler", "User permissions must be \"user\" for now.");
          } else {
-            password = szrandom(this->memory, 128); // TODO hard-coded temporary password length, put in config instead
+            password = szrandom(this->memory, this->tmppwd_len);
             if (password == NULL) {
                log_error(this->log, "message_handler", "User error: could not allocate random password.");
             } else {
-               uint64_t valid = (uint64_t)900; // TODO hard-coded validity, put in config instead
+               uint64_t valid = this->tmppwd_validity;
                circus_user_t *new_user = this->vault->get(this->vault, username, NULL);
                if (new_user == NULL) {
                   new_user = this->vault->new(this->vault, username, password, valid);
@@ -221,9 +226,9 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
                }
                if (ok) {
                   struct tm tm = { (time_t)valid, 0 };
-                  size_t n = strftime("", 0, VALIDITY_FORMAT, &tm) + 1;
+                  size_t n = strftime("", 0, this->validity_format, &tm) + 1;
                   validity = this->memory.malloc(n);
-                  strftime(validity, n, VALIDITY_FORMAT, &tm);
+                  strftime(validity, n, this->validity_format, &tm);
                }
             }
          }
@@ -351,6 +356,7 @@ static void impl_free(impl_mh_t *this) {
       this->vault->free(this->vault);
    }
    this->session->free(this->session);
+   this->memory.free(this->validity_format);
    this->memory.free(this);
 }
 
@@ -359,7 +365,7 @@ static circus_server_message_handler_t impl_mh_fn = {
    (circus_server_message_handler_free_fn) impl_free,
 };
 
-circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_vault_t *vault, circus_config_t *UNUSED(config)) {
+circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_vault_t *vault, circus_config_t *config) {
    impl_mh_t *result;
 
    result = memory.malloc(sizeof(impl_mh_t));
@@ -372,6 +378,37 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->vault = vault;
    result->session = circus_session(memory, log);
    result->reply = NULL;
+
+   result->tmppwd_len = 128;
+   result->tmppwd_validity = 900L;
+
+   const char *validity_format = config->get(config, "user", "validity_format");
+   if (validity_format == NULL) {
+      validity_format = DEFAULT_VALIDITY_FORMAT;
+   }
+   result->validity_format = szprintf(memory, NULL, "%s", validity_format);
+
+   const char *tmppwd_len = config->get(config, "user", "temporary_password_length");
+   if (tmppwd_len != NULL) {
+      errno = 0;
+      unsigned long int tpl = strtoul(tmppwd_len, NULL, 10);
+      if ((tpl != ULONG_MAX || errno != ERANGE) && errno != EINVAL) {
+         result->tmppwd_len = (size_t)tpl;
+      } else {
+         log_warning(log, "message_handler", "Invalid temporary_password_length: %s", tmppwd_len);
+      }
+   }
+
+   const char *tmppwd_validity = config->get(config, "user", "temporary_password_validity");
+   if (tmppwd_validity != NULL) {
+      errno = 0;
+      unsigned long int tpv = strtoul(tmppwd_validity, NULL, 10);
+      if ((tpv != ULONG_MAX || errno != ERANGE) && errno != EINVAL && tpv <= UINT64_MAX) {
+         result->tmppwd_validity = (uint64_t)tpv;
+      } else {
+         log_warning(log, "message_handler", "Invalid temporary_password_validity: %s", tmppwd_validity);
+      }
+   }
 
    assert(result->session != NULL);
 

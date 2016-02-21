@@ -27,41 +27,17 @@ static int send_login() {
    static const char *pass = "pass";
    int result = 0;
 
-   const char *sessionid = NULL;
-   const char *token = NULL;
+   char *sessionid = NULL;
+   char *token = NULL;
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", userid, pass);
-   circus_message_t *reply = NULL;
-   send_message(I(login), &reply);
-   if (reply == NULL) {
-      printf("NULL login reply!\n");
-      result = 1;
-   } else {
-      if (strcmp("login", reply->type(reply))) {
-         printf("Invalid login reply: type is \"%s\"\n", reply->type(reply));
-         result = 1;
-      } else if (strcmp("reply", reply->command(reply))) {
-         printf("Invalid login reply: command is \"%s\"\n", reply->command(reply));
-         result = 1;
-      } else {
-         const char *error = reply->error(reply);
-         if (strcmp(error, "")) {
-            printf("Unexpected login error: %s\n", error);
-            result = 2;
-         } else {
-            circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
-            printf("Login OK.\n");
-            sessionid = loggedin->sessionid(loggedin);
-            token = loggedin->token(loggedin);
-         }
-      }
-      reply->free(reply);
-      I(login)->free(I(login));
-   }
+   result = do_login(userid, pass, &sessionid, &token);
 
    circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", sessionid, token, "test");
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
+
+   stdlib_memory.free(sessionid);
+   stdlib_memory.free(token);
 
    return result;
 }

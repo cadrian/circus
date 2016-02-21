@@ -29,31 +29,22 @@ static int send_ping() {
    circus_message_query_ping_t *ping = new_circus_message_query_ping(stdlib_memory, "", phrase);
    circus_message_t *reply = NULL;
    send_message(I(ping), &reply);
-   if (reply == NULL) {
-      printf("NULL ping reply!\n");
+   circus_message_reply_ping_t *pong = check_reply(reply, "ping", "reply", "");
+   if (pong == NULL) {
       result = 1;
    } else {
-      if (strcmp("ping", reply->type(reply))) {
-         printf("Invalid ping reply: type is \"%s\"\n", reply->type(reply));
-         result = 1;
-      } else if (strcmp("reply", reply->command(reply))) {
-         printf("Invalid ping reply: command is \"%s\"\n", reply->command(reply));
-         result = 1;
-      } else {
-         circus_message_reply_ping_t *pong = (circus_message_reply_ping_t*)reply;
-         const char *p = pong->phrase(pong);
-         if (strcmp(phrase, p)) {
-            printf("Invalid ping reply: phrase is \"%s\"\n", p);
-            result = 2;
-         }
+      const char *p = pong->phrase(pong);
+      if (strcmp(phrase, p)) {
+         printf("Invalid ping reply: phrase is \"%s\"\n", p);
+         result = 2;
       }
       reply->free(reply);
-      I(ping)->free(I(ping));
    }
+   I(ping)->free(I(ping));
 
    circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", "test", "pass");
    send_message(I(login), &reply);
-   circus_message_reply_login_t *loggedin = (circus_message_reply_login_t*)reply;
+   circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");
    I(login)->free(I(login));
 
    circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");

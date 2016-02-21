@@ -16,7 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
-#include <circus_message.h>
+#include <circus_message_impl.h>
 #include <circus_xdg.h>
 #include <string.h>
 #include <sys/types.h>
@@ -25,6 +25,7 @@
 #include <zmq.h>
 
 #include "_test_server.h"
+
 
 #define EXIT_BUG_ERROR 9
 #define EXIT_TEST_FAILED 1
@@ -299,4 +300,50 @@ int test(int argc, char **argv, int (*fn)(void)) {
    printf("pid_server: OK\n");
 
    return res;
+}
+
+void *check_reply(circus_message_t *reply, const char *type, const char *command, const char *error) {
+   void *result = NULL;
+   if (reply == NULL) {
+      printf("NULL reply!\n");
+   } else {
+      if (strcmp(type, reply->type(reply))) {
+         printf("Invalid reply: type is \"%s\"\n", reply->type(reply));
+      } else if (strcmp(command, reply->command(reply))) {
+         printf("Invalid reply: command is \"%s\"\n", reply->command(reply));
+      } else {
+         const char *err = reply->error(reply);
+         if (strcmp(err, error)) {
+            printf("Unexpected error: %s\n", err);
+         } else {
+            result = reply;
+         }
+      }
+   }
+   if (result == NULL) {
+      reply->free(reply);
+   }
+   return result;
+}
+
+int do_login(const char *userid, const char *password, char **sessionid, char **token) {
+   int result = 0;
+
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", userid, password);
+   circus_message_t *reply = NULL;
+   send_message(I(login), &reply);
+   circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");
+   if (loggedin == NULL) {
+      result = 1;
+   } else {
+      printf("Login OK.\n");
+      const char *s = loggedin->sessionid(loggedin);
+      *sessionid = szprintf(stdlib_memory, NULL, "%s", s);
+      const char *t = loggedin->token(loggedin);
+      *token = szprintf(stdlib_memory, NULL, "%s", t);
+      reply->free(reply);
+   }
+   I(login)->free(I(login));
+
+   return result;
 }

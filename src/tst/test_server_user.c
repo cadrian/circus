@@ -55,6 +55,8 @@ static int send_login() {
             char *user_sessionid = NULL;
             char *user_token = NULL;
 
+            printf("noob's password is %s\n", password);
+
             result = do_login("noob", password, &user_sessionid, &user_token);
             if (result != 0) {
                printf("Login should have succeeded\n");

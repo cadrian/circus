@@ -21,13 +21,13 @@ fi
     exec $(basename $exe)
 ) >$lognew 2>$logerr || {
     echo "**** Exited with status $?" >>$lognew
-    echo "cat $lognew" >&2
+    cat $lognew >&2
     exit 1
 }
 
 if [ -r $logref ]; then
     diff -u $logref $lognew >&2
 else
-    echo "mv $lognew $logref" >&2
+    echo "There is no $logref file. Please check and copy $lognew" >&2
     exit 1
 fi

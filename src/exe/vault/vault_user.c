@@ -17,10 +17,10 @@
 */
 
 #include <string.h>
-#include <time.h>
 
 #include <circus_crypt.h>
 #include <circus_log.h>
+#include <circus_time.h>
 #include <circus_vault.h>
 
 #include "vault_impl.h"
@@ -212,9 +212,39 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
 }
 
 static int vault_user_set_email(user_impl_t *this, const char *email) {
+   static const char *sql = "UPDATE USERS SET EMAIL=? WHERE USERID=?";
+   sqlite3_stmt *stmt;
    int result = 0;
-   // TODO
-   (void)this;(void)email;
+
+   int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
+   if (n != SQLITE_OK) {
+      log_error(this->log, "vault_user", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+   } else {
+      n = sqlite3_bind_text(stmt, 1, email, -1, SQLITE_TRANSIENT);
+      if (n != SQLITE_OK) {
+         log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+      } else {
+         n = sqlite3_bind_int64(stmt, 2, this->userid);
+         if (n != SQLITE_OK) {
+            log_error(this->log, "vault_user", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+         } else {
+            n = sqlite3_step(stmt);
+            if (n == SQLITE_OK || n == SQLITE_DONE) {
+               this->memory.free(this->email);
+               this->email = email == NULL ? NULL : szprintf(this->memory, NULL, "%s", email);
+               result = 1;
+            } else {
+               log_error(this->log, "vault_user", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+            }
+         }
+      }
+
+      n = sqlite3_finalize(stmt);
+      if (n != SQLITE_OK) {
+         log_warning(this->log, "vault_user", "Error in finalize: %s", sqlite3_errstr(n));
+      }
+   }
+
    return result;
 }
 
@@ -287,7 +317,7 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
             const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);
             const char *hashpwd = (const char*)sqlite3_column_text(stmt, 2);
             sqlite3_int64 validity = sqlite3_column_int64(stmt, 3);
-            if ((validity == 0) || ((time_t)validity > time(NULL))) {
+            if ((validity == 0) || ((time_t)validity > now().tv_sec)) {
                char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
                char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
                if (strcmp(hashedpwd, hashpwd) == 0) {

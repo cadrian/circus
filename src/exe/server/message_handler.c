@@ -199,7 +199,7 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
          log_error(this->log, "message_handler", "User query REFUSED, user %s not admin", user->name(user));
       } else {
          const char *username = visited->username(visited);
-         const char *email = visited->username(visited);
+         const char *email = visited->email(visited);
          const char *permissions = visited->permissions(visited);
          if (strcmp(permissions, "user") != 0) {
             log_error(this->log, "message_handler", "User permissions must be \"user\" for now.");

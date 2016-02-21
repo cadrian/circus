@@ -20,6 +20,7 @@ It is meant as the successor of the venerable
 * Encryption routines: libgcrypt
 * Communication protocol: zmq
 * Vault database: sqlite
+* C closures (for tests): http://www.haible.de/bruno/packages-ffcall.html
 
 # Design
 

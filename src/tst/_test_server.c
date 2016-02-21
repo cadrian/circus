@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <callback.h>
 #include <circus_message_impl.h>
 #include <circus_xdg.h>
 #include <string.h>
@@ -127,7 +128,7 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
    zmq_ctx_term(zmq_context);
 }
 
-void database(const char *query, int (*fn)(sqlite3_stmt*)) {
+void database(const char *query, database_fn fn) {
    sqlite3 *db;
    char *path = szprintf(stdlib_memory, NULL, "%s/vault", xdg_data_home());
    int n = sqlite3_open_v2(path, &db,
@@ -149,6 +150,7 @@ void database(const char *query, int (*fn)(sqlite3_stmt*)) {
       n = sqlite3_step(stmt);
       switch(n) {
       case SQLITE_OK:
+      case SQLITE_ROW:
          done = !fn(stmt);
          break;
       case SQLITE_DONE:
@@ -162,6 +164,17 @@ void database(const char *query, int (*fn)(sqlite3_stmt*)) {
 
    sqlite3_finalize(stmt);
    sqlite3_close(db);
+}
+
+static int db_count_(int *counter, sqlite3_stmt *UNUSED(stmt)) {
+   *counter = *counter + 1;
+   return 0;
+}
+
+database_fn db_count(int *counter) {
+   *counter = 0;
+   database_fn result = alloc_callback(&db_count_, counter);
+   return result;
 }
 
 static pid_t pid_server;

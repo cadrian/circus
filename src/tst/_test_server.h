@@ -22,7 +22,9 @@
 void send_message(circus_message_t *query, circus_message_t **reply);
 void *check_reply(circus_message_t *reply, const char *type, const char *command, const char *error);
 
-void database(const char *query, int (*fn)(sqlite3_stmt*));
+typedef int (*database_fn)(sqlite3_stmt*);
+void database(const char *query, database_fn fn);
+database_fn db_count(int *counter);
 
 int do_login(const char *userid, const char *password, char **sessionid, char **token);
 

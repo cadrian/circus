@@ -52,7 +52,7 @@ case $(basename $2) in
         ;;
     test_server*)
         redo-ifchange exe/config/xdg.o
-        libs="$(dirname $2)/_test_server.o exe/config/xdg.o $libs -lsqlite3 -lgcrypt"
+        libs="$(dirname $2)/_test_server.o exe/config/xdg.o $libs -lsqlite3 -lgcrypt -lcallback"
         ;;
 esac
 

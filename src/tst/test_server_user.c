@@ -17,6 +17,7 @@
 */
 
 #include <string.h>
+#include <unistd.h>
 
 #include <circus_message_impl.h>
 
@@ -72,6 +73,15 @@ static int send_login() {
 
    stdlib_memory.free(admin_sessionid);
    stdlib_memory.free(admin_token);
+
+   sleep(1);
+   int count;
+   database("select email from users where username='noob' and email='noob@clueless.lol'", db_count(&count));
+   if (count == 1) {
+      printf("Checked noob's email: OK\n");
+   } else {
+      printf("Checked noob's email: found %d\n", count);
+   }
 
    return result;
 }

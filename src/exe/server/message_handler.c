@@ -18,6 +18,7 @@
 
 #include <cad_stream.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <json.h>
 #include <limits.h>
 #include <string.h>
@@ -28,11 +29,12 @@
 #include <circus_log.h>
 #include <circus_message_impl.h>
 #include <circus_session.h>
+#include <circus_time.h>
 #include <circus_vault.h>
 
 #include "message_handler.h"
 
-#define DEFAULT_VALIDITY_FORMAT "%Y/%m/%d %H-%M-%S"
+#define DEFAULT_VALIDITY_FORMAT "%Y/%m/%d %H:%M:%S"
 
 typedef struct {
    circus_server_message_handler_t fn;
@@ -172,6 +174,13 @@ static void visit_query_unset(circus_message_visitor_query_t *visitor, circus_me
    (void)visited; (void)this;
 }
 
+static uint64_t absolute_validity(uint64_t validity_d) {
+   if (validity_d == 0) return 0;
+   time_t t = now().tv_sec;
+   t += (time_t)validity_d;
+   return (uint64_t)t;
+}
+
 static void visit_query_user(circus_message_visitor_query_t *visitor, circus_message_query_user_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *sessionid = visited->sessionid(visited);
@@ -199,9 +208,10 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
             if (password == NULL) {
                log_error(this->log, "message_handler", "User error: could not allocate random password.");
             } else {
-               uint64_t valid = this->tmppwd_validity;
+               uint64_t valid = absolute_validity(this->tmppwd_validity);
                circus_user_t *new_user = this->vault->get(this->vault, username, NULL);
                if (new_user == NULL) {
+                  log_info(this->log, "message_handler", "Creating new user: %s", username);
                   new_user = this->vault->new(this->vault, username, password, valid);
                   if (new_user == NULL) {
                      log_error(this->log, "message_handler", "User error: could not allocate user.");
@@ -209,6 +219,7 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
                      ok = 1;
                   }
                } else {
+                  log_info(this->log, "message_handler", "Updating user: %s", username);
                   this->session->set(this->session, new_user); // invalidates any currently running session for that user
                   if (new_user->set_password(new_user, password, valid)) {
                      ok = 1;
@@ -225,10 +236,24 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
                   }
                }
                if (ok) {
-                  struct tm tm = { (time_t)valid, 0 };
-                  size_t n = strftime("", 0, this->validity_format, &tm) + 1;
+                  assert(new_user->validity(new_user) == (time_t)valid);
+                  struct tm tm = { 0, };
+                  time_t v = (time_t)valid;
+                  localtime_r(&v, &tm);
+                  size_t n = 64;
                   validity = this->memory.malloc(n);
-                  strftime(validity, n, this->validity_format, &tm);
+                  int again = 1;
+                  do {
+                     assert(validity != NULL);
+                     size_t m = strftime(validity, n, this->validity_format, &tm);
+                     if (m == 0) {
+                        n *= 2;
+                        validity = this->memory.realloc(validity, n);
+                     } else {
+                        again = 0;
+                     }
+                  } while (again);
+                  log_info(this->log, "message_handler", "Temporary password for %s is valid until %s", username, validity);
                }
             }
          }

@@ -222,6 +222,10 @@ static int vault_user_is_admin(user_impl_t *this) {
    return ((this->permissions) & PERMISSION_ADMIN) != 0;
 }
 
+static time_t vault_user_validity(user_impl_t *this) {
+   return (time_t)this->validity;
+}
+
 static void user_clean(cad_hash_t *UNUSED(hash), int UNUSED(index), const char *UNUSED(name), key_impl_t *key, user_impl_t *UNUSED(user)) {
    key->fn.free(&(key->fn));
 }
@@ -239,6 +243,7 @@ static circus_user_t vault_user_fn = {
    (circus_user_set_password_fn)vault_user_set_password,
    (circus_user_set_email_fn)vault_user_set_email,
    (circus_user_is_admin_fn)vault_user_is_admin,
+   (circus_user_validity_fn)vault_user_validity,
    (circus_user_free_fn)vault_user_free,
 };
 

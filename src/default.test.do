@@ -1,5 +1,7 @@
 set -e
 
+export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=now"
+
 case $(basename $2) in
     test_server*)
         redo-ifchange $(dirname $2)/../exe/main/server.exe

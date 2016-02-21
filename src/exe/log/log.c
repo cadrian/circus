@@ -31,6 +31,7 @@
 #include <uv.h>
 
 #include <circus_log.h>
+#include <circus_time.h>
 
 static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG"};
 
@@ -352,13 +353,10 @@ static void log_free_stream(log_file_output_stream *this) {
 
 static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
    write_req_t *req;
-   struct timeval tv;
+   struct timeval tv = now();
    char *message = NULL;
-   int n, e;
+   int n;
    char *logline = NULL;
-
-   e = gettimeofday(&tv, NULL);
-   assert(e == 0);
 
    message = vszprintf(this->memory, NULL, format, args);
    assert(message != NULL);

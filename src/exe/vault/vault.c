@@ -29,9 +29,11 @@
 #include "vault_impl.h"
 
 static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password) {
+   log_info(this->log, "vault", "Getting user %s%s", username, password == NULL ? "" : " and checking password");
+
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
-      log_info(this->log, "vault", "User %s not found in dict, loading from db", username);
+      log_debug(this->log, "vault", "User %s not found in dict, loading from db", username);
       static const char *sql = "SELECT USERID, PERMISSIONS, EMAIL, PWDVALID FROM USERS WHERE USERNAME=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
@@ -62,9 +64,6 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                   }
                   break;
                case SQLITE_DONE:
-                  if (result == NULL) {
-                     log_warning(this->log, "vault", "User not found: %s", username);
-                  }
                   done = 1;
                   break;
                default:
@@ -88,10 +87,16 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
 static user_impl_t *vault_get(vault_impl_t *this, const char *username, const char *password) {
    assert(username != NULL);
    assert(username[0] != 0);
-   return vault_get_(this, username, password);
+   user_impl_t *result = vault_get_(this, username, password);
+   if (result == NULL) {
+      log_warning(this->log, "vault", "User not found: %s", username);
+   }
+   return result;
 }
 
 static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const char *password, uint64_t validity, int permissions) {
+   log_info(this->log, "vault", "Creating new user %s", username);
+
    user_impl_t *result = NULL;
    static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, PWDVALID, KEYSALT, KEY) values (?, ?, ?, ?, ?, ?, ?)";
    sqlite3_stmt *stmt;

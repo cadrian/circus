@@ -1,1 +1,1 @@
-redo src/all
+redo-ifchange src/all

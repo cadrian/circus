@@ -3,13 +3,21 @@ set -e
 
 redo-ifchange exe/protocol/messages
 
+out=${2%.dbg}
+if [ $out == $2 ]; then
+    obj_suffix=".o"
+else
+    export CFLAGS="-DDEBUG -g"
+    obj_suffix=".dbg.o"
+fi
+
 function deps_of() {
-    egrep -o  "$(pwd)/inc/circus_[^[:space:]]+\.h" ${1%.o}.d |
+    egrep -o  "$(pwd)/inc/circus_[^[:space:]]+\.h" ${1%$obj_suffix}.d |
         sed -r 's!^'"$(pwd)"'/inc/circus_([^.]+)\.h$!\1!' |
         while read header; do
             find exe -name gen -prune -o -name $header\*.c -exec egrep -l '^\#include <circus_'$header'\.h>$' {} + || true
         done |
-        sed 's!\.c$!.o!'
+        sed 's!\.c$!'$obj_suffix'!'
 }
 
 function rebuild_deps() {
@@ -17,12 +25,12 @@ function rebuild_deps() {
     rm -f $1.dep[s01]
     {
         # The seed is the target itself
-        echo $1.o
+        echo $1$obj_suffix
         # Force circus.o because deps_of will not find it
-        echo exe/circus.o
+        echo exe/circus$obj_suffix
         # Be sure to add all the program-specific modules
-        for f in exe/$(basename $1)/*.c; do
-            test -r "$f" && echo ${f%.c}.o
+        for f in exe/$(basename ${1%%_*})/*.c; do
+            test -r "$f" && echo ${f%.c}$obj_suffix
         done
     } > $1.deps
     # We stop when the list of deps does not change anymore (fix point)
@@ -38,22 +46,22 @@ function rebuild_deps() {
         rm $1.dep1
     done
     rm $1.dep0
-    cat $1.deps | grep -v "^$1.o$" | awk '{printf("%s ", $0)} END {printf("\n")}'
+    cat $1.deps | grep -v "^$1$obj_suffix\$" | awk '{printf("%s ", $0)} END {printf("\n")}'
     rm $1.deps
 }
 
-DEPS=$(rebuild_deps $2)
-export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
-
 libs="-lcad -lyacjp -luv -lzmq"
-case $(basename $2) in
+case $(basename $out) in
     server)
         libs="$libs -lsqlite3 -lgcrypt"
         ;;
     test_server*)
-        redo-ifchange exe/config/xdg.o
-        libs="$(dirname $2)/_test_server.o exe/config/xdg.o $libs -lsqlite3 -lgcrypt -lcallback"
+        redo-ifchange exe/config/xdg$obj_suffix
+        libs="$(dirname $out)/_test_server$obj_suffix exe/config/xdg$obj_suffix $libs -lsqlite3 -lgcrypt -lcallback"
         ;;
 esac
 
-gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -fsanitize=undefined -o $3 $2.o $DEPS $libs
+DEPS=$(rebuild_deps $out)
+export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} /.+/ {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
+
+gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -fsanitize=undefined -o $3 $out$obj_suffix $DEPS $libs

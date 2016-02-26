@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <cad_cgi.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,7 @@
 #include <circus_memory.h>
 
 #include "../client/message_handler.h"
+#include "../client/cgi_handler.h"
 
 static circus_log_t *LOG;
 
@@ -66,9 +68,9 @@ static void usage(const char *cmd, FILE *out) {
 }
 
 static void run(circus_config_t *config) {
-   circus_channel_t *channel = circus_zmq_client(MEMORY, LOG, config);
-   if (channel == NULL) {
-      log_error(LOG, "server", "Could not allocate channel");
+   circus_channel_t *zmq_channel = circus_zmq_client(MEMORY, LOG, config);
+   if (zmq_channel == NULL) {
+      log_error(LOG, "server", "Could not allocate zmq_channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
@@ -77,23 +79,44 @@ static void run(circus_config_t *config) {
    circus_client_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
       log_error(LOG, "client_cgi", "Could not allocate message handler");
-      channel->free(channel);
+      zmq_channel->free(zmq_channel);
       LOG->free(LOG);
       config->free(config);
       exit(1);
    }
 
-   mh->register_to(mh, channel);
+   circus_channel_t *cgi_channel = circus_cgi(MEMORY, LOG, config);
+   if (cgi_channel == NULL) {
+      log_error(LOG, "server", "Could not allocate cgi_channel");
+      mh->free(mh);
+      LOG->free(LOG);
+      config->free(config);
+      exit(1);
+   }
 
-   // TODO: send the message to the server
+   circus_client_cgi_handler_t *ch = circus_cgi_handler(MEMORY, LOG, config);
+   if (ch == NULL) {
+      log_error(LOG, "client_cgi", "Could not allocate CGI handler");
+      cgi_channel->free(cgi_channel);
+      mh->free(mh);
+      zmq_channel->free(zmq_channel);
+      LOG->free(LOG);
+      config->free(config);
+      exit(1);
+   }
+
+   mh->register_to(mh, zmq_channel);
+   ch->register_to(ch, cgi_channel);
 
    log_info(LOG, "client_cgi", "Client started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
    log_info(LOG, "client_cgi", "Client stopped.");
 
+   ch->free(ch);
+   cgi_channel->free(cgi_channel);
    mh->free(mh);
-   channel->free(channel);
+   zmq_channel->free(zmq_channel);
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {

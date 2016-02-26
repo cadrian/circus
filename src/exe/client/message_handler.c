@@ -160,9 +160,7 @@ static circus_client_message_handler_t impl_mh_fn = {
 };
 
 circus_client_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *UNUSED(config)) {
-   impl_mh_t *result;
-
-   result = memory.malloc(sizeof(impl_mh_t));
+   impl_mh_t *result = memory.malloc(sizeof(impl_mh_t));
    assert(result != NULL);
 
    result->fn = impl_mh_fn;

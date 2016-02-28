@@ -23,9 +23,11 @@
 #include <circus_config.h>
 #include <circus_log.h>
 
+#include "automaton.h"
+
 typedef struct circus_client_message_handler_s circus_client_message_handler_t;
 
-typedef void (*circus_client_message_handler_register_to_fn)(circus_client_message_handler_t *this, circus_channel_t *channel);
+typedef void (*circus_client_message_handler_register_to_fn)(circus_client_message_handler_t *this, circus_channel_t *channel, circus_automaton_state_e *state);
 typedef void (*circus_client_message_handler_free_fn)(circus_client_message_handler_t *this);
 
 struct circus_client_message_handler_s {

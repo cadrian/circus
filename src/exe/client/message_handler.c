@@ -26,6 +26,7 @@ typedef struct {
    circus_message_visitor_reply_t vfn;
    cad_memory_t memory;
    circus_log_t *log;
+   circus_automaton_state_e *state;
 } impl_mh_t;
 
 // circus_message_visitor_reply_change_master_fn
@@ -136,16 +137,22 @@ static circus_message_visitor_reply_t visitor_fn = {
 };
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
-   // TODO
-   (void)channel;(void)this;
+   if (*(this->state) == State_read_from_server) {
+      // TODO
+      (void)channel;
+   }
 }
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
-   // TODO
-   (void)channel;(void)this;
+   if (*(this->state) == State_write_to_server) {
+      // TODO
+      (void)channel;
+   }
 }
 
-static void impl_register_to(impl_mh_t *this, circus_channel_t *channel) {
+static void impl_register_to(impl_mh_t *this, circus_channel_t *channel, circus_automaton_state_e *state) {
+   assert(state != NULL);
+   this->state = state;
    channel->on_read(channel, (circus_channel_on_read_cb)impl_mh_read, this);
    channel->on_write(channel, (circus_channel_on_write_cb)impl_mh_write, this);
 }

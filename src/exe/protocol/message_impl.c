@@ -73,4 +73,8 @@ static int json_boolean(json_const_t *cons) {
    return cons->value(cons);
 }
 
+static const char *no_error(void *UNUSED(this)) {
+   return "";
+}
+
 #include "gen/factory.c"

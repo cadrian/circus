@@ -26,7 +26,7 @@ static int send_ping() {
    static const char *phrase = "Use the force, Luke.";
    int result = 0;
 
-   circus_message_query_ping_t *ping = new_circus_message_query_ping(stdlib_memory, "", phrase);
+   circus_message_query_ping_t *ping = new_circus_message_query_ping(stdlib_memory, phrase);
    circus_message_t *reply = NULL;
    send_message(I(ping), &reply);
    circus_message_reply_ping_t *pong = check_reply(reply, "ping", "reply", "");
@@ -42,12 +42,12 @@ static int send_ping() {
    }
    I(ping)->free(I(ping));
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", "test", "pass");
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "test", "pass");
    send_message(I(login), &reply);
    circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");
    I(login)->free(I(login));
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));

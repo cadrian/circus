@@ -342,7 +342,7 @@ void *check_reply(circus_message_t *reply, const char *type, const char *command
 int do_login(const char *userid, const char *password, char **sessionid, char **token) {
    int result = 0;
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", userid, password);
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, userid, password);
    circus_message_t *reply = NULL;
    send_message(I(login), &reply);
    circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");

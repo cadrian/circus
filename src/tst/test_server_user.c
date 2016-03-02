@@ -32,7 +32,7 @@ static int send_login() {
    result = do_login("test", "pass", &admin_sessionid, &admin_token);
    if (result == 0) {
       circus_message_t *reply = NULL;
-      circus_message_query_user_t *admin_user = new_circus_message_query_user(stdlib_memory, "", admin_sessionid, admin_token, "noob", "noob@clueless.lol", "user");
+      circus_message_query_user_t *admin_user = new_circus_message_query_user(stdlib_memory, admin_sessionid, admin_token, "noob", "noob@clueless.lol", "user");
       send_message(I(admin_user), &reply);
       circus_message_reply_user_t *admin_userr = check_reply(reply, "user", "reply", "");
       if (admin_userr == NULL) {
@@ -69,7 +69,7 @@ static int send_login() {
       }
    }
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", admin_sessionid, admin_token, "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, admin_sessionid, admin_token, "test");
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
 

@@ -32,7 +32,7 @@ static int send_login() {
 
    result = do_login(userid, pass, &sessionid, &token);
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", sessionid, token, "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, sessionid, token, "test");
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
 

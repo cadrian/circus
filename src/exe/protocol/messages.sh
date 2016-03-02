@@ -144,7 +144,10 @@ function msg_factoryh() {
     local file=$(init_file "factory/$type/impl.h")
     {
         echo "__PUBLIC__ circus_message_${msg}_${type}_t *deserialize_circus_message_${msg}_${type}(cad_memory_t memory,json_object_t *object);"
-        echo -n "__PUBLIC__ circus_message_${msg}_${type}_t *new_circus_message_${msg}_${type}(cad_memory_t memory, const char *error"
+        echo -n "__PUBLIC__ circus_message_${msg}_${type}_t *new_circus_message_${msg}_${type}(cad_memory_t memory"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo -n ", const char *error"
+        fi
     } >> $file
 }
 
@@ -391,7 +394,9 @@ function msg_factoryc() {
         echo "#include \"$msg.struct.c\""
         echo "static const char *${type}_${msg}_type_impl_fn(${type}_${msg}_impl_t *UNUSED(this)) { return \"$type\"; }"
         echo "static const char *${type}_${msg}_command_impl_fn(${type}_${msg}_impl_t *UNUSED(this)) { return \"$msg\"; }"
-        echo "static const char *${type}_${msg}_error_impl_fn(${type}_${msg}_impl_t *this) { return this->error; }"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "static const char *${type}_${msg}_error_impl_fn(${type}_${msg}_impl_t *this) { return this->error; }"
+        fi
         echo "static void ${type}_${msg}_accept_impl_fn(${type}_${msg}_impl_t *this, circus_message_visitor_${msg%%_*}_t *visitor) {"
         echo "    visitor->visit_${msg}_${type}(visitor, (circus_message_${msg}_${type}_t*)this);"
         echo "}"
@@ -409,16 +414,20 @@ function msg_factoryc() {
         echo "    json_string_t *jtype = json_new_string(this->memory);"
         echo "    jtype->add_string(jtype, \"%s\", \"${msg}_${type}\");"
         echo "    result->set(result, \"type\", (json_value_t*)jtype);"
-        echo "    json_string_t *jerror = json_new_string(this->memory);"
-        echo "    jerror->add_string(jerror, \"%s\", this->error);"
-        echo "    result->set(result, \"error\", (json_value_t*)jerror);"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "    json_string_t *jerror = json_new_string(this->memory);"
+            echo "    jerror->add_string(jerror, \"%s\", this->error);"
+            echo "    result->set(result, \"error\", (json_value_t*)jerror);"
+        fi
     } >> $serialize_file
     local struct_file=$(init_file msg/$type/$msg.struct.c)
     {
         echo "struct ${type}_${msg}_impl_s {"
         echo "    circus_message_${msg}_${type}_t fn;"
         echo "    cad_memory_t memory;"
-        echo "    char *error;"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "    char *error;"
+        fi
     } >> $struct_file
     local fn_file=$(init_file msg/$type/$msg.fn.c)
     {
@@ -426,7 +435,11 @@ function msg_factoryc() {
         echo "    .fn = {"
         echo "        (circus_message_type_fn)${type}_${msg}_type_impl_fn,"
         echo "        (circus_message_command_fn)${type}_${msg}_command_impl_fn,"
-        echo "        (circus_message_error_fn)${type}_${msg}_error_impl_fn,"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "        (circus_message_error_fn)${type}_${msg}_error_impl_fn,"
+        else
+            echo "        (circus_message_error_fn)no_error,"
+        fi
         echo "        (circus_message_accept_fn)${type}_${msg}_accept_impl_fn,"
         echo "        (circus_message_serialize_fn)${type}_${msg}_serialize_impl_fn,"
         echo "        (circus_message_free_fn)${type}_${msg}_free_impl_fn,"
@@ -435,9 +448,13 @@ function msg_factoryc() {
     local factory_file=$(init_file factory/$type/impl.c)
     {
         echo "circus_message_${msg}_${type}_t *deserialize_circus_message_${msg}_${type}(cad_memory_t memory,json_object_t *object) {"
+        echo "(void)object;"
         echo "#include \"deserialize_$msg.c\""
         echo "}"
-        echo -n "__PUBLIC__ circus_message_${msg}_${type}_t *new_circus_message_${msg}_${type}(cad_memory_t memory, const char *error"
+        echo -n "__PUBLIC__ circus_message_${msg}_${type}_t *new_circus_message_${msg}_${type}(cad_memory_t memory"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo -n ", const char *error"
+        fi
     } >> $factory_file
     local new_file=$(init_file factory/$type/new_$msg.c)
     {
@@ -445,7 +462,9 @@ function msg_factoryc() {
         echo "    if (result) {"
         echo "        result->fn = ${type}_${msg}_impl_fn;"
         echo "        result->memory = memory;"
-        echo "        result->error = dup_string(memory, error);"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "        result->error = dup_string(memory, error);"
+        fi
     } >> $new_file
     local deserialize_file=$(init_file factory/$type/deserialize_$msg.c)
     {
@@ -453,8 +472,10 @@ function msg_factoryc() {
         echo "    if (result) {"
         echo "        result->fn = ${type}_${msg}_impl_fn;"
         echo "        result->memory = memory;"
-        echo "        json_string_t *jserror = (json_string_t*)object->get(object, \"error\");"
-        echo "        result->error = json_string(memory, jserror);"
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "        json_string_t *jserror = (json_string_t*)object->get(object, \"error\");"
+            echo "        result->error = json_string(memory, jserror);"
+        fi
     } >> $deserialize_file
 }
 

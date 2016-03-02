@@ -25,7 +25,7 @@
 static int send_login() {
    int result = 0;
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "", "foo", "invalid");
+   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "foo", "invalid");
    circus_message_t *reply = NULL;
    send_message(I(login), &reply);
    circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "Invalid credentials");
@@ -37,12 +37,12 @@ static int send_login() {
    }
    I(login)->free(I(login));
 
-   login = new_circus_message_query_login(stdlib_memory, "", "test", "pass");
+   login = new_circus_message_query_login(stdlib_memory, "test", "pass");
    send_message(I(login), &reply);
    loggedin = check_reply(reply, "login", "reply", "");
    I(login)->free(I(login));
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "", loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));

@@ -19,6 +19,12 @@
 #ifndef __CIRCUS_AUTOMATON_HANDLER_H
 #define __CIRCUS_AUTOMATON_HANDLER_H
 
+#include <cad_shared.h>
+
+#include <circus_message.h>
+
+typedef struct circus_automaton circus_automaton_t;
+
 typedef enum {
    State_error = -1,
    State_read_from_client = 0,
@@ -26,5 +32,19 @@ typedef enum {
    State_read_from_server,
    State_write_to_client,
 } circus_automaton_state_e;
+
+typedef circus_automaton_state_e (*circus_automaton_state_fn)(circus_automaton_t *this);
+typedef circus_message_t *(*circus_automaton_message_fn)(circus_automaton_t *this);
+typedef void (*circus_automaton_set_state_fn)(circus_automaton_t *this, circus_automaton_state_e state, circus_message_t *message);
+typedef void (*circus_automaton_free_fn)(circus_automaton_t *this);
+
+struct circus_automaton {
+   circus_automaton_state_fn state;
+   circus_automaton_message_fn message;
+   circus_automaton_set_state_fn set_state;
+   circus_automaton_free_fn free;
+};
+
+__PUBLIC__ circus_automaton_t *new_automaton(cad_memory_t memory);
 
 #endif /* __CIRCUS_AUTOMATON_HANDLER_H */

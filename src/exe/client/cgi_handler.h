@@ -28,7 +28,7 @@
 
 typedef struct circus_client_cgi_handler_s circus_client_cgi_handler_t;
 
-typedef void (*circus_client_cgi_handler_register_to_fn)(circus_client_cgi_handler_t *this, circus_channel_t *channel, circus_automaton_state_e *state);
+typedef void (*circus_client_cgi_handler_register_to_fn)(circus_client_cgi_handler_t *this, circus_channel_t *channel, circus_automaton_t *automaton);
 typedef void (*circus_client_cgi_handler_free_fn)(circus_client_cgi_handler_t *this);
 
 struct circus_client_cgi_handler_s {

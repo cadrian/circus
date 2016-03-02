@@ -105,9 +105,10 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_automaton_state_e state = State_read_from_client;
-   mh->register_to(mh, zmq_channel, &state);
-   ch->register_to(ch, cgi_channel, &state);
+   circus_automaton_t *automaton = new_automaton(MEMORY);
+   assert(automaton->state(automaton) == State_read_from_client);
+   mh->register_to(mh, zmq_channel, automaton);
+   ch->register_to(ch, cgi_channel, automaton);
 
    log_info(LOG, "client_cgi", "Client started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);

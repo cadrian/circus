@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include <circus_log.h>
+#include <circus_message_impl.h>
 #include <circus_xdg.h>
 
 #include "cgi_handler.h"
@@ -35,15 +36,15 @@ typedef struct {
    circus_client_cgi_handler_t fn;
    cad_memory_t memory;
    circus_log_t *log;
-   circus_automaton_state_e *state;
+   circus_automaton_t *automaton;
    char *templates_path;
 } impl_cgi_t;
 
-static void set_response_string(circus_automaton_state_e *state, cad_cgi_response_t *response, int status, const char *string) {
+static void set_response_string(circus_automaton_t *automaton, cad_cgi_response_t *response, int status, const char *string) {
    cad_output_stream_t *body = response->body(response);
    response->set_status(response, status);
    body->put(body, string);
-   *state = State_write_to_client;
+   automaton->set_state(automaton, State_write_to_client, NULL);
 }
 
 static void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, const char *template, cad_stache_resolve_cb cb, void *cb_data) {
@@ -52,7 +53,7 @@ static void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response
    assert(template_path != NULL);
    int template_fd = open(template_path, O_RDONLY);
    if (template_fd == -1) {
-      set_response_string(this->state, response, 500, "Error opening template");
+      set_response_string(this->automaton, response, 500, "Error opening template");
    } else {
       cad_input_stream_t *in = new_cad_input_stream_from_file_descriptor(template_fd, this->memory);
       assert(in != NULL);
@@ -66,50 +67,119 @@ static void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response
    this->memory.free(template_path);
 }
 
-static cad_stache_lookup_type resolve_root(cad_stache_t *UNUSED(stache), const char *UNUSED(name), void *UNUSED(data), cad_stache_resolved_t **UNUSED(resolved)) {
+static cad_stache_lookup_type resolve_login(cad_stache_t *UNUSED(stache), const char *UNUSED(name), void *UNUSED(data), cad_stache_resolved_t **UNUSED(resolved)) {
+   return Cad_stache_not_found;
+}
+
+struct meta_data {
+   cad_cgi_meta_t *data;
+   cad_memory_t memory;
+};
+
+struct meta_resolved {
+   cad_stache_resolved_t fn;
+   cad_memory_t memory;
+   const char *value;
+};
+
+static const char *meta_resolved_get(struct meta_resolved *this) {
+   return this->value;
+}
+
+static int meta_resolved_free(struct meta_resolved *this) {
+   this->memory.free(this);
+   return 1;
+}
+
+static cad_stache_resolved_t meta_resolved_fn = {
+   .string = {
+      .get = (const char*(*)(cad_stache_resolved_t*))meta_resolved_get,
+      .free = (int (*)(cad_stache_resolved_t*))meta_resolved_free,
+   },
+};
+
+static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const char *name, void *data, cad_stache_resolved_t **resolved) {
+   struct meta_data *meta = (struct meta_data*)data;
+   cad_hash_t *form = meta->data->input_as_form(meta->data);
+   const char *value = form->get(form, name);
+   if (value != NULL) {
+      struct meta_resolved *res = meta->memory.malloc(sizeof(struct meta_resolved));
+      assert(res != NULL);
+      res->fn = meta_resolved_fn;
+      res->memory = meta->memory;
+      res->value = value;
+      *resolved = I(res);
+      return Cad_stache_string;
+   }
    return Cad_stache_not_found;
 }
 
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
-   if (*(this->state) == State_read_from_client) {
+   if (this->automaton->state(this->automaton) == State_read_from_client) {
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
+      const char *path = meta->path_info(meta);
       if (!strcmp(verb, "GET")) {
-         const char *path = meta->path_info(meta);
          if (strcmp(path, "") || strcmp(path, "/")) {
-            set_response_string(this->state, response, 401, "Invalid path");
+            set_response_string(this->automaton, response, 401, "Invalid path");
          } else {
             cad_hash_t *query = meta->query_string(meta);
             assert(query != NULL);
             if (query->count(query) != 0) {
-               set_response_string(this->state, response, 401, "Invalid query");
+               set_response_string(this->automaton, response, 401, "Invalid query");
             } else {
-               set_response_template(this, response, "root", resolve_root, NULL);
+               set_response_template(this, response, "login", resolve_login, NULL);
             }
             query->free(query);
          }
       } else if (!strcmp(verb, "POST")) {
+         circus_message_t *message = NULL;
          cad_hash_t *form = meta->input_as_form(meta);
          assert(form != NULL);
-         // TODO
-         form->free(form);
-         *(this->state) = State_write_to_server;
+
+         if (strcmp(path, "/login.do")) {
+            const char *username = form->get(form, "username");
+            const char *password = form->get(form, "password");
+            message = I(new_circus_message_query_login(this->memory, username, password));
+         }
+
+         if (message == NULL) {
+            set_response_string(this->automaton, response, 401, "Invalid path");
+         } else {
+            this->automaton->set_state(this->automaton, State_write_to_server, message);
+         }
       } else {
-         set_response_string(this->state, response, 405, "Unknown method");
+         set_response_string(this->automaton, response, 405, "Unknown method");
       }
    }
 }
 
-static void impl_cgi_write(circus_channel_t *channel, impl_cgi_t *this, cad_cgi_response_t *response) {
-   if (*(this->state) == State_write_to_client) {
-      // TODO
-      (void)channel;(void)response;
+static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
+   if (this->automaton->state(this->automaton) == State_write_to_client) {
+      cad_cgi_meta_t *meta = response->meta_variables(response);
+      const char *verb = meta->request_method(meta);
+      if (!strcmp(verb, "POST")) {
+         const char *path = meta->path_info(meta);
+         if (strcmp(path, "/login.do")) {
+            circus_message_reply_login_t *login = (circus_message_reply_login_t*)this->automaton->message(this->automaton);
+            const char *error = I(login)->error(I(login));
+            if (strlen(error) == 0) {
+               struct meta_data data = {meta, this->memory};
+               set_response_template(this, response, "home", resolve_meta, &data);
+            } else {
+               log_error(this->log, "cgi_handler", "login error: %s", error);
+               set_response_string(this->automaton, response, 403, "Access denied.");
+            }
+         }
+      }
+      int n = response->flush(response);
+      assert(n == 0);
    }
 }
 
-static void impl_register_to(impl_cgi_t *this, circus_channel_t *channel, circus_automaton_state_e *state) {
-   assert(state != NULL);
-   this->state = state;
+static void impl_register_to(impl_cgi_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {
+   assert(automaton != NULL);
+   this->automaton = automaton;
    channel->on_read(channel, (circus_channel_on_read_cb)impl_cgi_read, this);
    channel->on_write(channel, (circus_channel_on_write_cb)impl_cgi_write, this);
 }
@@ -139,7 +209,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    result->fn = impl_cgi_fn;
    result->memory = memory;
    result->log = log;
-   result->state = NULL;
+   result->automaton = NULL;
    result->templates_path = templates_path;
 
    return I(result);

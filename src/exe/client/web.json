@@ -1,0 +1,11 @@
+{
+    "/login.do": {
+        "ok": {
+            "query": "login",
+            "params": [ "userid", "password" ],
+            "reply": "login",
+            "extra": [ "sessionid", "token" ],
+            "template": "home"
+        }
+    }
+}

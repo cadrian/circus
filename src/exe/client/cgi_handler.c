@@ -18,10 +18,10 @@
 
 #include <string.h>
 
-#include <circus_message_impl.h>
 #include <circus_xdg.h>
 
 #include "client_impl.h"
+#include "gen/web.h"
 
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_read_from_client) {
@@ -42,21 +42,7 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
             query->free(query);
          }
       } else if (!strcmp(verb, "POST")) {
-         circus_message_t *message = NULL;
-         cad_hash_t *form = meta->input_as_form(meta);
-         assert(form != NULL);
-
-         if (!strcmp(path, "/login.do")) {
-            const char *username = form->get(form, "username");
-            const char *password = form->get(form, "password");
-            message = I(new_circus_message_query_login(this->memory, username, password));
-         }
-
-         if (message == NULL) {
-            set_response_string(this, response, 401, "Invalid path");
-         } else {
-            this->automaton->set_state(this->automaton, State_write_to_server, message);
-         }
+         post_read(this, response);
       } else {
          set_response_string(this, response, 405, "Unknown method");
       }
@@ -67,18 +53,12 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
    if (this->automaton->state(this->automaton) == State_write_to_client) {
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
-      if (!strcmp(verb, "POST")) {
-         const char *path = meta->path_info(meta);
-         if (strcmp(path, "/login.do")) {
-            circus_message_reply_login_t *login = (circus_message_reply_login_t*)this->automaton->message(this->automaton);
-            const char *error = I(login)->error(I(login));
-            if (strlen(error) == 0) {
-               set_response_template(this, response, 200, "home", NULL);
-            } else {
-               log_error(this->log, "cgi_handler", "login error: %s", error);
-               set_response_string(this, response, 403, "Access denied.");
-            }
-         }
+      if (!strcmp(verb, "GET")) {
+         /* nothing to do */
+      } else if (!strcmp(verb, "POST")) {
+         post_write(this, response);
+      } else {
+         assert(0/* BUG */);
       }
       int n = response->flush(response);
       assert(n == 0);

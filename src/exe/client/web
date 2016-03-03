@@ -1,0 +1,7 @@
+URL: /login.do
+ACTION: ok
+query: login
+reply: login
+params: userid password
+extra: sessionid token
+template: home

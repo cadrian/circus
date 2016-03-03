@@ -91,7 +91,7 @@ function do_webh() {
     {
         echo '#ifndef __CIRCUS_WEB_H'
         echo '#define __CIRCUS_WEB_H'
-        echo '#include "client_impl.h"'
+        echo '#include "../client_impl.h"'
         echo 'void post_read(impl_cgi_t *this, cad_cgi_response_t *response);'
         echo 'void post_write(impl_cgi_t *this, cad_cgi_response_t *response);'
     } >> $file
@@ -129,10 +129,13 @@ function reply_webh() {
 function do_webc() {
     local file=$(init_file web.c)
     {
+        echo '#include <string.h>'
+        echo
+        echo '#include <circus_message_impl.h>'
         echo '#include "web.h"'
         echo
         echo 'void post_read(impl_cgi_t *this, cad_cgi_response_t *response) {'
-        echo '   cad_message_t *message = NULL;'
+        echo '   circus_message_t *message = NULL;'
         echo '   cad_cgi_meta_t *meta = response->meta_variables(response);'
         echo '   const char *path = meta->path_info(meta);'
         echo '   cad_hash_t *form = meta->input_as_form(meta);'
@@ -146,7 +149,7 @@ function do_webc() {
         echo '}'
         echo
         echo 'void post_write(impl_cgi_t *this, cad_cgi_response_t *response) {'
-        echo '   cad_message_t *message = this->automaton->message(this->automaton);'
+        echo '   circus_message_t *message = this->automaton->message(this->automaton);'
         echo '   const char *error = message->error(message);'
         echo '   if (strlen(error) == 0) {'
         echo '      cad_cgi_meta_t *meta = response->meta_variables(response);'
@@ -205,7 +208,7 @@ function query_webc() {
         for param in $params; do
             echo -n ", $param"
         done
-        echo ');'
+        echo '));'
     } >> $read_file
 }
 
@@ -218,7 +221,7 @@ function reply_webc() {
         echo "circus_message_reply_${reply}_t *reply = (circus_message_reply_${reply}_t*)message;"
         echo "cad_hash_t *extra = cad_new_hash(this->memory, cad_hash_strings);"
         for extrum in $extra; do
-            echo "extra->set(extra, \"$extrum\", reply->$extrum(reply));"
+            echo "extra->set(extra, \"$extrum\", (char*)reply->$extrum(reply));"
         done
         echo "set_response_template(this, response, 200, \"$template\", extra);"
         echo "extra->free(extra);"

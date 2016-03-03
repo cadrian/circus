@@ -2,6 +2,7 @@ set -e
 #set -x
 
 redo-ifchange exe/protocol/messages
+redo-ifchange exe/client/web
 
 out=${2%.dbg}
 if [ $out == $2 ]; then
@@ -50,18 +51,26 @@ function rebuild_deps() {
     rm $1.deps
 }
 
+DEPS=$(rebuild_deps $out)
+
 libs="-lcad -lyacjp -luv -lzmq"
 case $(basename $out) in
     server)
         libs="$libs -lsqlite3 -lgcrypt"
         ;;
+    client_cgi)
+        webo=exe/client/gen/web$obj_suffix
+        redo-ifchange $webo
+        DEPS="$DEPS $webo"
+        ;;
     test_server*)
-        redo-ifchange exe/config/xdg$obj_suffix
-        libs="$(dirname $out)/_test_server$obj_suffix exe/config/xdg$obj_suffix $libs -lsqlite3 -lgcrypt -lcallback"
+        xdgo=exe/config/xdg$obj_suffix
+        redo-ifchange $xdgo
+        DEPS="$DEPS $(dirname $out)/_test_server$obj_suffix $xdgo"
+        libs="$libs -lsqlite3 -lgcrypt -lcallback"
         ;;
 esac
 
-DEPS=$(rebuild_deps $out)
 export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} /.+/ {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"
 
 gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -fsanitize=undefined -o $3 $out$obj_suffix $DEPS $libs

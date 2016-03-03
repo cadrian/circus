@@ -29,7 +29,7 @@ static circus_automaton_state_e state(automaton_impl *this) {
    return this->state;
 }
 
-static circus_message_t*message(automaton_impl *this) {
+static circus_message_t *message(automaton_impl *this) {
    return this->message;
 }
 

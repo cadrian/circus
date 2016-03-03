@@ -137,7 +137,7 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
          cad_hash_t *form = meta->input_as_form(meta);
          assert(form != NULL);
 
-         if (strcmp(path, "/login.do")) {
+         if (!strcmp(path, "/login.do")) {
             const char *username = form->get(form, "username");
             const char *password = form->get(form, "password");
             message = I(new_circus_message_query_login(this->memory, username, password));

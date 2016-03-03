@@ -84,7 +84,7 @@ function for_all() {
     for fn in "$@"; do
         do_$fn
     done
-    jq keys < messages.json | egrep -o '[a-z_]+' | while read type; do
+    jq keys | egrep -o '[a-z_]+' | while read type; do
         for fn in "$@"; do
             type_$fn $type
         done

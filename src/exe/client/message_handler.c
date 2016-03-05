@@ -16,6 +16,8 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <string.h>
+
 #include <circus_log.h>
 #include <circus_message_impl.h>
 
@@ -137,10 +139,62 @@ static circus_message_visitor_reply_t visitor_fn = {
    (circus_message_visitor_reply_version_fn)visit_reply_version,
 };
 
+static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
+   if (this->automaton->state(this->automaton) == State_write_to_server) {
+      circus_message_t *msg = this->automaton->message(this->automaton);
+      assert(msg != NULL);
+      json_object_t *jmsg = msg->serialize(msg);
+      assert(jmsg != NULL);
+      char *szmsg = NULL;
+      cad_output_stream_t *outmsg = new_cad_output_stream_from_string(&szmsg, this->memory);
+      assert(outmsg != NULL);
+      json_visitor_t *wmsg = json_write_to(outmsg, this->memory, json_compact);
+      assert(wmsg != NULL);
+      jmsg->accept(jmsg, wmsg);
+      assert(outmsg != NULL);
+      jmsg->free(jmsg);
+      wmsg->free(wmsg);
+      outmsg->free(outmsg);
+
+      channel->write(channel, szmsg, strlen(szmsg));
+      this->memory.free(szmsg);
+
+      this->automaton->set_state(this->automaton, State_read_from_server, NULL);
+   }
+}
+
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
    if (this->automaton->state(this->automaton) == State_read_from_server) {
-      // TODO
-      (void)channel;
+      int buflen = 4096;
+      int nbuf = 0;
+      char *buf = this->memory.malloc(buflen);
+      assert(buf != NULL);
+      int n;
+      do {
+         n = channel->read(channel, buf + nbuf, buflen - nbuf);
+         if (n > 0) {
+            if (n + nbuf == buflen) {
+               size_t bl = buflen * 2;
+               buf = this->memory.realloc(buf, bl);
+               buflen = bl;
+            }
+            nbuf += n;
+         }
+      } while (n > 0);
+
+      cad_input_stream_t *inmsg = new_cad_input_stream_from_string(buf, this->memory);
+      assert(inmsg != NULL);
+      json_value_t *jmsg = json_parse(inmsg, NULL, NULL, this->memory);
+      assert(jmsg != NULL);
+      circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
+      assert(msg != NULL);
+
+      jmsg->free(jmsg);
+      inmsg->free(inmsg);
+      this->memory.free(buf);
+
+      msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
+      this->automaton->set_state(this->automaton, State_write_to_client, msg);
    }
 }
 

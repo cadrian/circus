@@ -23,6 +23,8 @@ typedef struct {
    cad_memory_t memory;
    circus_automaton_state_e state;
    circus_message_t *message;
+   circus_automaton_state_cb cb[State_write_to_client + 1];
+   void *cb_data[State_write_to_client + 1];
 } automaton_impl;
 
 static circus_automaton_state_e state(automaton_impl *this) {
@@ -34,9 +36,26 @@ static circus_message_t *message(automaton_impl *this) {
 }
 
 static void set_state(automaton_impl *this, circus_automaton_state_e state, circus_message_t *message) {
-   assert(this->state != -1 && (state == -1 || state >= this->state));
+   assert(this->state != State_error && (state == State_error || state >= this->state));
+   int changed = state != this->state;
    this->state = state;
    this->message = message;
+   if (changed && (state != State_error)) {
+      circus_automaton_state_cb cb = this->cb[state];
+      void *data = this->cb_data[state];
+      if (cb) {
+         cb(I(this), data);
+      }
+   }
+}
+
+static void on_state(automaton_impl *this, circus_automaton_state_e state, circus_automaton_state_cb cb, void *data) {
+   assert(state >= 0 && state <= State_write_to_client);
+   this->cb[state] = cb;
+   this->cb_data[state] = data;
+   if ((this->state == state) && (cb != NULL)) {
+      cb(I(this), data);
+   }
 }
 
 static void free_automaton(automaton_impl *this) {
@@ -47,6 +66,7 @@ static circus_automaton_t fn = {
    (circus_automaton_state_fn) state,
    (circus_automaton_message_fn) message,
    (circus_automaton_set_state_fn) set_state,
+   (circus_automaton_on_state_fn) on_state,
    (circus_automaton_free_fn) free_automaton,
 };
 
@@ -57,5 +77,10 @@ circus_automaton_t *new_automaton(cad_memory_t memory) {
    result->memory = memory;
    result->state = State_read_from_client;
    result->message = NULL;
+   int i;
+   for (i = 0; i <= State_write_to_client; i++) {
+      result->cb[i] = NULL;
+      result->cb_data[i] = NULL;
+   }
    return I(result);
 }

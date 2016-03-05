@@ -33,15 +33,19 @@ typedef enum {
    State_write_to_client,
 } circus_automaton_state_e;
 
+typedef void (*circus_automaton_state_cb)(circus_automaton_t *automaton, void *data);
+
 typedef circus_automaton_state_e (*circus_automaton_state_fn)(circus_automaton_t *this);
 typedef circus_message_t *(*circus_automaton_message_fn)(circus_automaton_t *this);
 typedef void (*circus_automaton_set_state_fn)(circus_automaton_t *this, circus_automaton_state_e state, circus_message_t *message);
+typedef void (*circus_automaton_on_state_fn)(circus_automaton_t *this, circus_automaton_state_e state, circus_automaton_state_cb cb, void *data);
 typedef void (*circus_automaton_free_fn)(circus_automaton_t *this);
 
 struct circus_automaton {
    circus_automaton_state_fn state;
    circus_automaton_message_fn message;
    circus_automaton_set_state_fn set_state;
+   circus_automaton_on_state_fn on_state;
    circus_automaton_free_fn free;
 };
 

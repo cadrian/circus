@@ -26,6 +26,7 @@ typedef struct {
    circus_message_visitor_reply_t vfn;
    cad_memory_t memory;
    circus_log_t *log;
+   circus_channel_t *channel;
    circus_automaton_t *automaton;
 } impl_mh_t;
 
@@ -143,18 +144,22 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
    }
 }
 
-static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
-   if (this->automaton->state(this->automaton) == State_write_to_server) {
-      // TODO
-      (void)channel;
-   }
+static void on_write(circus_automaton_t *automaton, impl_mh_t *this) {
+   assert(this->automaton == automaton);
+   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_mh_write, this);
+}
+
+static void on_read(circus_automaton_t *automaton, impl_mh_t *this) {
+   assert(this->automaton == automaton);
+   this->channel->on_read(this->channel, (circus_channel_on_read_cb)impl_mh_read, this);
 }
 
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {
    assert(automaton != NULL);
+   this->channel = channel;
    this->automaton = automaton;
-   channel->on_read(channel, (circus_channel_on_read_cb)impl_mh_read, this);
-   channel->on_write(channel, (circus_channel_on_write_cb)impl_mh_write, this);
+   this->automaton->on_state(this->automaton, State_write_to_server, (circus_automaton_state_cb)on_write, this);
+   this->automaton->on_state(this->automaton, State_read_from_server, (circus_automaton_state_cb)on_read, this);
 }
 
 static void impl_free(impl_mh_t *this) {
@@ -174,6 +179,8 @@ circus_client_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->vfn = visitor_fn;
    result->memory = memory;
    result->log = log;
+   result->channel = NULL;
+   result->automaton = NULL;
 
    return I(result);
 }

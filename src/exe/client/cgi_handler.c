@@ -65,11 +65,22 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
    }
 }
 
+static void on_read(circus_automaton_t *automaton, impl_cgi_t *this) {
+   assert(this->automaton == automaton);
+   this->channel->on_read(this->channel, (circus_channel_on_read_cb)impl_cgi_read, this);
+}
+
+static void on_write(circus_automaton_t *automaton, impl_cgi_t *this) {
+   assert(this->automaton == automaton);
+   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_cgi_write, this);
+}
+
 static void impl_register_to(impl_cgi_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {
    assert(automaton != NULL);
+   this->channel = channel;
    this->automaton = automaton;
-   channel->on_read(channel, (circus_channel_on_read_cb)impl_cgi_read, this);
-   channel->on_write(channel, (circus_channel_on_write_cb)impl_cgi_write, this);
+   this->automaton->on_state(this->automaton, State_read_from_client, (circus_automaton_state_cb)on_read, this);
+   this->automaton->on_state(this->automaton, State_write_to_client, (circus_automaton_state_cb)on_write, this);
 }
 
 static void impl_free(impl_cgi_t *this) {
@@ -97,6 +108,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    result->fn = impl_cgi_fn;
    result->memory = memory;
    result->log = log;
+   result->channel = NULL;
    result->automaton = NULL;
    result->templates_path = templates_path;
 

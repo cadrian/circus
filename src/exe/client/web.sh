@@ -161,21 +161,19 @@ function do_webc() {
         echo '   }'
         echo '}'
     } >> $file
-    {
-        echo 'if (0) {'
-    } >> $(init_file post_read.c)
-    {
-        echo 'if (0) {'
-    } >> $(init_file post_write.c)
 }
 
 function od_webc() {
     local read_file=$(init_file post_read.c)
     {
+        echo '{'
+        echo '   set_response_string(this, response, 404, "Not found.");'
         echo '}'
     } >> $read_file
     local write_file=$(init_file post_write.c)
     {
+        echo '{'
+        echo '   set_response_string(this, response, 404, "Not found.");'
         echo '}'
     } >> $write_file
 }
@@ -184,16 +182,24 @@ function url_webc() {
     local url=$1
     local read_file=$(init_file post_read.c)
     {
-        echo '} else if (!strcmp(path, "'"$url"'")) {'
+        echo 'if (!strcmp(path, "'"$url"'")) {'
     } >> $read_file
     local write_file=$(init_file post_write.c)
     {
-        echo '} else if (!strcmp(path, "'"$url"'")) {'
+        echo 'if (!strcmp(path, "'"$url"'")) {'
     } >> $write_file
 }
 
 function lru_webc() {
     local url=$1
+    local read_file=$(init_file post_read.c)
+    {
+        echo -n '} else '
+    } >> $read_file
+    local write_file=$(init_file post_write.c)
+    {
+        echo -n '} else '
+    } >> $write_file
 }
 
 function query_webc() {
@@ -202,11 +208,11 @@ function query_webc() {
     local read_file=$(init_file post_read.c)
     {
         for param in $params; do
-            echo "const char *$param = form->get(form, \"$param\");"
+            echo "   const char *${query}_$param = form->get(form, \"$param\");"
         done
-        echo -n "message = I(new_circus_message_query_$query(this->memory"
+        echo -n "   message = I(new_circus_message_query_$query(this->memory"
         for param in $params; do
-            echo -n ", $param"
+            echo -n ", ${query}_$param"
         done
         echo '));'
     } >> $read_file
@@ -218,13 +224,17 @@ function reply_webc() {
     local template="$3"
     local write_file=$(init_file post_write.c)
     {
-        echo "circus_message_reply_${reply}_t *reply = (circus_message_reply_${reply}_t*)message;"
-        echo "cad_hash_t *extra = cad_new_hash(this->memory, cad_hash_strings);"
+        echo "   if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
+        echo "      circus_message_reply_${reply}_t *${query}_reply = (circus_message_reply_${reply}_t*)message;"
+        echo "      cad_hash_t *${query}_extra = cad_new_hash(this->memory, cad_hash_strings);"
         for extrum in $extra; do
-            echo "extra->set(extra, \"$extrum\", (char*)reply->$extrum(reply));"
+            echo "      ${query}_extra->set(${query}_extra, \"$extrum\", (char*)${query}_reply->$extrum(${query}_reply));"
         done
-        echo "set_response_template(this, response, 200, \"$template\", extra);"
-        echo "extra->free(extra);"
+        echo "      set_response_template(this, response, 200, \"$template\", ${query}_extra);"
+        echo "      ${query}_extra->free(${query}_extra);"
+        echo "   } else {"
+        echo "      set_response_string(this, response, 500, \"Invalid reply from server\");"
+        echo "   }"
     } >> $write_file
 }
 

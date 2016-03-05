@@ -60,6 +60,10 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
       } else {
          assert(0/* BUG */);
       }
+      circus_message_t *msg = this->automaton->message(this->automaton);
+      if (msg != NULL) {
+         msg->free(msg);
+      }
       int n = response->flush(response);
       assert(n == 0);
    }

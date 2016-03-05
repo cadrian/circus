@@ -109,6 +109,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       stache->free(stache);
       in->free(in);
       close(template_fd);
+      this->automaton->set_state(this->automaton, State_write_to_client, NULL);
    }
    this->memory.free(template_path);
 }

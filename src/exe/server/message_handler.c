@@ -317,7 +317,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
       if (in == NULL) {
          log_error(this->log, "message_handler", "Could not allocate input stream");
       } else {
-         json_value_t *jmsg = json_parse(in, NULL, this, this->memory);
+         json_value_t *jmsg = json_parse(in, NULL, NULL, this->memory);
          if (jmsg == NULL) {
             log_error(this->log, "message_handler", "Could not parse JSON");
          } else {

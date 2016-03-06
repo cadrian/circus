@@ -85,9 +85,15 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string) {
    cad_output_stream_t *body = response->body(response);
+   log_debug(this->log, "resolve", "response string: status %d -- %s", status, string);
    response->set_status(response, status);
    body->put(body, string);
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
+}
+
+static void template_error(const char *error, int offset, void *data) {
+   impl_cgi_t *this = (impl_cgi_t*)data;
+   log_error(this->log, "Stache error: %s at %d", error, offset);
 }
 
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
@@ -98,6 +104,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    assert(template_path != NULL);
    int template_fd = open(template_path, O_RDONLY);
    if (template_fd == -1) {
+      log_error(this->log, "resolve", "Error opening template: %s", template_path);
       set_response_string(this, response, 500, "Error opening template");
    } else {
       response->set_status(response, status);
@@ -105,7 +112,8 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       assert(in != NULL);
       cad_stache_t *stache = new_cad_stache(this->memory, (cad_stache_resolve_cb)resolve_meta, &data);
       assert(stache != NULL);
-      stache->render(stache, in, body, NULL);
+      log_debug(this->log, "resolve", "Rendering stache...");
+      stache->render(stache, in, body, template_error, this);
       stache->free(stache);
       in->free(in);
       close(template_fd);

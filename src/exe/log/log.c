@@ -474,7 +474,7 @@ static void impl_set_format(circus_log_impl *this, const char *format) {
 
 static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *module, log_level_t level) {
    assert(module != NULL);
-   assert(level < __LOG_MAX);
+   assert(level >= LOG_ERROR && level < __LOG_MAX);
    assert(this->logger != NULL);
 
    cad_output_stream_t **module_streams = this->module_streams->get(this->module_streams, module);

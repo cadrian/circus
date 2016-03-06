@@ -72,17 +72,24 @@ static circus_channel_t impl_fn = {
 
 static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
    cgi_impl_t *this = container_of(handle, cgi_impl_t, write_handle);
+   int n;
    cad_cgi_response_t *response = handle->data;
+   assert(response != NULL);
    if (status != 0) {
-      log_warning(this->log, "channel_cgi", "impl_cgi_read_callback: status=%d", status);
+      log_warning(this->log, "channel_cgi", "impl_cgi_write_callback: status=%d", status);
       return;
    }
+   log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: event write: %s", events & UV_WRITABLE ? "true": "false");
    if (events & UV_WRITABLE) {
       if (this->write_cb != NULL) {
+         log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: calling callback");
          (this->write_cb)((circus_channel_t*)this, this->write_data, response);
-         response->flush(response);
+         n = response->flush(response);
+         assert(n == 0);
       }
       response->free(response);
+      n = uv_poll_stop(&(this->write_handle));
+      assert(n == 0);
    }
 }
 
@@ -104,11 +111,17 @@ static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
       log_warning(this->log, "channel_cgi", "impl_cgi_read_callback: status=%d", status);
       return;
    }
+   log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: event read: %s", events & UV_READABLE ? "true": "false");
    if (events & UV_READABLE) {
+      log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: calling CGI run");
       cad_cgi_response_t *response = this->cgi->run(this->cgi);
       if (response != NULL) {
          start_write(this, response);
+      } else {
+         log_error(this->log, "channel_cgi", "NULL response!!");
       }
+      int n = uv_poll_stop(&(this->read_handle));
+      assert(n == 0);
    }
 }
 
@@ -123,19 +136,21 @@ static void start_read(cgi_impl_t *this) {
    assert(n == 0);
 }
 
-static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response) {
-   cgi_impl_t *this = container_of(&cgi, cgi_impl_t, cgi);
+static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response, cgi_impl_t *this) {
+   assert(this->cgi == cgi);
+   log_debug(this->log, "channel_cgi", "cgi_handler: response=%p", response);
    if (this->read_cb != NULL) {
       (this->read_cb)((circus_channel_t*)this, this->read_data, response);
+      return 0;
    }
-   return 0;
+   return 1;
 }
 
 circus_channel_t *circus_cgi(cad_memory_t memory, circus_log_t *log, circus_config_t *UNUSED(config)) {
-   cgi_impl_t *result = malloc(sizeof(cgi_impl_t));
+   cgi_impl_t *result = memory.malloc(sizeof(cgi_impl_t));
    assert(result != NULL);
 
-   cad_cgi_t *cgi = new_cad_cgi(memory, cgi_handler);
+   cad_cgi_t *cgi = new_cad_cgi(memory, (cad_cgi_handle_cb)cgi_handler, result);
    assert(cgi != NULL);
 
    result->fn = impl_fn;

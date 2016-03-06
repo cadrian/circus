@@ -1,0 +1,6 @@
+*.log
+*.log.new
+*.log.err
+*.client_log
+*.res
+*.run

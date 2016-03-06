@@ -21,10 +21,11 @@
 typedef struct {
    circus_automaton_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    circus_automaton_state_e state;
    circus_message_t *message;
-   circus_automaton_state_cb cb[State_write_to_client + 1];
-   void *cb_data[State_write_to_client + 1];
+   circus_automaton_state_cb cb[__STATE_MAX];
+   void *cb_data[__STATE_MAX];
 } automaton_impl;
 
 static circus_automaton_state_e state(automaton_impl *this) {
@@ -38,6 +39,7 @@ static circus_message_t *message(automaton_impl *this) {
 static void set_state(automaton_impl *this, circus_automaton_state_e state, circus_message_t *message) {
    assert(this->state != State_error && (state == State_error || state >= this->state));
    int changed = state != this->state;
+   log_debug(this->log, "automaton", "State: %d -> %d [%p]", this->state, state, message);
    this->state = state;
    this->message = message;
    if (changed && (state != State_error)) {
@@ -50,7 +52,7 @@ static void set_state(automaton_impl *this, circus_automaton_state_e state, circ
 }
 
 static void on_state(automaton_impl *this, circus_automaton_state_e state, circus_automaton_state_cb cb, void *data) {
-   assert(state >= 0 && state <= State_write_to_client);
+   assert(state >= 0 && state < __STATE_MAX);
    this->cb[state] = cb;
    this->cb_data[state] = data;
    if ((this->state == state) && (cb != NULL)) {
@@ -70,15 +72,16 @@ static circus_automaton_t fn = {
    (circus_automaton_free_fn) free_automaton,
 };
 
-circus_automaton_t *new_automaton(cad_memory_t memory) {
+circus_automaton_t *new_automaton(cad_memory_t memory, circus_log_t *log) {
    automaton_impl *result = memory.malloc(sizeof(automaton_impl));
    assert(result != NULL);
    result->fn = fn;
    result->memory = memory;
-   result->state = State_read_from_client;
+   result->log = log;
+   result->state = State_started;
    result->message = NULL;
    int i;
-   for (i = 0; i <= State_write_to_client; i++) {
+   for (i = 0; i < __STATE_MAX; i++) {
       result->cb[i] = NULL;
       result->cb_data[i] = NULL;
    }

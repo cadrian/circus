@@ -20,7 +20,6 @@
 #define __CIRCUS_CONFIG_H
 
 #include <circus.h>
-#include <circus_log.h>
 
 typedef struct circus_config_s circus_config_t;
 
@@ -36,6 +35,6 @@ struct circus_config_s {
    circus_config_free_fn free;
 };
 
-__PUBLIC__ circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, const char *filename);
+__PUBLIC__ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename);
 
 #endif /* __CIRCUS_CONFIG_H */

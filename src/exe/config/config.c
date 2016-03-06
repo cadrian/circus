@@ -31,7 +31,6 @@
 typedef struct {
    circus_config_t fn;
    cad_memory_t memory;
-   circus_log_t *log;
    json_object_t *data;
    int dirty;
    char *filename;
@@ -80,19 +79,21 @@ static read_t read_xdg_file_dirs(cad_memory_t memory, const char *filename) {
 }
 
 static const char *config_get(config_impl *this, const char *section, const char *key) {
-   json_string_t *result = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
+   json_string_t *entry = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
+   const char *result = NULL;
    static char *buffer = NULL;
    static size_t buflen = 0;
-   if (result != NULL) {
-      size_t n = result->utf8(result, buffer, buflen);
+   if (entry != NULL) {
+      size_t n = entry->utf8(entry, buffer, buflen);
       if (n >= buflen) {
          buflen = n + 1;
          buffer = this->memory.realloc(buffer, buflen);
-         n = result->utf8(result, buffer, buflen);
+         n = entry->utf8(entry, buffer, buflen);
          assert(n = buflen - 1);
       }
+      result = buffer;
    }
-   return (const char *)buffer;
+   return result;
 }
 
 static void config_set(config_impl *this, const char *section, const char *key, const char *value) {
@@ -140,7 +141,7 @@ static void config_write(config_impl *this) {
       path = szprintf(this->memory, NULL, "%s/%s", xdg_data_home(), this->filename);
       file = fopen(path, "w");
       if (file == NULL) {
-         log_error(this->log, "config", "Could not write config file: %s", path);
+         fprintf(stderr, "Could not write config file: %s\n", path);
          perror("fopen write config file");
          exit(1);
       }
@@ -179,7 +180,7 @@ static void config_error(cad_input_stream_t *UNUSED(stream), int line, int colum
    va_start(args, format);
    log = vszprintf(this->memory, NULL, format, args);
    va_end(args);
-   log_error(this->log, "config", "Error while reading config file, line %d, column %d: %s", line, column, log);
+   fprintf(stderr, "Error while reading config file, line %d, column %d: %s\n", line, column, log);
    this->memory.free(log);
 }
 
@@ -197,7 +198,7 @@ static void config_read_checker_visit_object(config_read_checker *this, json_obj
    int n = visited->count(visited);
    const char **keys;
    if (this->depth > 1) {
-      fprintf(stderr, "**** Invalid config, object found at depth %d", this->depth);
+      fprintf(stderr, "**** Invalid config, object found at depth %d\n", this->depth);
       exit(1);
    }
 
@@ -212,24 +213,24 @@ static void config_read_checker_visit_object(config_read_checker *this, json_obj
 }
 
 static void config_read_checker_visit_array(config_read_checker *this, json_array_t *UNUSED(visited)) {
-   fprintf(stderr, "**** Invalid config, array found at depth %d", this->depth);
+   fprintf(stderr, "**** Invalid config, array found at depth %d\n", this->depth);
    exit(1);
 }
 
 static void config_read_checker_visit_string(config_read_checker *this, json_string_t *UNUSED(visited)) {
    if (this->depth != 2) {
-      fprintf(stderr, "**** Invalid config, string found at depth %d", this->depth);
+      fprintf(stderr, "**** Invalid config, string found at depth %d\n", this->depth);
       exit(1);
    }
 }
 
 static void config_read_checker_visit_number(config_read_checker *this, json_number_t *UNUSED(visited)) {
-   fprintf(stderr, "**** Invalid config, number found at depth %d", this->depth);
+   fprintf(stderr, "**** Invalid config, number found at depth %d\n", this->depth);
    exit(1);
 }
 
 static void config_read_checker_visit_const(config_read_checker *this, json_const_t *UNUSED(visited)) {
-   fprintf(stderr, "**** Invalid config, const found at depth %d", this->depth);
+   fprintf(stderr, "**** Invalid config, const found at depth %d\n", this->depth);
    exit(1);
 }
 
@@ -242,7 +243,7 @@ static json_visitor_t config_read_checker_fn = {
    (json_visit_const_fn)config_read_checker_visit_const,
 };
 
-circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, const char *filename) {
+circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    int n = strlen(filename) + 1;
    config_impl *result;
    read_t read;
@@ -254,7 +255,6 @@ circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, cons
 
    result->fn = impl_fn;
    result->memory = memory;
-   result->log = log;
    result->filename = (char*)(result + 1);
    strncpy(result->filename, filename, n);
 
@@ -272,7 +272,7 @@ circus_config_t *circus_config_read(cad_memory_t memory, circus_log_t *log, cons
 
       data = json_parse(stream, config_error, result, memory);
       if (data == NULL) {
-         log_error(log, "config", "JSON parse error in file %s", read.path);
+         fprintf(stderr, "JSON parse error in file %s\n", read.path);
          exit(1);
       }
 

@@ -141,6 +141,7 @@ static circus_message_visitor_reply_t visitor_fn = {
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
    if (this->automaton->state(this->automaton) == State_write_to_server) {
+      log_info(this->log, "message_handler", "message write");
       circus_message_t *msg = this->automaton->message(this->automaton);
       assert(msg != NULL);
       json_object_t *jmsg = msg->serialize(msg);
@@ -165,6 +166,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
    if (this->automaton->state(this->automaton) == State_read_from_server) {
+      log_info(this->log, "message_handler", "message read");
       int buflen = 4096;
       int nbuf = 0;
       char *buf = this->memory.malloc(buflen);
@@ -201,11 +203,13 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
 static void on_write(circus_automaton_t *automaton, impl_mh_t *this) {
    assert(this->automaton == automaton);
    this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_mh_write, this);
+   log_debug(this->log, "message_handler", "register on_write");
 }
 
 static void on_read(circus_automaton_t *automaton, impl_mh_t *this) {
    assert(this->automaton == automaton);
    this->channel->on_read(this->channel, (circus_channel_on_read_cb)impl_mh_read, this);
+   log_debug(this->log, "message_handler", "register on_read");
 }
 
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {

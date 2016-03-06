@@ -7,21 +7,30 @@ case $(basename $2) in
         redo-ifchange $(dirname $2)/../exe/main/server.dbg.exe
         redo-ifchange $(dirname $2)/_test_server.dbg.o
         ;;
+    test_client*)
+        redo-ifchange $(dirname $2)/../exe/main/server.dbg.exe
+        redo-ifchange $(dirname $2)/../exe/main/client_cgi.dbg.exe
+        ;;
 esac
 
 lognew=$2.log.new
 logref=$2.log.ref
 logerr=$2.log.err
 
-exe=$2.dbg.exe
-redo-ifchange $exe
 if [[ ${LIBUV_DIR-x} != x ]]; then
     export LD_LIBRARY_PATH=$LIBUV_DIR/lib:{LD_LIBRARY_PATH-}
 fi
-(
-    cd $(dirname $exe)
-    exec $(basename $exe)
-) >$lognew 2>$logerr || {
+
+if [ -f ${1%.test}.c ]; then
+        exe=$2.dbg.exe
+        redo-ifchange $exe
+        (
+            cd $(dirname $exe)
+            exec $(basename $exe)
+        )
+elif [ -f ${1%.test}.sh ]; then
+        ${1%.test}.sh
+fi >$lognew 2>$logerr || {
     echo "**** Exited with status $?" >>$lognew
     cat $lognew >&2
     exit 1

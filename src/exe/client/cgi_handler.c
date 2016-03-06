@@ -25,21 +25,24 @@
 
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_read_from_client) {
+      log_info(this->log, "cgi_handler", "CGI read");
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
       const char *path = meta->path_info(meta);
+      log_debug(this->log, "cgi_handler", "verb: %s -- path: \"%s\"", verb, path);
       if (!strcmp(verb, "GET")) {
-         if (strcmp(path, "") || strcmp(path, "/")) {
+         if (strcmp(path, "") && strcmp(path, "/")) {
             set_response_string(this, response, 401, "Invalid path");
          } else {
             cad_hash_t *query = meta->query_string(meta);
-            assert(query != NULL);
-            if (query->count(query) != 0) {
+            if (query != NULL && query->count(query) != 0) {
                set_response_string(this, response, 401, "Invalid query");
             } else {
                set_response_template(this, response, 200, "login", NULL);
             }
-            query->free(query);
+            if (query != NULL) {
+               query->free(query);
+            }
          }
       } else if (!strcmp(verb, "POST")) {
          post_read(this, response);
@@ -51,10 +54,11 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
 
 static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_write_to_client) {
+      log_info(this->log, "cgi_handler", "CGI write");
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
       if (!strcmp(verb, "GET")) {
-         /* nothing to do */
+         log_debug(this->log, "cgi_handler", "GET: nothing more to write");
       } else if (!strcmp(verb, "POST")) {
          post_write(this, response);
       } else {
@@ -64,19 +68,20 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
       if (msg != NULL) {
          msg->free(msg);
       }
-      int n = response->flush(response);
-      assert(n == 0);
+      this->automaton->set_state(this->automaton, State_finished, NULL);
    }
 }
 
 static void on_read(circus_automaton_t *automaton, impl_cgi_t *this) {
    assert(this->automaton == automaton);
    this->channel->on_read(this->channel, (circus_channel_on_read_cb)impl_cgi_read, this);
+   log_debug(this->log, "cgi_handler", "register on_read");
 }
 
 static void on_write(circus_automaton_t *automaton, impl_cgi_t *this) {
    assert(this->automaton == automaton);
    this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_cgi_write, this);
+   log_debug(this->log, "cgi_handler", "register on_write");
 }
 
 static void impl_register_to(impl_cgi_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {
@@ -108,6 +113,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    } else {
       templates_path = szprintf(memory, NULL, "%s", tp);
    }
+   log_info(log, "cg_handler", "templates path: %s", templates_path);
 
    result->fn = impl_cgi_fn;
    result->memory = memory;

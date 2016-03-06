@@ -21,16 +21,20 @@
 
 #include <cad_shared.h>
 
+#include <circus_log.h>
 #include <circus_message.h>
 
 typedef struct circus_automaton circus_automaton_t;
 
 typedef enum {
    State_error = -1,
-   State_read_from_client = 0,
+   State_started = 0,
+   State_read_from_client,
    State_write_to_server,
    State_read_from_server,
    State_write_to_client,
+   State_finished,
+   __STATE_MAX
 } circus_automaton_state_e;
 
 typedef void (*circus_automaton_state_cb)(circus_automaton_t *automaton, void *data);
@@ -49,6 +53,6 @@ struct circus_automaton {
    circus_automaton_free_fn free;
 };
 
-__PUBLIC__ circus_automaton_t *new_automaton(cad_memory_t memory);
+__PUBLIC__ circus_automaton_t *new_automaton(cad_memory_t memory, circus_log_t *log);
 
 #endif /* __CIRCUS_AUTOMATON_HANDLER_H */

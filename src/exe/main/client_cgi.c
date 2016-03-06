@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <uv.h>
 
 #include <circus_channel.h>
@@ -33,9 +34,11 @@
 static circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
-   const char *log_szfilename = config->get(config, "log", "filename");
-   const char *log_szlevel = config->get(config, "log", "level");
+   const char *log_szfilename;
+   const char *log_szlevel;
    log_level_t log_level = LOG_INFO;
+
+   log_szlevel = config->get(config, "log", "level");
    if (log_szlevel != NULL) {
       if (!strcmp(log_szlevel, "error")) {
          log_level = LOG_ERROR;
@@ -49,8 +52,10 @@ static void set_log(circus_config_t *config) {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
    }
+
+   log_szfilename = config->get(config, "log", "filename");
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, 2);
+      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, STDERR_FILENO);
    } else {
       LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }
@@ -65,6 +70,10 @@ static void usage(const char *cmd, FILE *out) {
            "its environment.\n",
            cmd
    );
+}
+
+static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) {
+   uv_stop(uv_default_loop());
 }
 
 static void run(circus_config_t *config) {
@@ -105,10 +114,13 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_automaton_t *automaton = new_automaton(MEMORY);
-   assert(automaton->state(automaton) == State_read_from_client);
+   circus_automaton_t *automaton = new_automaton(MEMORY, LOG);
+   assert(automaton->state(automaton) == State_started);
    mh->register_to(mh, zmq_channel, automaton);
    ch->register_to(ch, cgi_channel, automaton);
+
+   automaton->on_state(automaton, State_finished, finished, NULL);
+   automaton->set_state(automaton, State_read_from_client, NULL);
 
    log_info(LOG, "client_cgi", "Client started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -122,7 +134,7 @@ static void run(circus_config_t *config) {
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {
-   circus_config_t *config = circus_config_read(stdlib_memory, LOG, "cgi.conf");
+   circus_config_t *config = circus_config_read(stdlib_memory, "cgi.conf");
    int status = 0;
 
    assert(config != NULL);

@@ -3,9 +3,6 @@ target
 *.o
 *.bak
 *.exe
-*.log
-*.log.new
-*.log.err
 debian
 .redo
 *.dep0

@@ -44,8 +44,9 @@ cat >$CONF/templates/login.tpl <<EOF
 Please enter your credentials
 </p>
 <form>
-<input type="text" name="username"/>
+<input type="text" name="userid"/>
 <input type="password" name="password"/>
+<input type="submit" value="ok"/>
 </form>
 </body>
 </html>

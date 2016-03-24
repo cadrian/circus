@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <uv.h>
 
 #include <circus_channel.h>
@@ -49,7 +50,7 @@ static void set_log(circus_config_t *config) {
       }
    }
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, 2);
+      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, STDERR_FILENO);
    } else {
       LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
    }

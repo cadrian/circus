@@ -27,7 +27,6 @@
 
 #include "_test_server.h"
 
-
 #define EXIT_BUG_ERROR 9
 #define EXIT_TEST_FAILED 1
 #define EXIT_SUCCESS 0

@@ -86,6 +86,8 @@ static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
          (this->write_cb)((circus_channel_t*)this, this->write_data, response);
          n = response->flush(response);
          assert(n == 0);
+      } else {
+         log_warning(this->log, "channel_cgi", "no write callback!");
       }
       response->free(response);
       n = uv_poll_stop(&(this->write_handle));
@@ -142,6 +144,8 @@ static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response, cgi_impl_t 
    if (this->read_cb != NULL) {
       (this->read_cb)((circus_channel_t*)this, this->read_data, response);
       return 0;
+   } else {
+      log_warning(this->log, "channel_cgi", "no read callback!");
    }
    return 1;
 }

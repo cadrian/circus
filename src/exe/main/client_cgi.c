@@ -73,13 +73,14 @@ static void usage(const char *cmd, FILE *out) {
 }
 
 static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) {
+   log_debug(LOG, "client_cgi", "Finished");
    uv_stop(uv_default_loop());
 }
 
 static void run(circus_config_t *config) {
    circus_channel_t *zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
-      log_error(LOG, "server", "Could not allocate zmq_channel");
+      log_error(LOG, "client_cgi", "Could not allocate zmq_channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
@@ -96,7 +97,7 @@ static void run(circus_config_t *config) {
 
    circus_channel_t *cgi_channel = circus_cgi(MEMORY, LOG, config);
    if (cgi_channel == NULL) {
-      log_error(LOG, "server", "Could not allocate cgi_channel");
+      log_error(LOG, "client_cgi", "Could not allocate cgi_channel");
       mh->free(mh);
       LOG->free(LOG);
       config->free(config);

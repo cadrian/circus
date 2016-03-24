@@ -24,6 +24,12 @@
 
 #include <circus_channel.h>
 
+typedef enum {
+   idle = 0,
+   starting,
+   started,
+} cb_status;
+
 typedef struct {
    circus_channel_t fn;
    cad_memory_t memory;
@@ -33,18 +39,34 @@ typedef struct {
    void *read_data;
    circus_channel_on_write_cb write_cb;
    void *write_data;
+   cb_status read;
    uv_poll_t read_handle;
+   cb_status write;
    uv_poll_t write_handle;
 } cgi_impl_t;
+
+static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events);
 
 static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *data) {
    this->read_cb = cb;
    this->read_data = data;
+   if (this->read == starting) {
+      int n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
+      assert(n == 0);
+      this->read = started;
+   }
 }
+
+static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events);
 
 static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void *data) {
    this->write_cb = cb;
    this->write_data = data;
+   if (this->write == starting) {
+      int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
+      assert(n == 0);
+      this->write = started;
+   }
 }
 
 static int impl_read(cgi_impl_t *this, char *buffer, size_t buflen, cad_cgi_response_t *UNUSED(response)) {
@@ -101,9 +123,15 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
    n = uv_poll_init(uv_default_loop(), &(this->write_handle), response->fd(response));
    assert(n == 0);
    this->write_handle.data = response;
-
-   n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-   assert(n == 0);
+   if (this->write_cb != NULL) {
+      if (this->write == idle) {
+         n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
+         assert(n == 0);
+      }
+      this->write = started;
+   } else {
+      this->write = starting;
+   }
 }
 
 static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
@@ -115,7 +143,7 @@ static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
    }
    log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: event read: %s", events & UV_READABLE ? "true": "false");
    if (events & UV_READABLE) {
-      log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: calling CGI run");
+      log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: calling CGI run");
       cad_cgi_response_t *response = this->cgi->run(this->cgi);
       if (response != NULL) {
          start_write(this, response);
@@ -133,9 +161,15 @@ static void start_read(cgi_impl_t *this) {
    n = uv_poll_init(uv_default_loop(), &(this->read_handle), this->cgi->fd(this->cgi));
    assert(n == 0);
    this->read_handle.data = this;
-
-   n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
-   assert(n == 0);
+   if (this->read_cb != NULL) {
+      if (this->read == idle) {
+         n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
+         assert(n == 0);
+      }
+      this->read = started;
+   } else {
+      this->read = starting;
+   }
 }
 
 static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response, cgi_impl_t *this) {
@@ -165,7 +199,9 @@ circus_channel_t *circus_cgi(cad_memory_t memory, circus_log_t *log, circus_conf
    result->read_data = NULL;
    result->write_cb = NULL;
    result->write_data = NULL;
+   result->read = idle;
    result->read_handle.data = NULL;
+   result->write = idle;
    result->write_handle.data = NULL;
 
    start_read(result);

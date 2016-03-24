@@ -247,8 +247,6 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circ
          result->read_size = 0;
          result->read_index = 0;
          result->state = reading;
-         result->ready = 0;
-         result->zevents = 0;
 
          start(result);
       }
@@ -291,8 +289,6 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
          result->read_size = 0;
          result->read_index = 0;
          result->state = writing;
-         result->ready = 0;
-         result->zevents = 0;
 
          start(result);
       }

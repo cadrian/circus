@@ -18,18 +18,19 @@ logref=$2.log.ref
 logerr=$2.log.err
 
 if [[ ${LIBUV_DIR-x} != x ]]; then
-    export LD_LIBRARY_PATH=$LIBUV_DIR/lib:{LD_LIBRARY_PATH-}
+    export LD_LIBRARY_PATH=$LIBUV_DIR/lib:${LD_LIBRARY_PATH-}
 fi
 
 if [ -f ${1%.test}.c ]; then
-        exe=$2.dbg.exe
-        redo-ifchange $exe
-        (
-            cd $(dirname $exe)
-            exec $(basename $exe)
-        )
+    exe=$2.dbg.exe
+    redo-ifchange $exe
+    (
+        cd $(dirname $exe)
+        exec $(basename $exe)
+    )
 elif [ -f ${1%.test}.sh ]; then
-        ${1%.test}.sh
+    redo-ifchange ${1%.test}.sh
+    ${1%.test}.sh
 fi >$lognew 2>$logerr || {
     echo "**** Exited with status $?" >>$lognew
     cat $lognew >&2

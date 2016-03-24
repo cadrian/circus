@@ -1,15 +1,24 @@
-HOME=$(pwd)
+export ROOT=$(cd $(dirname $(dirname $(readlink -f $0))); pwd)
 DIR=${TESTDIR:-$(mktemp --tmpdir -d test_cgi.XXXXXX)}
 
+rm -rf $ROOT/.local
+
 CONF=$DIR/conf
-ROOT=$DIR/root
+WEB=$DIR/web
 LOG=$DIR/log
 RUN=$DIR/run
 
-mkdir -p $CONF $ROOT $LOG $RUN
+mkdir -p $CONF $WEB $LOG $RUN
+
+export XDG_CACHE_HOME=$RUN
+export XDG_RUNTIME_DIR=$RUN
+export XDG_DATA_HOME=$RUN
+export XDG_CONFIG_HOME=$CONF
+export XDG_DATA_DIRS=$RUN
+export XDG_CONFIG_DIRS=$RUN
 
 cat > $CONF/lighttpd.conf <<EOF
-server.document-root = "$ROOT"
+server.document-root = "$WEB"
 server.port = 8888
 server.tag = "test_cgi"
 server.modules = ("mod_cgi","mod_auth","mod_accesslog")
@@ -47,7 +56,7 @@ cat > $CONF/users <<EOF
 test:pwd
 EOF
 
-cat > $ROOT/index.html <<EOF
+cat > $WEB/index.html <<EOF
 <html>
     <head>
         <meta http-equiv="refresh" content="0; url=/test_cgi.cgi">
@@ -55,26 +64,64 @@ cat > $ROOT/index.html <<EOF
 </html>
 EOF
 
-cat >$ROOT/test_cgi.cgi <<EOF
+echo 0 >$base.count
+cat >$WEB/test_cgi.cgi <<EOF
 #!/bin/dash
 export PATH=/bin:/usr/bin
 export HOME=$DIR
-export XDG_CACHE_HOME=$RUN
-export XDG_RUNTIME_DIR=$RUN
-export XDG_DATA_HOME=$RUN
-export XDG_CONFIG_HOME=$CONF
-export XDG_DATA_DIRS=$RUN
-export XDG_CONFIG_DIRS=$RUN
+export XDG_CACHE_HOME=$XDG_CACHE_HOME
+export XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR
+export XDG_DATA_HOME=$XDG_DATA_HOME
+export XDG_CONFIG_HOME=$XDG_CONFIG_HOME
+export XDG_DATA_DIRS=$XDG_DATA_DIRS
+export XDG_CONFIG_DIRS=$XDG_CONFIG_DIRS
+i=\$((\$(< $base.count) + 1))
+echo \$i > $base.count
 {
     env | sort
-    echo
-    echo script is $HOME/exe/main/client_cgi.dbg.exe
-} > $LOG/env.log
-valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind.log $HOME/exe/main/client_cgi.dbg.exe
-#exec $HOME/exe/main/client_cgi.dbg.exe
+} > $LOG/env.\$(printf "%02d" \$i).log
+#valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind.log $ROOT/exe/main/client_cgi.dbg.exe
+tee $base.\$(printf "%02d" \$i).in | $ROOT/exe/main/client_cgi.dbg.exe | tee $base.\$(printf "%02d" \$i).out
 EOF
 
-$HOME/exe/main/server.dbg.exe&
+mkdir -p $RUN/circus $CONF/templates
+rm -f $base.client_log $base.server_log
+
+cat > $RUN/circus/cgi.conf <<EOF
+{
+    "cgi": {
+        "templates_path": "$CONF/templates"
+    },
+    "log": {
+        "level": "debug",
+        "filename": "$base.client_log"
+    }
+}
+EOF
+
+cat > $RUN/circus/server.conf <<EOF
+{
+    "vault": {
+        "filename": "$base.vault"
+    },
+    "log": {
+        "level": "debug",
+        "filename": "$base.server_log"
+    }
+}
+EOF
+
+(
+    export PATH=/bin:/usr/bin
+    export HOME=$DIR
+    exec $ROOT/exe/main/server.dbg.exe --install admin password
+) >$base.install_out 2>$base.install_err
+
+(
+    export PATH=/bin:/usr/bin
+    export HOME=$DIR
+    exec $ROOT/exe/main/server.dbg.exe
+) >$base.server_out 2>$base.server_err &
 server_pid=$!
 
 (
@@ -84,3 +131,5 @@ server_pid=$!
 lighttpd_pid=$!
 
 sleep 2
+
+ps -p $server_pid,$lighttpd_pid -F > $base.ps

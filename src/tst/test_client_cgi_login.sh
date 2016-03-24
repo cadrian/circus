@@ -17,44 +17,29 @@
 #    Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 
 base=$(dirname $(readlink -f $0))/$(basename $0 .sh)
-rm -f $base.client_log
 
 . $(dirname $(readlink -f $0))/_test_client_cgi_setup.sh
 
-mkdir -p $RUN/circus $CONF/templates
-cat > $RUN/circus/cgi.conf <<EOF
-{
-    "cgi": {
-        "templates_path": "$CONF/templates"
-    },
-    "log": {
-        "level": "debug",
-        "filename": "$base.client_log"
-    }
-}
-EOF
-
 cat >$CONF/templates/login.tpl <<EOF
 <html>
-<head>
-<title>LOGIN</title>
-</head>
-<body>
-<p>
-Please enter your credentials
-</p>
-<form>
-<input type="text" name="userid"/>
-<input type="password" name="password"/>
-<input type="submit" value="ok"/>
-</form>
-</body>
+    <head>
+        <title>LOGIN</title>
+    </head>
+    <body>
+        <p>
+            Please enter your credentials
+        </p>
+        <form action="login.do">
+            <input type="text" name="userid"/>
+            <input type="password" name="password"/>
+            <input type="submit" name="action" value="ok"/>
+        </form>
+    </body>
 </html>
 EOF
 
 RUN=$base.run
-curl -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -o $base.res
+curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -D $base.01.hdr -o $base.01.res
+curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi/login.do' -d userid=foo -d password=bar42 -d action=ok -D $base.02.hdr -o $base.02.res
 
 . $(dirname $(readlink -f $0))/_test_client_cgi_teardown.sh
-
-cat $base.res

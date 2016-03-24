@@ -355,6 +355,7 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    if (filename == NULL || filename[0] == 0) {
       filename = "vault";
    }
+   path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
 
    result = memory.malloc(sizeof(vault_impl_t));
    assert(result != NULL);
@@ -363,7 +364,6 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    result->log = log;
    result->users = cad_new_hash(memory, cad_hash_strings);
 
-   path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
    mkparentdirs(memory, path);
    n = sqlite3_open_v2(path, &(result->db),
                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,

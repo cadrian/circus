@@ -33,9 +33,11 @@
 static circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
-   const char *log_szfilename = config->get(config, "log", "filename");
-   const char *log_szlevel = config->get(config, "log", "level");
+   const char *log_szfilename;
+   const char *log_szlevel;
    log_level_t log_level = LOG_INFO;
+
+   log_szlevel = config->get(config, "log", "level");
    if (log_szlevel != NULL) {
       if (!strcmp(log_szlevel, "error")) {
          log_level = LOG_ERROR;
@@ -49,6 +51,8 @@ static void set_log(circus_config_t *config) {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
    }
+
+   log_szfilename = config->get(config, "log", "filename");
    if (log_szfilename == NULL) {
       LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, STDERR_FILENO);
    } else {

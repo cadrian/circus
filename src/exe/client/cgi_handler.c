@@ -32,11 +32,11 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
       log_debug(this->log, "cgi_handler", "verb: %s -- path: \"%s\"", verb, path);
       if (!strcmp(verb, "GET")) {
          if (strcmp(path, "") && strcmp(path, "/")) {
-            set_response_string(this, response, 401, "Invalid path");
+            set_response_string(this, response, 401, "Invalid query\n");
          } else {
             cad_hash_t *query = meta->query_string(meta);
             if (query != NULL && query->count(query) != 0) {
-               set_response_string(this, response, 401, "Invalid query");
+               set_response_string(this, response, 401, "Invalid query\n");
             } else {
                set_response_template(this, response, 200, "login", NULL);
             }
@@ -47,7 +47,7 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
       } else if (!strcmp(verb, "POST")) {
          post_read(this, response);
       } else {
-         set_response_string(this, response, 405, "Unknown method");
+         set_response_string(this, response, 401, "Invalid query\n");
       }
    }
 }

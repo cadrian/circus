@@ -105,8 +105,10 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    int template_fd = open(template_path, O_RDONLY);
    if (template_fd == -1) {
       log_error(this->log, "resolve", "Error opening template: %s", template_path);
-      set_response_string(this, response, 500, "Error opening template");
+      set_response_string(this, response, 500, "Server error\n");
    } else {
+      log_debug(this->log, "resolve", "status: %d -- template: %s", status, template_path);
+      response->set_content_type(response, "text/html"); // TODO config
       response->set_status(response, status);
       cad_input_stream_t *in = new_cad_input_stream_from_file_descriptor(template_fd, this->memory);
       assert(in != NULL);

@@ -32,8 +32,8 @@ JQ=$(which jq) || {
     exit 1
 }
 function jq() {
-    $JQ "$@ | @sh" < web.json | while read item; do
-        eval echo $(eval echo $item)
+    for item in $(eval echo $($JQ "$@ | @sh" < web.json)); do
+        eval echo $item
     done
 }
 
@@ -75,7 +75,7 @@ function for_all() {
             echo "template: $template"
 
             query_$fn "$query" "$params" "$cookie_read"
-            reply_$fn "$reply" "$extra" "$cookie_write" "$template"
+            reply_$fn "$reply" "$extra" "$cookie_read" "$cookie_write" "$template"
         done
         for fn in "$@"; do
             lru_$fn "$url"
@@ -124,8 +124,9 @@ function query_webh() {
 function reply_webh() {
     local reply="$1"
     local extra=("${2[@]}")
-    local cookie_write="$3"
-    local template="$4"
+    local cookie_read="$3"
+    local cookie_write="$4"
+    local template="$5"
 }
 
 # ----------------------------------------------------------------
@@ -235,8 +236,9 @@ function query_webc() {
 function reply_webc() {
     local reply="$1"
     local extra="$2"
-    local cookie_write="$3"
-    local template="$4"
+    local cookie_read="$3"
+    local cookie_write="$4"
+    local template="$5"
     local write_file=$(init_file post_write.c)
     {
         echo "   if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
@@ -255,6 +257,12 @@ function reply_webc() {
             echo "      ${query}_${cookie_write}_websid->set_max_age(${query}_${cookie_write}_websid, 900);"
             echo "      ${query}_${cookie_write}_websid->set_flag(${query}_${cookie_write}_websid, Cookie_secure | Cookie_http_only);"
             echo "      ${query}_cookies->set(${query}_cookies, ${query}_${cookie_write}_websid);"
+        elif [ "$cookie_read" != null ]; then
+            echo "      log_debug(this->log, \"web\", \"Updating cookie: ${cookie_read}\");"
+            echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
+            echo "      cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
+            echo "      ${query}_${cookie_read}_websid->set_max_age(${query}_${cookie_read}_websid, 900);"
+            echo "      ${query}_${cookie_read}_websid->set_flag(${query}_${cookie_read}_websid, Cookie_secure | Cookie_http_only);"
         fi
         echo "   } else {"
         echo "      set_response_string(this, response, 500, \"Invalid reply from server\");"
@@ -297,6 +305,7 @@ function query_() {
 function reply_() {
     local reply="$1"
     local extra="$2"
-    local cookie_write="$3"
-    local template="$4"
+    local cookie_read="$3"
+    local cookie_write="$4"
+    local template="$5"
 }

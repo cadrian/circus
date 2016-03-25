@@ -10,5 +10,17 @@
                 "write": "sessionid"
             }
         }
+    },
+    "/home.do": {
+        "list": {
+            "query": "all_list",
+            "params": [ "token" ],
+            "reply": "list",
+            "extra": [ "token" ],
+            "template": "list",
+            "cookie": {
+                "read": "sessionid"
+            }
+        }
     }
 }

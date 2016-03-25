@@ -156,7 +156,7 @@ function do_webc() {
         echo '      const char *path = meta->path_info(meta);'
         echo '#include "post_write.c"'
         echo '   } else {'
-        echo '      log_error(this->log, "cgi_handler", "error: %s", error);'
+        echo '      log_error(this->log, "web", "error: %s", error);'
         echo '      set_response_string(this, response, 403, "Access denied.");'
         echo '   }'
         echo '}'

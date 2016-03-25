@@ -93,7 +93,7 @@ void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int sta
 
 static void template_error(const char *error, int offset, void *data) {
    impl_cgi_t *this = (impl_cgi_t*)data;
-   log_error(this->log, "Stache error: %s at %d", error, offset);
+   log_error(this->log, "resolve", "Stache error: %s at %d", error, offset);
 }
 
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {

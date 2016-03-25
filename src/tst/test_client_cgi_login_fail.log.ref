@@ -8,6 +8,10 @@
 HTTP/1.1 200 OK
 Content-Type: text/html
 Status: 200
+Pragma: no-cache
+X-Frame-Options: SAMEORIGIN
+Cache-Control: private, no-cache, no-store
+Expires: 0
 Transfer-Encoding: chunked
 Server: test_cgi
 
@@ -34,6 +38,10 @@ Server: test_cgi
 
 Content-Type: text/html
 Status: 200
+Pragma: no-cache
+X-Frame-Options: SAMEORIGIN
+Cache-Control: private, no-cache, no-store
+Expires: 0
 
 <html>
     <head>
@@ -60,6 +68,10 @@ userid=foo&password=bar42&action=ok
 HTTP/1.1 403 Forbidden
 Content-Type: text/plain
 Status: 403
+Pragma: no-cache
+X-Frame-Options: SAMEORIGIN
+Cache-Control: private, no-cache, no-store
+Expires: 0
 Transfer-Encoding: chunked
 Server: test_cgi
 
@@ -71,5 +83,9 @@ Access denied.----------------------------------------------------------------
 
 Content-Type: text/plain
 Status: 403
+Pragma: no-cache
+X-Frame-Options: SAMEORIGIN
+Cache-Control: private, no-cache, no-store
+Expires: 0
 
 Access denied.----------------------------------------------------------------

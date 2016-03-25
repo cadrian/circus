@@ -248,6 +248,7 @@ function reply_webc() {
         echo "      set_response_template(this, response, 200, \"$template\", ${query}_extra);"
         echo "      ${query}_extra->free(${query}_extra);"
         if [ "$cookie_write" != null ]; then
+            echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write}\");"
             echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
             echo "      cad_cgi_cookie_t *${query}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
             echo "      ${query}_${cookie_write}_websid->set_value(${query}_${cookie_write}_websid, (char*)${query}_reply->${cookie_write}(${query}_reply));"

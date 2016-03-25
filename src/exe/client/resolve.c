@@ -83,11 +83,19 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
    return Cad_stache_not_found;
 }
 
+static void response_security_headers(cad_cgi_response_t *response) {
+   response->set_header(response, "X-Frame-Options", "SAMEORIGIN");
+   response->set_header(response, "Cache-Control", "private, no-cache, no-store");
+   response->set_header(response, "Pragma", "no-cache");
+   response->set_header(response, "Expires", "0");
+}
+
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string) {
    cad_output_stream_t *body = response->body(response);
    log_debug(this->log, "resolve", "response string: status %d -- %s", status, string);
    response->set_status(response, status);
    body->put(body, string);
+   response_security_headers(response);
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
 }
 
@@ -119,6 +127,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       stache->free(stache);
       in->free(in);
       close(template_fd);
+      response_security_headers(response);
       this->automaton->set_state(this->automaton, State_write_to_client, NULL);
    }
    this->memory.free(template_path);

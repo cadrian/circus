@@ -52,7 +52,9 @@ JQ=$(which jq) || {
     exit 1
 }
 function jq() {
-    $JQ "$@" < messages.json | egrep -o '[0-9A-Za-z_]+'
+    for item in $(eval echo $($JQ "$@ | @sh" < messages.json)); do
+        eval echo $item
+    done
 }
 
 DATE="$(date -R)"

@@ -1,0 +1,75 @@
+----------------------------------------------------------------
+[test_client_cgi_login_fail.01.in]
+
+
+----------------------------------------------------------------
+[test_client_cgi_login_fail.01.hdr]
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+Status: 200
+Transfer-Encoding: chunked
+Server: test_cgi
+
+----------------------------------------------------------------
+[test_client_cgi_login_fail.01.res]
+
+<html>
+    <head>
+        <title>LOGIN</title>
+    </head>
+    <body>
+        <p>
+            Please enter your credentials
+        </p>
+        <form action="login.do">
+            <input type="text" name="userid"/>
+            <input type="password" name="password"/>
+            <input type="submit" name="action" value="ok"/>
+        </form>
+    </body>
+</html>
+----------------------------------------------------------------
+[test_client_cgi_login_fail.01.out]
+
+Content-Type: text/html
+Status: 200
+
+<html>
+    <head>
+        <title>LOGIN</title>
+    </head>
+    <body>
+        <p>
+            Please enter your credentials
+        </p>
+        <form action="login.do">
+            <input type="text" name="userid"/>
+            <input type="password" name="password"/>
+            <input type="submit" name="action" value="ok"/>
+        </form>
+    </body>
+</html>
+----------------------------------------------------------------
+[test_client_cgi_login_fail.02.in]
+
+userid=foo&password=bar42&action=ok
+----------------------------------------------------------------
+[test_client_cgi_login_fail.02.hdr]
+
+HTTP/1.1 403 Forbidden
+Content-Type: text/plain
+Status: 403
+Transfer-Encoding: chunked
+Server: test_cgi
+
+----------------------------------------------------------------
+[test_client_cgi_login_fail.02.res]
+
+Access denied.----------------------------------------------------------------
+[test_client_cgi_login_fail.02.out]
+
+Content-Type: text/plain
+Status: 403
+
+Access denied.----------------------------------------------------------------

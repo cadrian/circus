@@ -19,8 +19,18 @@ for res in $base.*.res; do
         f=${res%.res}$s
         echo "[$(basename $f)]"
         echo
-        cat $f
-        test $s == .in && echo
+        case $s in
+            .hdr)
+                grep -v '^Date:' $f
+                ;;
+            .in)
+                cat $f
+                echo
+                ;;
+            *)
+                cat $f
+                ;;
+        esac
         echo '----------------------------------------------------------------'
     done
 done

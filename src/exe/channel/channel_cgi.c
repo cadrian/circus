@@ -51,6 +51,7 @@ static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_cb = cb;
    this->read_data = data;
    if (this->read == starting) {
+      log_debug(this->log, "channel_cgi", "on_read: starting uv poll");
       int n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
       assert(n == 0);
       this->read = started;
@@ -63,6 +64,7 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void 
    this->write_cb = cb;
    this->write_data = data;
    if (this->write == starting) {
+      log_debug(this->log, "channel_cgi", "on_write: starting uv poll");
       int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
       assert(n == 0);
       this->write = started;
@@ -125,6 +127,7 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
    this->write_handle.data = response;
    if (this->write_cb != NULL) {
       if (this->write == idle) {
+         log_debug(this->log, "channel_cgi", "start_write: starting uv poll");
          n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
          assert(n == 0);
       }
@@ -163,6 +166,7 @@ static void start_read(cgi_impl_t *this) {
    this->read_handle.data = this;
    if (this->read_cb != NULL) {
       if (this->read == idle) {
+         log_debug(this->log, "channel_cgi", "start_read: starting uv poll");
          n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
          assert(n == 0);
       }

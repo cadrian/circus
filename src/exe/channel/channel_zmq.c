@@ -43,16 +43,31 @@ typedef struct {
    int read_size;
    int read_index;
    channel_state_t state;
+   int started;
 } zmq_impl_t;
+
+static void impl_zmq_callback(uv_poll_t *handle, int status, int events);
 
 static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *data) {
    this->read_cb = cb;
    this->read_data = data;
+   if (!this->started) {
+      log_debug(this->log, "channel_zmq", "on_read: starting uv poll");
+      int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
+      assert(n == 0);
+      this->started = 1;
+   }
 }
 
 static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void *data) {
    this->write_cb = cb;
    this->write_data = data;
+   if (!this->started) {
+      log_debug(this->log, "channel_zmq", "on_read: starting uv poll");
+      int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
+      assert(n == 0);
+      this->started = 1;
+   }
 }
 
 static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
@@ -207,9 +222,6 @@ static void start(zmq_impl_t *this) {
       n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
       assert(n == 0);
       this->handle.data = this;
-
-      n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
-      assert(n == 0);
    }
 }
 
@@ -247,6 +259,7 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circ
          result->read_size = 0;
          result->read_index = 0;
          result->state = reading;
+         result->started = 0;
 
          start(result);
       }
@@ -289,6 +302,7 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
          result->read_size = 0;
          result->read_index = 0;
          result->state = writing;
+         result->started = 0;
 
          start(result);
       }

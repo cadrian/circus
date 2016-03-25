@@ -111,18 +111,6 @@ cat > $RUN/circus/server.conf <<EOF
 }
 EOF
 
-cat > $CONF/templates/home.tpl <<EOF
-<html>
-    <head>
-        <title>Home</title>
-    </head>
-    <body>
-        Home.
-        <input type="hidden" value="{{token}}"/>
-    </body>
-</html>
-EOF
-
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR

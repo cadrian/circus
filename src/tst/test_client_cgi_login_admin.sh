@@ -38,6 +38,18 @@ cat >$CONF/templates/login.tpl <<EOF
 </html>
 EOF
 
+cat > $CONF/templates/home.tpl <<EOF
+<html>
+    <head>
+        <title>Home</title>
+    </head>
+    <body>
+        Home.
+        <input type="hidden" value="{{token}}"/>
+    </body>
+</html>
+EOF
+
 RUN=$base.run
 curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -D $base.01.hdr -o $base.01.res
 curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi/login.do' -d userid=admin -d password=password -d action=ok -D $base.02.hdr -o $base.02.res

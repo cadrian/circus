@@ -63,16 +63,19 @@ function for_all() {
             local reply=$(jq '.["'$url'"]["'$action'"]["reply"]')
             local params=$(jq '.["'$url'"]["'$action'"]["params"]')
             local extra=$(jq '.["'$url'"]["'$action'"]["extra"]')
+            local cookie_read=$(jq '.["'$url'"]["'$action'"]["cookie"]["read"]')
+            local cookie_write=$(jq '.["'$url'"]["'$action'"]["cookie"]["write"]')
             local template=$(jq '.["'$url'"]["'$action'"]["template"]')
 
             echo "query: $query"
             echo "reply: $reply"
             echo "params: $params"
             echo "extra: $extra"
+            echo "cookie: read ${cookie_read} - write ${cookie_write}"
             echo "template: $template"
 
-            query_$fn "$query" "$params"
-            reply_$fn "$reply" "$extra" "$template"
+            query_$fn "$query" "$params" "$cookie_read"
+            reply_$fn "$reply" "$extra" "$cookie_write" "$template"
         done
         for fn in "$@"; do
             lru_$fn "$url"
@@ -115,12 +118,14 @@ function lru_webh() {
 function query_webh() {
     local query="$1"
     local params=("${2[@]}")
+    local cookie_read="$3"
 }
 
 function reply_webh() {
     local reply="$1"
     local extra=("${2[@]}")
-    local template="$3"
+    local cookie_write="$3"
+    local template="$4"
 }
 
 # ----------------------------------------------------------------
@@ -205,12 +210,21 @@ function lru_webc() {
 function query_webc() {
     local query="$1"
     local params="$2"
+    local cookie_read="$3"
     local read_file=$(init_file post_read.c)
     {
         for param in $params; do
             echo "   const char *${query}_$param = form->get(form, \"$param\");"
         done
+        if [ "$cookie_read" != null ]; then
+            echo "   cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
+            echo "   cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
+            echo "   const char *${query}_${cookie_read} = ${query}_${cookie_read}_websid->value(${query}_${cookie_read}_websid);"
+        fi
         echo -n "   message = I(new_circus_message_query_$query(this->memory"
+        if [ "$cookie_read" != null ]; then
+            echo -n ", ${query}_${cookie_read}"
+        fi
         for param in $params; do
             echo -n ", ${query}_$param"
         done
@@ -221,7 +235,8 @@ function query_webc() {
 function reply_webc() {
     local reply="$1"
     local extra="$2"
-    local template="$3"
+    local cookie_write="$3"
+    local template="$4"
     local write_file=$(init_file post_write.c)
     {
         echo "   if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
@@ -232,6 +247,14 @@ function reply_webc() {
         done
         echo "      set_response_template(this, response, 200, \"$template\", ${query}_extra);"
         echo "      ${query}_extra->free(${query}_extra);"
+        if [ "$cookie_write" != null ]; then
+            echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
+            echo "      cad_cgi_cookie_t *${query}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
+            echo "      ${query}_${cookie_write}_websid->set_value(${query}_${cookie_write}_websid, (char*)${query}_reply->${cookie_write}(${query}_reply));"
+            echo "      ${query}_${cookie_write}_websid->set_max_age(${query}_${cookie_write}_websid, 900);"
+            echo "      ${query}_${cookie_write}_websid->set_flag(${query}_${cookie_write}_websid, Cookie_secure | Cookie_http_only);"
+            echo "      ${query}_cookies->set(${query}_cookies, ${query}_${cookie_write}_websid);"
+        fi
         echo "   } else {"
         echo "      set_response_string(this, response, 500, \"Invalid reply from server\");"
         echo "   }"
@@ -267,10 +290,12 @@ function lru_() {
 function query_() {
     local query="$1"
     local params="$2"
+    local cookie_read="$3"
 }
 
 function reply_() {
     local reply="$1"
     local extra="$2"
-    local template="$3"
+    local cookie_write="$3"
+    local template="$4"
 }

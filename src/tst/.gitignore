@@ -4,3 +4,10 @@
 *.client_log
 *.res
 *.run
+*.hdr
+*.in
+*.out
+*.count
+*.install_*
+*.ps
+*.server_*

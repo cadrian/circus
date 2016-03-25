@@ -4,8 +4,11 @@
             "query": "login",
             "params": [ "userid", "password" ],
             "reply": "login",
-            "extra": [ "sessionid", "token" ],
-            "template": "home"
+            "extra": [ "token" ],
+            "template": "home",
+            "cookie": {
+                "write": "sessionid"
+            }
         }
     }
 }

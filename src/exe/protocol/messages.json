@@ -38,7 +38,8 @@
         },
         "reply": {
             "sessionid": "STRING",
-            "token": "STRING"
+            "token": "STRING",
+            "permissions": "STRING"
         }
     },
     "change_master": {

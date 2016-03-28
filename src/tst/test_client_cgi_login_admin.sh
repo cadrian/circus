@@ -38,7 +38,7 @@ cat >$CONF/templates/login.tpl <<EOF
 </html>
 EOF
 
-cat > $CONF/templates/home.tpl <<EOF
+cat > $CONF/templates/admin_home.tpl <<EOF
 <html>
     <head>
         <title>Home</title>

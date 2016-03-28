@@ -161,13 +161,34 @@ static void template_error(const char *error, int offset, void *data) {
    log_error(this->log, "resolve", "Stache error: %s at %d", error, offset);
 }
 
+static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_cgi_meta_t *meta, cad_hash_t *extra) {
+   char *result = NULL;
+   cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
+   struct meta_data data = {meta, extra, this->memory, nested};
+   cad_input_stream_t *in = new_cad_input_stream_from_string(template, this->memory);
+   cad_output_stream_t *out = new_cad_output_stream_from_string(&result, this->memory);
+   assert(in != NULL);
+   cad_stache_t *stache = new_cad_stache(this->memory, (cad_stache_resolve_cb)resolve_meta, &data);
+   assert(stache != NULL);
+   log_debug(this->log, "resolve", "Rendering stache template name");
+   stache->render(stache, in, out, template_error, this);
+   stache->free(stache);
+   in->free(in);
+   assert(nested->count(nested) == 0);
+   nested->free(nested);
+   return result;
+}
+
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
    struct meta_data data = {meta, extra, this->memory, nested};
-   char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template);
+   char *template_name = resolve_template_name(this, template, meta, extra);
+   assert(template_name != NULL);
+   char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template_name);
    assert(template_path != NULL);
+   this->memory.free(template_name);
    int template_fd = open(template_path, O_RDONLY);
    if (template_fd == -1) {
       log_error(this->log, "resolve", "Error opening template: %s", template_path);
@@ -180,7 +201,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       assert(in != NULL);
       cad_stache_t *stache = new_cad_stache(this->memory, (cad_stache_resolve_cb)resolve_meta, &data);
       assert(stache != NULL);
-      log_debug(this->log, "resolve", "Rendering stache...");
+      log_debug(this->log, "resolve", "Rendering stache");
       stache->render(stache, in, body, template_error, this);
       stache->free(stache);
       in->free(in);

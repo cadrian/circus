@@ -4,8 +4,8 @@
             "query": "login",
             "params": [ "userid", "password" ],
             "reply": "login",
-            "extra": [ "token" ],
-            "template": "home",
+            "extra": [ "token", "permissions" ],
+            "template": "{{permissions}}_home",
             "cookie": {
                 "write": "sessionid"
             }

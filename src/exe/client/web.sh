@@ -36,6 +36,11 @@ function jq() {
         eval echo $item
     done
 }
+function jq_msg() {
+    for item in $(eval echo $($JQ "$@ | @sh" < ../protocol/messages.json)); do
+        eval echo $item
+    done
+}
 
 DATE="$(date -R)"
 function init_file() {
@@ -245,7 +250,18 @@ function reply_webc() {
         echo "      circus_message_reply_${reply}_t *${query}_reply = (circus_message_reply_${reply}_t*)message;"
         echo "      cad_hash_t *${query}_extra = cad_new_hash(this->memory, cad_hash_strings);"
         for extrum in $extra; do
-            echo "      ${query}_extra->set(${query}_extra, \"$extrum\", (char*)${query}_reply->$extrum(${query}_reply));"
+            msg_type=$(jq_msg '.["'$reply'"]["reply"]["'$extrum'"]')
+            case $msg_type in
+                STRING)
+                    echo "      ${query}_extra->set(${query}_extra, \"$extrum\", (char*)${query}_reply->$extrum(${query}_reply));"
+                    ;;
+                STRINGS)
+                    echo "      ${query}_extra->set(${query}_extra, \"#$extrum\", ${query}_reply->$extrum(${query}_reply));"
+                    ;;
+                *)
+                    echo "      // $extrum: type $msg_type not supported"
+                    ;;
+            esac
         done
         echo "      set_response_template(this, response, 200, \"$template\", ${query}_extra);"
         echo "      ${query}_extra->free(${query}_extra);"

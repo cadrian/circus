@@ -16,7 +16,17 @@
             "query": "all_list",
             "params": [ "token" ],
             "reply": "list",
-            "extra": [ "token" ],
+            "extra": [ "token", "names" ],
+            "template": "list",
+            "cookie": {
+                "read": "sessionid"
+            }
+        },
+        "search": {
+            "query": "tag_list",
+            "params": [ "token", "tag" ],
+            "reply": "list",
+            "extra": [ "token", "names" ],
             "template": "list",
             "cookie": {
                 "read": "sessionid"

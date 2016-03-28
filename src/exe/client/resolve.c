@@ -16,6 +16,8 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <cad_array.h>
+#include <cad_hash.h>
 #include <cad_stache.h>
 #include <cad_stream.h>
 #include <fcntl.h>
@@ -30,27 +32,62 @@ struct meta_data {
    cad_cgi_meta_t *data;
    cad_hash_t *extra;
    cad_memory_t memory;
+   cad_array_t *nested;
 };
 
-struct meta_resolved {
+struct meta_resolved_string {
    cad_stache_resolved_t fn;
    cad_memory_t memory;
    const char *value;
 };
 
-static const char *meta_resolved_get(struct meta_resolved *this) {
+static const char *meta_resolved_string_get(struct meta_resolved_string *this) {
    return this->value;
 }
 
-static int meta_resolved_free(struct meta_resolved *this) {
+static int meta_resolved_string_free(struct meta_resolved_string *this) {
    this->memory.free(this);
    return 1;
 }
 
-static cad_stache_resolved_t meta_resolved_fn = {
+static cad_stache_resolved_t meta_resolved_string_fn = {
    .string = {
-      .get = (const char*(*)(cad_stache_resolved_t*))meta_resolved_get,
-      .free = (int (*)(cad_stache_resolved_t*))meta_resolved_free,
+      .get = (const char*(*)(cad_stache_resolved_t*))meta_resolved_string_get,
+      .free = (int (*)(cad_stache_resolved_t*))meta_resolved_string_free,
+   },
+};
+
+struct meta_resolved_strings {
+   cad_stache_resolved_t fn;
+   cad_memory_t memory;
+   cad_array_t *value;
+   unsigned int meta_index;
+   struct meta_data *meta;
+};
+
+int meta_resolved_strings_get(struct meta_resolved_strings *this, unsigned int index) {
+   int result = 0;
+   if (index < this->value->count(this->value)) {
+      cad_hash_t *hash = this->meta->nested->get(this->meta->nested, this->meta_index);
+      char *item = this->value->get(this->value, index);
+      hash->set(hash, "item", item);
+      result = 1;
+   }
+   return result;
+}
+
+int meta_resolved_strings_close(struct meta_resolved_strings *this) {
+   assert(this->meta_index == this->meta->nested->count(this->meta->nested) - 1);
+   cad_hash_t *hash = this->meta->nested->del(this->meta->nested, this->meta_index);
+   hash->free(hash);
+   this->memory.free(this);
+   return 1;
+}
+
+static cad_stache_resolved_t meta_resolved_strings_fn = {
+   .list = {
+      .get = (int(*)(cad_stache_resolved_t *this, int index))meta_resolved_strings_get,
+      .close = (int(*)(cad_stache_resolved_t *this))meta_resolved_strings_close,
    },
 };
 
@@ -69,16 +106,36 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
    }
    if (dict != NULL) {
       assert(key != NULL);
-      const char *value = dict->get(dict, key);
-      if (value != NULL) {
-         struct meta_resolved *res = meta->memory.malloc(sizeof(struct meta_resolved));
+
+      const char *sz_value = dict->get(dict, key);
+      if (sz_value != NULL) {
+         struct meta_resolved_string *res = meta->memory.malloc(sizeof(struct meta_resolved_string));
          assert(res != NULL);
-         res->fn = meta_resolved_fn;
+         res->fn = meta_resolved_string_fn;
          res->memory = meta->memory;
-         res->value = value;
+         res->value = sz_value;
          *resolved = I(res);
          return Cad_stache_string;
       }
+
+      char *akey = szprintf(meta->memory, NULL, "#%s", key);
+      cad_array_t *ar_value = dict->get(dict, key);
+      meta->memory.free(akey);
+      if (ar_value != NULL) {
+         struct meta_resolved_strings *res = meta->memory.malloc(sizeof(struct meta_resolved_strings));
+         assert(res != NULL);
+         unsigned int meta_index = meta->nested->count(meta->nested);
+         cad_hash_t *hash = cad_new_hash(meta->memory, cad_hash_strings);
+         meta->nested->insert(meta->nested, meta_index, hash);
+         res->fn = meta_resolved_strings_fn;
+         res->memory = meta->memory;
+         res->value = ar_value;
+         res->meta_index = meta_index;
+         res->meta = meta;
+         *resolved = I(res);
+         return Cad_stache_list;
+      }
+
    }
    return Cad_stache_not_found;
 }
@@ -107,7 +164,8 @@ static void template_error(const char *error, int offset, void *data) {
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
-   struct meta_data data = {meta, extra, this->memory};
+   cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
+   struct meta_data data = {meta, extra, this->memory, nested};
    char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template);
    assert(template_path != NULL);
    int template_fd = open(template_path, O_RDONLY);
@@ -127,6 +185,8 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       stache->free(stache);
       in->free(in);
       close(template_fd);
+      assert(nested->count(nested) == 0);
+      nested->free(nested);
       response_security_headers(response);
       this->automaton->set_state(this->automaton, State_write_to_client, NULL);
    }

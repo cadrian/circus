@@ -32,5 +32,17 @@
                 "read": "sessionid"
             }
         }
+    },
+    "setpass.do": {
+        "setrecipe": {
+            "query": "set_recipe_pass",
+            "params": [ "token", "key", "recipe" ],
+            "reply": "pass",
+            "extra": [ "token", "key", "pass", "properties" ],
+            "template": "show_pass",
+            "cookie": {
+                "read": "sessionid"
+            }
+        }
     }
 }

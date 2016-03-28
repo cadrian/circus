@@ -12,5 +12,12 @@
         <input type="submit" name="action" value="search"/>
       </p>
     </form>
+    <form method="POST" action="setpass.do">
+      <p>
+        Set password: <input type="text" name="key"/>
+        <input type="text" name="recipe" value="16ans"/>
+        <input type="submit" name="action" value="setrecipe"/>
+      </p>
+    </form>
   </body>
 </html>

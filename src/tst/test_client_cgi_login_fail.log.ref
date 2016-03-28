@@ -78,7 +78,7 @@ Server: test_cgi
 ----------------------------------------------------------------
 [test_client_cgi_login_fail.02.res]
 
-Access denied.----------------------------------------------------------------
+Access denied----------------------------------------------------------------
 [test_client_cgi_login_fail.02.out]
 
 Content-Type: text/plain
@@ -88,4 +88,4 @@ X-Frame-Options: SAMEORIGIN
 Cache-Control: private, no-cache, no-store
 Expires: 0
 
-Access denied.----------------------------------------------------------------
+Access denied----------------------------------------------------------------

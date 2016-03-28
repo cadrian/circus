@@ -79,8 +79,8 @@ function for_all() {
             echo "cookie: read ${cookie_read} - write ${cookie_write}"
             echo "template: $template"
 
-            query_$fn "$query" "$params" "$cookie_read"
-            reply_$fn "$reply" "$extra" "$cookie_read" "$cookie_write" "$template"
+            query_$fn "$action" "$query" "$params" "$cookie_read"
+            reply_$fn "$action" "$reply" "$extra" "$cookie_read" "$cookie_write" "$template"
         done
         for fn in "$@"; do
             lru_$fn "$url"
@@ -121,17 +121,19 @@ function lru_webh() {
 }
 
 function query_webh() {
-    local query="$1"
-    local params=("${2[@]}")
-    local cookie_read="$3"
+    local action="$1"
+    local query="$2"
+    local params="$4"
+    local cookie_read="$4"
 }
 
 function reply_webh() {
-    local reply="$1"
-    local extra=("${2[@]}")
-    local cookie_read="$3"
-    local cookie_write="$4"
-    local template="$5"
+    local action="$1"
+    local reply="$2"
+    local extra="$3"
+    local cookie_read="$4"
+    local cookie_write="$5"
+    local template="$6"
 }
 
 # ----------------------------------------------------------------
@@ -151,9 +153,12 @@ function do_webc() {
         echo '   const char *path = meta->path_info(meta);'
         echo '   cad_hash_t *form = meta->input_as_form(meta);'
         echo '   assert(form != NULL);'
+        echo '   const char *action = form->get(form, "action");'
         echo '#include "post_read.c"'
         echo '   if (message == NULL) {'
         echo '      set_response_string(this, response, 401, "Invalid path");'
+        echo '   } else if (action == NULL) {'
+        echo '      set_response_string(this, response, 401, "Invalid action");'
         echo '   } else {'
         echo '      this->automaton->set_state(this->automaton, State_write_to_server, message);'
         echo '   }'
@@ -168,7 +173,7 @@ function do_webc() {
         echo '#include "post_write.c"'
         echo '   } else {'
         echo '      log_error(this->log, "web", "error: %s", error);'
-        echo '      set_response_string(this, response, 403, "Access denied.");'
+        echo '      set_response_string(this, response, 403, "Access denied");'
         echo '   }'
         echo '}'
     } >> $file
@@ -178,13 +183,13 @@ function od_webc() {
     local read_file=$(init_file post_read.c)
     {
         echo '{'
-        echo '   set_response_string(this, response, 404, "Not found.");'
+        echo '   set_response_string(this, response, 404, "Not found");'
         echo '}'
     } >> $read_file
     local write_file=$(init_file post_write.c)
     {
         echo '{'
-        echo '   set_response_string(this, response, 404, "Not found.");'
+        echo '   set_response_string(this, response, 404, "Not found");'
         echo '}'
     } >> $write_file
 }
@@ -194,6 +199,7 @@ function url_webc() {
     local read_file=$(init_file post_read.c)
     {
         echo 'if (!strcmp(path, "'"$url"'")) {'
+        echo -n '   '
     } >> $read_file
     local write_file=$(init_file post_write.c)
     {
@@ -205,6 +211,9 @@ function lru_webc() {
     local url=$1
     local read_file=$(init_file post_read.c)
     {
+        echo '{'
+        echo '      set_response_string(this, response, 401, "Invalid action");'
+        echo '   }'
         echo -n '} else '
     } >> $read_file
     local write_file=$(init_file post_write.c)
@@ -214,20 +223,22 @@ function lru_webc() {
 }
 
 function query_webc() {
-    local query="$1"
-    local params="$2"
-    local cookie_read="$3"
+    local action="$1"
+    local query="$2"
+    local params="$3"
+    local cookie_read="$4"
     local read_file=$(init_file post_read.c)
     {
+        echo 'if (!strcmp(action, "'"$action"'")) {'
         for param in $params; do
-            echo "   const char *${query}_$param = form->get(form, \"$param\");"
+            echo "      const char *${query}_$param = form->get(form, \"$param\");"
         done
         if [ "$cookie_read" != null ]; then
-            echo "   cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
-            echo "   cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
-            echo "   const char *${query}_${cookie_read} = ${query}_${cookie_read}_websid->value(${query}_${cookie_read}_websid);"
+            echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
+            echo "      cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
+            echo "      const char *${query}_${cookie_read} = ${query}_${cookie_read}_websid->value(${query}_${cookie_read}_websid);"
         fi
-        echo -n "   message = I(new_circus_message_query_$query(this->memory"
+        echo -n "      message = I(new_circus_message_query_$query(this->memory"
         if [ "$cookie_read" != null ]; then
             echo -n ", ${query}_${cookie_read}"
         fi
@@ -235,15 +246,17 @@ function query_webc() {
             echo -n ", ${query}_$param"
         done
         echo '));'
+        echo -n '   } else '
     } >> $read_file
 }
 
 function reply_webc() {
-    local reply="$1"
-    local extra="$2"
-    local cookie_read="$3"
-    local cookie_write="$4"
-    local template="$5"
+    local action="$1"
+    local reply="$2"
+    local extra="$3"
+    local cookie_read="$4"
+    local cookie_write="$5"
+    local template="$6"
     local write_file=$(init_file post_write.c)
     {
         echo "   if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
@@ -313,15 +326,17 @@ function lru_() {
 }
 
 function query_() {
-    local query="$1"
-    local params="$2"
-    local cookie_read="$3"
+    local action="$1"
+    local query="$2"
+    local params="$3"
+    local cookie_read="$4"
 }
 
 function reply_() {
-    local reply="$1"
-    local extra="$2"
-    local cookie_read="$3"
-    local cookie_write="$4"
-    local template="$5"
+    local action="$1"
+    local reply="$2"
+    local extra="$3"
+    local cookie_read="$4"
+    local cookie_write="$5"
+    local template="$6"
 }

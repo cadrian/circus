@@ -3,29 +3,29 @@
     <title>Circus</title>
   </head>
   <body>
-    <h1>Welcome to Circus</h1>
-    <p>Please log in.</p>
-    <form method="POST" action="login.do">
+    <h1>Circus: pass</h1>
+    <form method="POST" action="list.do">
+      <input type="hidden" name="token" value="{{token}}"/>
       <table>
         <tr>
           <td>
-            User name:
+            Key:
           </td>
           <td>
-            <input type="text" name="userid"/>
+            {{key}}
           </td>
         </tr>
         <tr>
           <td>
-            Password:
+            Pass:
           </td>
           <td>
-            <input type="password" name="password"/>
-          </td>
+            {{pass}}
+          </td> <!-- TODO TO HIDE!!! -->
         </tr>
         <tr>
           <td colspan="2">
-            <input type="submit" name="action" value="ok"/>
+            <input type="submit" name="action" value="user_pass"/>
           </td>
         </tr>
       </table>

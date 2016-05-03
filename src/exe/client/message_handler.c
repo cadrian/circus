@@ -67,6 +67,13 @@ static void visit_reply_login(circus_message_visitor_reply_t *visitor, circus_me
    (void)visited; (void)this;
 }
 
+// circus_message_visitor_reply_logout_fn
+static void visit_reply_logout(circus_message_visitor_reply_t *visitor, circus_message_reply_logout_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
 // circus_message_visitor_reply_pass_fn
 static void visit_reply_pass(circus_message_visitor_reply_t *visitor, circus_message_reply_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
@@ -129,6 +136,7 @@ static circus_message_visitor_reply_t visitor_fn = {
    (circus_message_visitor_reply_is_open_fn)visit_reply_is_open,
    (circus_message_visitor_reply_list_fn)visit_reply_list,
    (circus_message_visitor_reply_login_fn)visit_reply_login,
+   (circus_message_visitor_reply_logout_fn)visit_reply_logout,
    (circus_message_visitor_reply_pass_fn)visit_reply_pass,
    (circus_message_visitor_reply_ping_fn)visit_reply_ping,
    (circus_message_visitor_reply_property_fn)visit_reply_property,

@@ -11,38 +11,86 @@
             }
         }
     },
-    "/home.do": {
-        "list": {
-            "query": "all_list",
+    "/admin_home.do": {
+        "logout": {
+            "query": "logout",
             "params": [ "token" ],
-            "reply": "list",
-            "extra": [ "token", "names" ],
-            "template": "list",
+            "reply": "logout",
+            "template": "login",
             "cookie": {
                 "read": "sessionid"
             }
         },
-        "search": {
-            "query": "tag_list",
-            "params": [ "token", "tag" ],
-            "reply": "list",
-            "extra": [ "token", "names" ],
-            "template": "list",
+        "add": {
+            "query": "user",
+            "params": [ "token", "username", "email", "permissions" ],
+            "reply": "user",
+            "extra": [ "token", "password", "validity" ],
+            "template": "admin_add",
             "cookie": {
                 "read": "sessionid"
             }
         }
     },
-    "setpass.do": {
-        "setrecipe": {
+    "/admin_add.do": {
+        "admin_add": {
+            "template": "admin_home"
+        }
+    },
+    "/user_home.do": {
+        "logout": {
+            "query": "logout",
+            "params": [ "token" ],
+            "reply": "logout",
+            "template": "login",
+            "cookie": {
+                "read": "sessionid"
+            }
+        },
+        "list": {
+            "query": "all_list",
+            "params": [ "token" ],
+            "reply": "list",
+            "extra": [ "token", "names" ],
+            "template": "user_home",
+            "cookie": {
+                "read": "sessionid"
+            }
+        },
+        "pass": {
+            "query": "get_pass",
+            "params": [ "token", "key" ],
+            "reply": "pass",
+            "extra": [ "token", "key", "pass", "properties" ],
+            "template": "user_pass",
+            "cookie": {
+                "read": "sessionid"
+            }
+        },
+        "add_prompt": {
+            "query": "set_prompt_pass",
+            "params": [ "token", "key", "pass1", "pass2" ],
+            "reply": "pass",
+            "extra": [ "token", "key", "pass", "properties" ],
+            "template": "user_pass",
+            "cookie": {
+                "read": "sessionid"
+            }
+        },
+        "add_recipe": {
             "query": "set_recipe_pass",
             "params": [ "token", "key", "recipe" ],
             "reply": "pass",
             "extra": [ "token", "key", "pass", "properties" ],
-            "template": "show_pass",
+            "template": "user_pass",
             "cookie": {
                 "read": "sessionid"
             }
+        }
+    },
+    "/user_pass.do": {
+        "user_pass": {
+            "template": "user_home"
         }
     }
 }

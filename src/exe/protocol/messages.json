@@ -42,6 +42,13 @@
             "permissions": "STRING"
         }
     },
+    "logout": {
+        "query": {
+            "sessionid": "STRING",
+            "token": "STRING"
+        },
+        "reply": {}
+    },
     "change_master": {
         "query": {
             "sessionid": "STRING",
@@ -65,11 +72,12 @@
             "key": "STRING",
             "recipe": "STRING"
         },
-        "query_set_pass": {
+        "query_set_prompt": {
             "sessionid": "STRING",
             "token": "STRING",
             "key": "STRING",
-            "pass": "STRING"
+            "pass1": "STRING",
+            "pass2": "STRING"
         },
         "reply": {
             "token": "STRING",

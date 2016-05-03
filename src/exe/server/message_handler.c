@@ -97,13 +97,19 @@ static void visit_query_login(circus_message_visitor_query_t *visitor, circus_me
    this->reply = I(reply);
 }
 
+static void visit_query_logout(circus_message_visitor_query_t *visitor, circus_message_query_logout_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
 static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus_message_query_get_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    // TODO
    (void)visited; (void)this;
 }
 
-static void visit_query_set_pass_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_pass_pass_t *visited) {
+static void visit_query_set_prompt_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_prompt_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    // TODO
    (void)visited; (void)this;
@@ -282,8 +288,9 @@ static circus_message_visitor_query_t visitor_fn = {
    (circus_message_visitor_query_all_list_fn)visit_query_all_list,
    (circus_message_visitor_query_tag_list_fn)visit_query_tag_list,
    (circus_message_visitor_query_login_fn)visit_query_login,
+   (circus_message_visitor_query_logout_fn)visit_query_logout,
    (circus_message_visitor_query_get_pass_fn)visit_query_get_pass,
-   (circus_message_visitor_query_set_pass_pass_fn)visit_query_set_pass_pass,
+   (circus_message_visitor_query_set_prompt_pass_fn)visit_query_set_prompt_pass,
    (circus_message_visitor_query_set_recipe_pass_fn)visit_query_set_recipe_pass,
    (circus_message_visitor_query_ping_fn)visit_query_ping,
    (circus_message_visitor_query_set_property_fn)visit_query_set_property,

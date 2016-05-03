@@ -142,9 +142,10 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
 
 static void response_security_headers(cad_cgi_response_t *response) {
    response->set_header(response, "X-Frame-Options", "SAMEORIGIN");
-   response->set_header(response, "Cache-Control", "private, no-cache, no-store");
+   response->set_header(response, "Cache-Control", "no-cache, no-store");
    response->set_header(response, "Pragma", "no-cache");
    response->set_header(response, "Expires", "0");
+   response->set_header(response, "Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 }
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string) {

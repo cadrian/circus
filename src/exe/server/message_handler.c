@@ -99,8 +99,19 @@ static void visit_query_login(circus_message_visitor_query_t *visitor, circus_me
 
 static void visit_query_logout(circus_message_visitor_query_t *visitor, circus_message_query_logout_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_warning(this->log, "message_handler", "Logout: unknown session or invalid token");
+   } else {
+      circus_user_t *user = data->user(data);
+      this->session->set(this->session, user); // force a new session i.e. invalidate the current one
+      // data is now unusable (freed)
+   }
+
+   circus_message_reply_logout_t *logout = new_circus_message_reply_logout(this->memory, "");
+   this->reply = I(logout);
 }
 
 static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus_message_query_get_pass_t *visited) {

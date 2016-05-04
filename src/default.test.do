@@ -26,7 +26,7 @@ if [ -f ${1%.test}.c ]; then
     redo-ifchange $exe
     (
         cd $(dirname $exe)
-        exec $(basename $exe)
+        exec valgrind --leak-check=full --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
     )
 elif [ -f ${1%.test}.sh ]; then
     redo-ifchange ${1%.test}.sh

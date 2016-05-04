@@ -1,6 +1,7 @@
 *.log
 *.log.new
 *.log.err
+*.log.valgrind
 *.client_log
 *.res
 *.run

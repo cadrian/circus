@@ -269,7 +269,7 @@ int test(int argc, char **argv, int (*fn)(void)) {
 
    int res = EXIT_SUCCESS;
 
-   sleep(3);
+   sleep(5);
    p = waitpid(pid_client, &status, WNOHANG);
    if (p == 0) {
       printf("waitpid: pid_client did not finish\n");
@@ -290,7 +290,7 @@ int test(int argc, char **argv, int (*fn)(void)) {
    }
    printf("pid_client: OK\n");
 
-   sleep(2);
+   sleep(5);
    p = waitpid(pid_server, &status, WNOHANG);
    if (p == 0) {
       printf("waitpid: pid_server did not finish\n");

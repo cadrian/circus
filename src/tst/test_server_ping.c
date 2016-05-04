@@ -23,8 +23,13 @@
 #include "_test_server.h"
 
 static int send_ping() {
+   static const char *userid = "test";
+   static const char *pass = "pass";
    static const char *phrase = "Use the force, Luke.";
    int result = 0;
+
+   char *sessionid = NULL;
+   char *token = NULL;
 
    circus_message_query_ping_t *ping = new_circus_message_query_ping(stdlib_memory, phrase);
    circus_message_t *reply = NULL;
@@ -38,19 +43,18 @@ static int send_ping() {
          printf("Invalid ping reply: phrase is \"%s\"\n", p);
          result = 2;
       }
-      reply->free(reply);
    }
    I(ping)->free(I(ping));
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "test", "pass");
-   send_message(I(login), &reply);
-   circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");
-   I(login)->free(I(login));
+   result += do_login(userid, pass, &sessionid, &token);
 
-   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
+   circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, sessionid, token, "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
+
+   stdlib_memory.free(sessionid);
+   stdlib_memory.free(token);
 
    return result;
 }

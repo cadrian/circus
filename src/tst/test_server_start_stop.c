@@ -22,7 +22,13 @@
 #include "_test_server.h"
 
 static int send_stop() {
+   static const char *userid = "test";
+   static const char *pass = "pass";
    circus_message_t *reply = NULL;
+   int result = 0;
+
+   char *sessionid = NULL;
+   char *token = NULL;
 
    circus_message_query_stop_t *stop = new_circus_message_query_stop(stdlib_memory, "sessionid", "token", "test");
    send_message(I(stop), &reply);
@@ -30,16 +36,17 @@ static int send_stop() {
       printf("Should have been refused\n");
    }
 
-   circus_message_query_login_t *login = new_circus_message_query_login(stdlib_memory, "test", "pass");
-   send_message(I(login), &reply);
-   circus_message_reply_login_t *loggedin = check_reply(reply, "login", "reply", "");
-   I(login)->free(I(login));
+   result = do_login(userid, pass, &sessionid, &token);
 
-   stop = new_circus_message_query_stop(stdlib_memory, loggedin->sessionid(loggedin), loggedin->token(loggedin), "test");
+   stop = new_circus_message_query_stop(stdlib_memory, sessionid, token, "test");
    reply->free(reply);
    send_message(I(stop), NULL);
    I(stop)->free(I(stop));
-   return 0;
+
+   stdlib_memory.free(sessionid);
+   stdlib_memory.free(token);
+
+   return result;
 }
 
 int main(int argc, char **argv) {

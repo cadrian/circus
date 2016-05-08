@@ -113,7 +113,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    } else {
       templates_path = szprintf(memory, NULL, "%s", tp);
    }
-   log_info(log, "cg_handler", "templates path: %s", templates_path);
+   log_info(log, "cgi_handler", "templates path: %s", templates_path);
 
    result->fn = impl_cgi_fn;
    result->memory = memory;

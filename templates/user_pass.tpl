@@ -4,7 +4,7 @@
   </head>
   <body>
     <h1>Circus: pass</h1>
-    <form method="POST" action="list.do">
+    <form method="POST" action="{{cgi:script_name}}/list.do">
       <input type="hidden" name="token" value="{{token}}"/>
       <table>
         <tr>

@@ -4,7 +4,7 @@
   </head>
   <body>
     <h1>Circus: list</h1>
-    <form method="POST" action="list.do">
+    <form method="POST" action="{{cgi:script_name}}/list.do">
       <select name="name">
       {{#names}}
         <option value="{{item}}">{{item}}</option>

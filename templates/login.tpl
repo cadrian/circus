@@ -5,7 +5,7 @@
   <body>
     <h1>Welcome to Circus</h1>
     <p>Please log in.</p>
-    <form method="POST" action="login.do">
+    <form method="POST" action="{{cgi:script_name}}/login.do">
       <table>
         <tr>
           <td>

@@ -14,7 +14,7 @@
   </head>
   <body>
     <h1>Welcome to Circus</h1>
-    <form method="POST" name="action_form" action="user_home.do">
+    <form method="POST" name="action_form" action="{{cgi:script_name}}/user_home.do">
       <input type="hidden" name="token" value="{{token}}"/>
       <input type="hidden" name="action"/>
       <input type="hidden" name="name"/>

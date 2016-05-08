@@ -29,10 +29,12 @@
 #include "client_impl.h"
 
 struct meta_data {
+   circus_log_t *log;
    cad_cgi_meta_t *data;
    cad_hash_t *extra;
    cad_memory_t memory;
    cad_array_t *nested;
+   cad_hash_t *cgi;
 };
 
 struct meta_resolved_string {
@@ -100,6 +102,9 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
    } else if (!strncmp(name, "query:", 6)) {
       dict = meta->data->query_string(meta->data);
       key = name + 6;
+   } else if (!strncmp(name, "cgi:", 4)) {
+      dict = meta->cgi;
+      key = name + 4;
    } else if (strchr(name, ':') == NULL) {
       dict = meta->extra;
       key = name;
@@ -165,7 +170,7 @@ static void template_error(const char *error, int offset, void *data) {
 static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_cgi_meta_t *meta, cad_hash_t *extra) {
    char *result = NULL;
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
-   struct meta_data data = {meta, extra, this->memory, nested};
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL};
    cad_input_stream_t *in = new_cad_input_stream_from_string(template, this->memory);
    cad_output_stream_t *out = new_cad_output_stream_from_string(&result, this->memory);
    assert(in != NULL);
@@ -184,7 +189,12 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
-   struct meta_data data = {meta, extra, this->memory, nested};
+   cad_hash_t *cgi = cad_new_hash(this->memory, cad_hash_strings);
+
+   cgi->set(cgi, "path_info", (void*)meta->path_info(meta));
+   cgi->set(cgi, "script_name", (void*)meta->script_name(meta));
+
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, cgi};
    char *template_name = resolve_template_name(this, template, meta, extra);
    assert(template_name != NULL);
    char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template_name);
@@ -208,9 +218,11 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       in->free(in);
       close(template_fd);
       assert(nested->count(nested) == 0);
-      nested->free(nested);
       response_security_headers(response);
       this->automaton->set_state(this->automaton, State_write_to_client, NULL);
    }
+
+   nested->free(nested);
+   cgi->free(cgi);
    this->memory.free(template_path);
 }

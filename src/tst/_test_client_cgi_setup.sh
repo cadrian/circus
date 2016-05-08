@@ -1,4 +1,6 @@
-export ROOT=$(cd $(dirname $(dirname $(readlink -f $0))); pwd)
+exe=${exe-.dbg.exe}
+
+export ROOT=${ROOT-$(cd $(dirname $(readlink -f $0))/..; pwd)}
 DIR=${TESTDIR:-$(mktemp --tmpdir -d test_cgi.XXXXXX)}
 
 rm -rf $ROOT/.local
@@ -77,11 +79,14 @@ export XDG_DATA_DIRS=$XDG_DATA_DIRS
 export XDG_CONFIG_DIRS=$XDG_CONFIG_DIRS
 i=\$((\$(< $base.count) + 1))
 echo \$i > $base.count
+ext=.\$(printf "%02d" \$i)
 {
     env | sort
-} > $LOG/env.\$(printf "%02d" \$i).log
-#valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind.log $ROOT/exe/main/client_cgi.dbg.exe
-tee $base.\$(printf "%02d" \$i).in | $ROOT/exe/main/client_cgi.dbg.exe | tee $base.\$(printf "%02d" \$i).out
+} > $LOG/env\$ext.log
+#$ROOT/exe/main/client_cgi$exe |
+tee $base\$ext.in |
+    valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind\$ext.log $ROOT/exe/main/client_cgi$exe |
+    tee $base\$ext.out
 EOF
 
 mkdir -p $RUN/circus $CONF/templates
@@ -114,13 +119,13 @@ EOF
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR
-    exec $ROOT/exe/main/server.dbg.exe --install admin password
+    exec $ROOT/exe/main/server$exe --install admin password
 ) >$base.install_out 2>$base.install_err
 
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR
-    exec $ROOT/exe/main/server.dbg.exe
+    exec $ROOT/exe/main/server$exe
 ) >$base.server_out 2>$base.server_err &
 server_pid=$!
 

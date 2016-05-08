@@ -1,5 +1,5 @@
-kill $lighttpd_pid
-kill $server_pid
+kill $lighttpd_pid 2>/dev/null
+kill $server_pid 2>/dev/null
 
 {
     echo '----------------------------------------------------------------'

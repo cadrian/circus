@@ -21,7 +21,7 @@
                 "read": "sessionid"
             }
         },
-        "add": {
+        "add_user": {
             "query": "user",
             "params": [ "token", "username", "email", "permissions" ],
             "reply": "user",

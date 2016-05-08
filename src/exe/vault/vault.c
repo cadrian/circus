@@ -355,7 +355,11 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    if (filename == NULL || filename[0] == 0) {
       filename = "vault";
    }
-   path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+   if (filename[0] == '/') {
+      path = szprintf(memory, NULL, "%s", filename);
+   } else {
+      path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+   }
 
    result = memory.malloc(sizeof(vault_impl_t));
    assert(result != NULL);

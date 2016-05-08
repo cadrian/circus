@@ -114,6 +114,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       config->free(config);
       exit(1);
    }
+   log_info(LOG, "server", "Server starting.");
 
    circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
    switch (argc) {

@@ -145,6 +145,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       config->free(config);
       exit(1);
    }
+   log_info(LOG, "client_cgi", "Client starting.");
 
    if (argc != 1) {
       usage(argv[0], stderr);

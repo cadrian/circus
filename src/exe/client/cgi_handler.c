@@ -23,6 +23,10 @@
 #include "client_impl.h"
 #include "gen/web.h"
 
+static void debug_form(cad_hash_t *UNUSED(hash), int index, const char *key, const char *value, impl_cgi_t *this) {
+   log_debug(this->log, "cgi_handler", "#%d: %s = %s", index, key, value);
+}
+
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_read_from_client) {
       log_info(this->log, "cgi_handler", "CGI read");
@@ -45,6 +49,10 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
             }
          }
       } else if (!strcmp(verb, "POST")) {
+         if (this->log->is_log(this->log, "cgi_handler", LOG_DEBUG)) {
+            cad_hash_t *form = meta->input_as_form(meta);
+            form->iterate(form, (cad_hash_iterator_fn)debug_form, this);
+         }
          post_read(this, response);
       } else {
          set_response_string(this, response, 401, "Invalid query\n");

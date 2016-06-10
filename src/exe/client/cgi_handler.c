@@ -27,6 +27,10 @@ static void debug_form(cad_hash_t *UNUSED(hash), int index, const char *key, con
    log_debug(this->log, "cgi_handler", "#%d: %s = %s", index, key, value);
 }
 
+static void debug_cookie(cad_cgi_cookies_t *UNUSED(jar), cad_cgi_cookie_t *cookie, impl_cgi_t *this) {
+   log_debug(this->log, "cgi_handler", "COOKIE: %s = %s", cookie->name(cookie), cookie->value(cookie));
+}
+
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_read_from_client) {
       log_info(this->log, "cgi_handler", "CGI read");
@@ -52,6 +56,8 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
          if (this->log->is_log(this->log, "cgi_handler", LOG_DEBUG)) {
             cad_hash_t *form = meta->input_as_form(meta);
             form->iterate(form, (cad_hash_iterator_fn)debug_form, this);
+            cad_cgi_cookies_t *cookies = response->cookies(response);
+            cookies->iterate(cookies, (cad_cgi_cookie_iterator_fn)debug_cookie, this);
          }
          post_read(this, response);
       } else {
@@ -129,6 +135,10 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    result->channel = NULL;
    result->automaton = NULL;
    result->templates_path = templates_path;
+   const char *secure = config->get(config, "cgi", "secure");
+   if (secure == NULL || strcmp(secure, "No: Test")) {
+      result->cookie_flag = Cookie_secure | Cookie_http_only;
+   }
 
    return I(result);
 }

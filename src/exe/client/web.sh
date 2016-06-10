@@ -142,6 +142,7 @@ function reply_webh() {
 function do_webc() {
     local file=$(init_file web.c)
     {
+        echo '#include <alloca.h>'
         echo '#include <string.h>'
         echo
         echo '#include <circus_message_impl.h>'
@@ -167,7 +168,7 @@ function do_webc() {
         echo
         echo 'void post_write(impl_cgi_t *this, cad_cgi_response_t *response) {'
         echo '   circus_message_t *message = this->automaton->message(this->automaton);'
-        echo '   const char *error = message->error(message);'
+        echo '   const char *error = message == NULL ? "no message" : message->error(message);'
         echo '   if (strlen(error) == 0) {'
         echo '      cad_cgi_meta_t *meta = response->meta_variables(response);'
         echo '      const char *path = meta->path_info(meta);'
@@ -243,7 +244,9 @@ function query_webc() {
             if [ "$cookie_read" != null ]; then
                 echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
                 echo "      cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
-                echo "      const char *${query}_${cookie_read} = ${query}_${cookie_read}_websid->value(${query}_${cookie_read}_websid);"
+                echo "      if (${query}_${cookie_read}_websid != NULL) {"
+                echo "         const char *${query}_${cookie_read} = ${query}_${cookie_read}_websid->value(${query}_${cookie_read}_websid);"
+                echo -n "   "
             fi
             echo -n "      message = I(new_circus_message_query_$query(this->memory"
             if [ "$cookie_read" != null ]; then
@@ -253,6 +256,11 @@ function query_webc() {
                 echo -n ", ${query}_$param"
             done
             echo '));'
+            if [ "$cookie_read" != null ]; then
+                echo "      } else {"
+                echo "         set_response_string(this, response, 403, \"Not authenticated.\");"
+                echo "      }"
+            fi
         fi
         echo -n '   } else '
     } >> $read_file
@@ -293,19 +301,26 @@ function reply_webc() {
             echo "      ${query}_extra->free(${query}_extra);"
             if [[ "$extra" != "null" ]]; then
                 if [ "$cookie_write" != null ]; then
-                    echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write}\");"
+                    echo "      char *${query}_${cookie_write}_path = \"/\";"
+                    echo "      const char *${query}_${cookie_write}_script_name = meta->script_name(meta);"
+                    echo "      if (${query}_${cookie_write}_script_name != NULL && strlen(${query}_${cookie_write}_script_name) > 0) {"
+                    echo "         ${query}_${cookie_write}_path = alloca(strlen(${query}_${cookie_write}_script_name) + 2);"
+                    echo "         sprintf(${query}_${cookie_write}_path, \"%s/\", ${query}_${cookie_write}_script_name);"
+                    echo "      }"
+                    echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write} -- path: %s\", ${query}_${cookie_write}_path);"
                     echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
                     echo "      cad_cgi_cookie_t *${query}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
                     echo "      ${query}_${cookie_write}_websid->set_value(${query}_${cookie_write}_websid, (char*)${query}_reply->${cookie_write}(${query}_reply));"
                     echo "      ${query}_${cookie_write}_websid->set_max_age(${query}_${cookie_write}_websid, 900);"
-                    echo "      ${query}_${cookie_write}_websid->set_flag(${query}_${cookie_write}_websid, Cookie_secure | Cookie_http_only);"
+                    echo "      ${query}_${cookie_write}_websid->set_flag(${query}_${cookie_write}_websid, this->cookie_flag);"
+                    echo "      ${query}_${cookie_write}_websid->set_path(${query}_${cookie_write}_websid, ${query}_${cookie_write}_path);"
                     echo "      ${query}_cookies->set(${query}_cookies, ${query}_${cookie_write}_websid);"
                 elif [ "$cookie_read" != null ]; then
                     echo "      log_debug(this->log, \"web\", \"Updating cookie: ${cookie_read}\");"
                     echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
                     echo "      cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
                     echo "      ${query}_${cookie_read}_websid->set_max_age(${query}_${cookie_read}_websid, 900);"
-                    echo "      ${query}_${cookie_read}_websid->set_flag(${query}_${cookie_read}_websid, Cookie_secure | Cookie_http_only);"
+                    echo "      ${query}_${cookie_read}_websid->set_flag(${query}_${cookie_read}_websid, this->cookie_flag);"
                 fi
             fi
             echo "   } else {"

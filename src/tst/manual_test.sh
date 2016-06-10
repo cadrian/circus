@@ -7,7 +7,7 @@ TSTDIR=$(cd $(dirname $(readlink -f $0)); pwd)
 cd $TSTDIR
 ROOT=$(cd $TSTDIR/..; pwd)
 
-TESTDIR=$TSTDIR/manual_test/$(date +'%Y%m%d-%H%m%S')
+TESTDIR=$TSTDIR/manual_test/$(date +'%Y%m%d-%H%M%S')
 base=$TESTDIR/test
 mkdir -p $TESTDIR
 

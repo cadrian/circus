@@ -95,7 +95,8 @@ rm -f $base.client_log $base.server_log
 cat > $RUN/circus/cgi.conf <<EOF
 {
     "cgi": {
-        "templates_path": "$CONF/templates"
+        "templates_path": "$CONF/templates",
+        "secure": "No: Test"
     },
     "log": {
         "level": "debug",

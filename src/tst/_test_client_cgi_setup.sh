@@ -126,7 +126,7 @@ EOF
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR
-    exec $ROOT/exe/main/server.dbg.exe
+    exec $ROOT/exe/main/server$exe
 ) >$base.server_out 2>$base.server_err &
 server_pid=$!
 

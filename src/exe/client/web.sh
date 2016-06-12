@@ -207,12 +207,15 @@ function url_webc() {
     local write_file=$(init_file post_write.c)
     {
         echo 'if (!strcmp(path, "'"$url"'")) {'
+        echo -n "   "
     } >> $write_file
 }
 
+lru_webc_count=0
 function lru_webc() {
     local url=$1
     local read_file=$(init_file post_read.c)
+    lru_webc_count=$(($lru_webc_count + 1))
     {
         echo '{'
         echo '      set_response_string(this, response, 401, "Invalid action");'
@@ -221,6 +224,11 @@ function lru_webc() {
     } >> $read_file
     local write_file=$(init_file post_write.c)
     {
+        echo '{'
+        echo "      char *invalid_response$lru_webc_count = szprintf(this->memory, NULL, \"Invalid reply from server (type: %s; command: %s; path: %s)\", message->type(message), message->command(message), path);"
+        echo "      set_response_string(this, response, 500, invalid_response$lru_webc_count);"
+        echo "      this->memory.free(invalid_response$lru_webc_count);"
+        echo '   }'
         echo -n '} else '
     } >> $write_file
 }
@@ -275,21 +283,22 @@ function reply_webc() {
     local template="$6"
     local write_file=$(init_file post_write.c)
     {
-        if [[ "$query" == "null" ]]; then
-            echo "   crash(); /* unexpected reply from no query*/"
+        if [[ "$reply" == "null" ]]; then
+            echo "if (1) {"
+            echo "      crash(); /* unexpected reply from no query */"
         else
-            echo "   if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
-            echo "      cad_hash_t *${query}_extra = cad_new_hash(this->memory, cad_hash_strings);"
+            echo "if (!strcmp(message->type(message), \"$reply\") && !strcmp(message->command(message), \"reply\")) {"
+            echo "      cad_hash_t *${reply}_extra = cad_new_hash(this->memory, cad_hash_strings);"
             if [[ "$extra" != "null" ]]; then
-                echo "      circus_message_reply_${reply}_t *${query}_reply = (circus_message_reply_${reply}_t*)message;"
+                echo "      circus_message_reply_${reply}_t *${reply}_reply = (circus_message_reply_${reply}_t*)message;"
                 for extrum in $extra; do
                     msg_type=$(jq_msg '.["'$reply'"]["reply"]["'$extrum'"]')
                     case $msg_type in
                         STRING)
-                            echo "      ${query}_extra->set(${query}_extra, \"$extrum\", (char*)${query}_reply->$extrum(${query}_reply));"
+                            echo "      ${reply}_extra->set(${reply}_extra, \"$extrum\", (char*)${reply}_reply->$extrum(${reply}_reply));"
                             ;;
                         STRINGS)
-                            echo "      ${query}_extra->set(${query}_extra, \"#$extrum\", ${query}_reply->$extrum(${query}_reply));"
+                            echo "      ${reply}_extra->set(${reply}_extra, \"#$extrum\", ${reply}_reply->$extrum(${reply}_reply));"
                             ;;
                         *)
                             echo "      // $extrum: type $msg_type not supported"
@@ -297,37 +306,35 @@ function reply_webc() {
                     esac
                 done
             fi
-            echo "      set_response_template(this, response, 200, \"$template\", ${query}_extra);"
-            echo "      ${query}_extra->free(${query}_extra);"
+            echo "      set_response_template(this, response, 200, \"$template\", ${reply}_extra);"
+            echo "      ${reply}_extra->free(${reply}_extra);"
             if [[ "$extra" != "null" ]]; then
                 if [ "$cookie_write" != null ]; then
-                    echo "      char *${query}_${cookie_write}_path = \"/\";"
-                    echo "      const char *${query}_${cookie_write}_script_name = meta->script_name(meta);"
-                    echo "      if (${query}_${cookie_write}_script_name != NULL && strlen(${query}_${cookie_write}_script_name) > 0) {"
-                    echo "         ${query}_${cookie_write}_path = alloca(strlen(${query}_${cookie_write}_script_name) + 2);"
-                    echo "         sprintf(${query}_${cookie_write}_path, \"%s/\", ${query}_${cookie_write}_script_name);"
+                    echo "      char *${reply}_${cookie_write}_path = \"/\";"
+                    echo "      const char *${reply}_${cookie_write}_script_name = meta->script_name(meta);"
+                    echo "      if (${reply}_${cookie_write}_script_name != NULL && strlen(${reply}_${cookie_write}_script_name) > 0) {"
+                    echo "         ${reply}_${cookie_write}_path = alloca(strlen(${reply}_${cookie_write}_script_name) + 2);"
+                    echo "         sprintf(${reply}_${cookie_write}_path, \"%s/\", ${reply}_${cookie_write}_script_name);"
                     echo "      }"
-                    echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write} = %s\", (char*)${query}_reply->${cookie_write}(${query}_reply));"
-                    echo "      log_debug(this->log, \"web\", \"Cookie path: %s\", ${query}_${cookie_write}_path);"
-                    echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
-                    echo "      cad_cgi_cookie_t *${query}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
-                    echo "      ${query}_${cookie_write}_websid->set_value(${query}_${cookie_write}_websid, (char*)${query}_reply->${cookie_write}(${query}_reply));"
-                    echo "      ${query}_${cookie_write}_websid->set_max_age(${query}_${cookie_write}_websid, 900);"
-                    echo "      ${query}_${cookie_write}_websid->set_flag(${query}_${cookie_write}_websid, this->cookie_flag);"
-                    echo "      ${query}_${cookie_write}_websid->set_path(${query}_${cookie_write}_websid, ${query}_${cookie_write}_path);"
-                    echo "      ${query}_cookies->set(${query}_cookies, ${query}_${cookie_write}_websid);"
+                    echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write} = %s\", (char*)${reply}_reply->${cookie_write}(${reply}_reply));"
+                    echo "      log_debug(this->log, \"web\", \"Cookie path: %s\", ${reply}_${cookie_write}_path);"
+                    echo "      cad_cgi_cookies_t *${reply}_cookies = response->cookies(response);"
+                    echo "      cad_cgi_cookie_t *${reply}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
+                    echo "      ${reply}_${cookie_write}_websid->set_value(${reply}_${cookie_write}_websid, (char*)${reply}_reply->${cookie_write}(${reply}_reply));"
+                    echo "      ${reply}_${cookie_write}_websid->set_max_age(${reply}_${cookie_write}_websid, 900);"
+                    echo "      ${reply}_${cookie_write}_websid->set_flag(${reply}_${cookie_write}_websid, this->cookie_flag);"
+                    echo "      ${reply}_${cookie_write}_websid->set_path(${reply}_${cookie_write}_websid, ${reply}_${cookie_write}_path);"
+                    echo "      ${reply}_cookies->set(${reply}_cookies, ${reply}_${cookie_write}_websid);"
                 elif [ "$cookie_read" != null ]; then
                     echo "      log_debug(this->log, \"web\", \"Updating cookie: ${cookie_read}\");"
-                    echo "      cad_cgi_cookies_t *${query}_cookies = response->cookies(response);"
-                    echo "      cad_cgi_cookie_t *${query}_${cookie_read}_websid = ${query}_cookies->get(${query}_cookies, \"WEBSID\");"
-                    echo "      ${query}_${cookie_read}_websid->set_max_age(${query}_${cookie_read}_websid, 900);"
-                    echo "      ${query}_${cookie_read}_websid->set_flag(${query}_${cookie_read}_websid, this->cookie_flag);"
+                    echo "      cad_cgi_cookies_t *${reply}_cookies = response->cookies(response);"
+                    echo "      cad_cgi_cookie_t *${reply}_${cookie_read}_websid = ${reply}_cookies->get(${reply}_cookies, \"WEBSID\");"
+                    echo "      ${reply}_${cookie_read}_websid->set_max_age(${reply}_${cookie_read}_websid, 900);"
+                    echo "      ${reply}_${cookie_read}_websid->set_flag(${reply}_${cookie_read}_websid, this->cookie_flag);"
                 fi
             fi
-            echo "   } else {"
-            echo "      set_response_string(this, response, 500, \"Invalid reply from server\");"
-            echo "   }"
         fi
+        echo -n "   } else "
     } >> $write_file
 }
 

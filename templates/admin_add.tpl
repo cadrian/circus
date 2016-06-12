@@ -7,7 +7,7 @@
     <table>
       <tr>
         <td>Password:</td>
-        <td>{{password}}</td>
+        <td><b>{{password}}</b></td>
       </tr>
       <tr>
         <td>Validity:</td>

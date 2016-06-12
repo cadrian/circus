@@ -55,9 +55,12 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
       } else if (!strcmp(verb, "POST")) {
          if (this->log->is_log(this->log, "cgi_handler", LOG_DEBUG)) {
             cad_hash_t *form = meta->input_as_form(meta);
+            log_debug(this->log, "cgi_handler", "Listing form parameters:");
             form->iterate(form, (cad_hash_iterator_fn)debug_form, this);
             cad_cgi_cookies_t *cookies = response->cookies(response);
+            log_debug(this->log, "cgi_handler", "Listing cookies:");
             cookies->iterate(cookies, (cad_cgi_cookie_iterator_fn)debug_cookie, this);
+            log_debug(this->log, "cgi_handler", "End of listing.");
          }
          post_read(this, response);
       } else {

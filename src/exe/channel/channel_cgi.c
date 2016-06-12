@@ -149,6 +149,7 @@ static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
       log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: calling CGI run");
       cad_cgi_response_t *response = this->cgi->run(this->cgi);
       if (response != NULL) {
+         log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: got response from CGI run");
          start_write(this, response);
       } else {
          log_error(this->log, "channel_cgi", "NULL response!!");

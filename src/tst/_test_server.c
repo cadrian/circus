@@ -286,9 +286,10 @@ int test(int argc, char **argv, int (*fn)(void)) {
       if (st != 0) {
          printf("waitpid: pid_client exited with status %d\n", st);
          res = EXIT_TEST_FAILED;
+      } else {
+         printf("pid_client: OK\n");
       }
    }
-   printf("pid_client: OK\n");
 
    sleep(8);
    p = waitpid(pid_server, &status, WNOHANG);
@@ -307,9 +308,10 @@ int test(int argc, char **argv, int (*fn)(void)) {
       if (st != 0) {
          printf("waitpid: pid_server exited with status %d\n", st);
          res = EXIT_TEST_FAILED;
+      } else {
+         printf("pid_server: OK\n");
       }
    }
-   printf("pid_server: OK\n");
 
    return res;
 }

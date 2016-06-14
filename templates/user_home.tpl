@@ -98,6 +98,11 @@
             </table>
           </td>
         </tr>
+        <tr>
+          <td>
+            <button type="button" onclick="submit_action('logout');">Disconnect</button>
+          </td>
+        </tr>
       </table>
     </form>
   </body>

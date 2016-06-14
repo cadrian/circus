@@ -427,7 +427,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->session = circus_session(memory, log);
    result->reply = NULL;
 
-   result->tmppwd_len = 16;
+   result->tmppwd_len = 15;
    result->tmppwd_validity = 900L;
 
    const char *validity_format = config->get(config, "user", "validity_format");

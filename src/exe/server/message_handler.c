@@ -332,6 +332,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
          }
       } while (n > 0);
 
+      log_debug(this->log, "message_handler", "<< %s", buf);
       cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
       if (in == NULL) {
          log_error(this->log, "message_handler", "Could not allocate input stream");
@@ -344,6 +345,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
             if (msg == NULL) {
                log_error(this->log, "message_handler", "Could not deserialize message");
             } else {
+               log_info(this->log, "message_handler", "Received message: type: %s, command: %s", msg->type(msg), msg->command(msg));
                msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
                msg->free(msg);
             }
@@ -371,6 +373,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
             if (writer == NULL) {
                log_error(this->log, "message_handler", "Could not allocate JSON writer");
             } else {
+               log_info(this->log, "message_handler", "Sending message: type: %s, command: %s", this->reply->type(this->reply), this->reply->command(this->reply));
                reply->accept(reply, writer);
                reply->free(reply);
             }
@@ -380,6 +383,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
       }
 
       if (szout != NULL) {
+         log_debug(this->log, "message_handler", ">> %s", szout);
          channel->write(channel, szout, strlen(szout));
          this->memory.free(szout);
       }

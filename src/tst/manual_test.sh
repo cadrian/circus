@@ -13,6 +13,7 @@ mkdir -p $TESTDIR
 
 (
     cd ../..
+    export LD_FLAGS="--wrap=mlock --wrap=munlock" # we are not root
     exec redo all
 ) || exit 1
 

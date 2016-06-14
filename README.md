@@ -82,7 +82,7 @@ transit through it all!
 ## Vault
 
 At the beginning, I expected the vault to be implemented as a simple
-encrypted JSON file (same as pwd). Let that change:
+encrypted JSON file (same as pwd). Instead:
 
 * The server file contains the vault; it will be an sqlite database.
 
@@ -104,6 +104,9 @@ not a goal of circus.
 XDG is not an object.
 
 Missing lots of tests.
+
+Debug logging may reveal sensitive information. Maybe have a specific
+log level for those?
 
 ## TODO
 

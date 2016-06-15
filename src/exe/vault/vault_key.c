@@ -31,17 +31,17 @@ static char *get_symmetric_key(user_impl_t *user) {
    sqlite3_stmt *stmt;
    int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
    if (n != SQLITE_OK) {
-      log_error(user->log, "vault_key", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
    } else {
       n = sqlite3_bind_int64(stmt, 1, user->userid);
       if (n != SQLITE_OK) {
-         log_error(user->log, "vault_key", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+         log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
       } else {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
-            log_error(user->log, "vault_key", "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "vault_key", "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
          } else {
             const char *keysalt = (const char*)sqlite3_column_text(stmt, 1);
             const char *hashkey = (const char*)sqlite3_column_text(stmt, 2);
@@ -60,12 +60,12 @@ static char *get_symmetric_key(user_impl_t *user) {
       }
       n = sqlite3_finalize(stmt);
       if (n != SQLITE_OK) {
-         log_warning(user->log, "vault", "Error in finalize: %s", sqlite3_errstr(n));
+         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
       }
    }
 
    if (result == NULL) {
-      log_error(user->log, "vault_key", "Could not get encryption key for user %ld", (long int)user->userid);
+      log_error(user->log, "Could not get encryption key for user %ld", (long int)user->userid);
    }
 
    return result;
@@ -79,11 +79,11 @@ static char *vault_key_get_password(key_impl_t *this) {
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->user->vault->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
-         log_error(this->log, "vault_key", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
       } else {
          n = sqlite3_bind_int64(stmt, 1, this->keyid);
          if (n != SQLITE_OK) {
-            log_error(this->log, "vault_key", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
          } else {
             int done = 0;
             do {
@@ -92,7 +92,7 @@ static char *vault_key_get_password(key_impl_t *this) {
                case SQLITE_OK:
                case SQLITE_ROW:
                   if (result != NULL) {
-                     log_error(this->log, "vault_key", "Error: multiple entries for key %ld", (long int)this->keyid);
+                     log_error(this->log, "Error: multiple entries for key %ld", (long int)this->keyid);
                      this->memory.free(result);
                      result = NULL;
                      done = 1;
@@ -111,7 +111,7 @@ static char *vault_key_get_password(key_impl_t *this) {
                   done = 1;
                   break;
                default:
-                  log_error(this->log, "vault_key", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+                  log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
                   done = 1;
                }
             } while (!done);
@@ -130,44 +130,44 @@ static int vault_key_set_password(key_impl_t *this, const char *password) {
    if (enckey != NULL) {
       keysalt = salt(this->memory, this->log);
       if (keysalt == NULL) {
-         log_error(this->log, "vault_key", "Could not allocate salt");
+         log_error(this->log, "Could not allocate salt");
       } else {
          char *saltedpwd = salted(this->memory, this->log, keysalt, password);
          if (saltedpwd == NULL) {
-            log_error(this->log, "vault_key", "Could not allocated salted password");
+            log_error(this->log, "Could not allocated salted password");
          }
          encpwd = encrypted(this->memory, this->log, saltedpwd, enckey);
       }
    }
    if (encpwd == NULL) {
-      log_error(this->log, "vault_key", "Could not encrypt password");
+      log_error(this->log, "Could not encrypt password");
    } else {
       assert(keysalt != NULL);
       static const char *sql = "UPDATE KEYS SET SALT=?, VALUE=? WHERE KEYID=?";
       sqlite3_stmt *stmt;
       int n = sqlite3_prepare_v2(this->user->vault->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
-         log_error(this->log, "vault_key", "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
       } else {
          int ok=1;
          if (ok) {
             n = sqlite3_bind_text(stmt, 1, keysalt, -1, SQLITE_TRANSIENT);
             if (n != SQLITE_OK) {
-               log_error(this->log, "vault_key", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
             }
          }
          if (ok) {
             n = sqlite3_bind_text(stmt, 2, encpwd, -1, SQLITE_TRANSIENT);
             if (n != SQLITE_OK) {
-               log_error(this->log, "vault_key", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
             }
          }
          if (ok) {
             n = sqlite3_bind_int64(stmt, 3, this->keyid);
             if (n != SQLITE_OK) {
-               log_error(this->log, "vault_key", "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
                ok=0;
             }
          }
@@ -177,7 +177,7 @@ static int vault_key_set_password(key_impl_t *this, const char *password) {
             if (n == SQLITE_OK || n == SQLITE_DONE) {
                result = 1;
             } else {
-               log_error(this->log, "vault_key", "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+               log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
             }
          }
 
@@ -186,7 +186,7 @@ static int vault_key_set_password(key_impl_t *this, const char *password) {
 
          n = sqlite3_finalize(stmt);
          if (n != SQLITE_OK) {
-            log_warning(this->log, "vault_key", "Error in finalize: %s", sqlite3_errstr(n));
+            log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
          }
       }
    }

@@ -39,7 +39,7 @@ static circus_message_t *message(automaton_impl *this) {
 static void set_state(automaton_impl *this, circus_automaton_state_e state, circus_message_t *message) {
    assert(this->state != State_error && (state == State_error || state >= this->state));
    int changed = state != this->state;
-   log_debug(this->log, "automaton", "State: %d -> %d [%p]", this->state, state, message);
+   log_debug(this->log, "State: %d -> %d [%p]", this->state, state, message);
    this->state = state;
    this->message = message;
    if (changed && (state != State_error)) {

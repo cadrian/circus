@@ -155,7 +155,7 @@ function do_webc() {
         echo '   cad_hash_t *form = meta->input_as_form(meta);'
         echo '   assert(form != NULL);'
         echo '   const char *action = form->get(form, "action");'
-        echo '   log_debug(this->log, "web", "path: %s - action: %s", path, action);'
+        echo '   log_debug(this->log, "path: %s - action: %s", path, action);'
         echo '#include "post_read.c"'
         echo '   if (message == NULL) {'
         echo '      set_response_string(this, response, 401, "Invalid path");'
@@ -172,10 +172,10 @@ function do_webc() {
         echo '   if (strlen(error) == 0) {'
         echo '      cad_cgi_meta_t *meta = response->meta_variables(response);'
         echo '      const char *path = meta->path_info(meta);'
-        echo '      log_debug(this->log, "web", "path: %s - message type: %s - command: %s", path, message->type(message), message->command(message));'
+        echo '      log_debug(this->log, "path: %s - message type: %s - command: %s", path, message->type(message), message->command(message));'
         echo '#include "post_write.c"'
         echo '   } else {'
-        echo '      log_error(this->log, "web", "error: %s", error);'
+        echo '      log_error(this->log, "error: %s", error);'
         echo '      set_response_string(this, response, 403, "Access denied");'
         echo '   }'
         echo '}'
@@ -316,8 +316,8 @@ function reply_webc() {
                     echo "         ${reply}_${cookie_write}_path = alloca(strlen(${reply}_${cookie_write}_script_name) + 2);"
                     echo "         sprintf(${reply}_${cookie_write}_path, \"%s/\", ${reply}_${cookie_write}_script_name);"
                     echo "      }"
-                    echo "      log_debug(this->log, \"web\", \"Setting cookie: ${cookie_write} = %s\", (char*)${reply}_reply->${cookie_write}(${reply}_reply));"
-                    echo "      log_debug(this->log, \"web\", \"Cookie path: %s\", ${reply}_${cookie_write}_path);"
+                    echo "      log_debug(this->log, \"Setting cookie: ${cookie_write} = %s\", (char*)${reply}_reply->${cookie_write}(${reply}_reply));"
+                    echo "      log_debug(this->log, \"Cookie path: %s\", ${reply}_${cookie_write}_path);"
                     echo "      cad_cgi_cookies_t *${reply}_cookies = response->cookies(response);"
                     echo "      cad_cgi_cookie_t *${reply}_${cookie_write}_websid = new_cad_cgi_cookie(this->memory, \"WEBSID\");"
                     echo "      ${reply}_${cookie_write}_websid->set_value(${reply}_${cookie_write}_websid, (char*)${reply}_reply->${cookie_write}(${reply}_reply));"
@@ -326,7 +326,7 @@ function reply_webc() {
                     echo "      ${reply}_${cookie_write}_websid->set_path(${reply}_${cookie_write}_websid, ${reply}_${cookie_write}_path);"
                     echo "      ${reply}_cookies->set(${reply}_cookies, ${reply}_${cookie_write}_websid);"
                 elif [ "$cookie_read" != null ]; then
-                    echo "      log_debug(this->log, \"web\", \"Updating cookie: ${cookie_read}\");"
+                    echo "      log_debug(this->log, \"Updating cookie: ${cookie_read}\");"
                     echo "      cad_cgi_cookies_t *${reply}_cookies = response->cookies(response);"
                     echo "      cad_cgi_cookie_t *${reply}_${cookie_read}_websid = ${reply}_cookies->get(${reply}_cookies, \"WEBSID\");"
                     echo "      ${reply}_${cookie_read}_websid->set_max_age(${reply}_${cookie_read}_websid, 900);"

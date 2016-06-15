@@ -24,20 +24,20 @@
 #include "gen/web.h"
 
 static void debug_form(cad_hash_t *UNUSED(hash), int index, const char *key, const char *value, impl_cgi_t *this) {
-   log_debug(this->log, "cgi_handler", "#%d: %s = %s", index, key, value);
+   log_pii(this->log, "#%d: %s = %s", index, key, value);
 }
 
 static void debug_cookie(cad_cgi_cookies_t *UNUSED(jar), cad_cgi_cookie_t *cookie, impl_cgi_t *this) {
-   log_debug(this->log, "cgi_handler", "COOKIE: %s = %s", cookie->name(cookie), cookie->value(cookie));
+   log_pii(this->log, "COOKIE: %s = %s", cookie->name(cookie), cookie->value(cookie));
 }
 
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_read_from_client) {
-      log_info(this->log, "cgi_handler", "CGI read");
+      log_info(this->log, "CGI read");
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
       const char *path = meta->path_info(meta);
-      log_debug(this->log, "cgi_handler", "verb: %s -- path: \"%s\"", verb, path);
+      log_debug(this->log, "verb: %s -- path: \"%s\"", verb, path);
       if (!strcmp(verb, "GET")) {
          if (strcmp(path, "") && strcmp(path, "/")) {
             set_response_string(this, response, 401, "Invalid query\n");
@@ -53,14 +53,14 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
             }
          }
       } else if (!strcmp(verb, "POST")) {
-         if (this->log->is_log(this->log, "cgi_handler", LOG_DEBUG)) {
+         if (log_is_pii(this->log)) {
             cad_hash_t *form = meta->input_as_form(meta);
-            log_debug(this->log, "cgi_handler", "Listing form parameters:");
+            log_pii(this->log, "Listing form parameters:");
             form->iterate(form, (cad_hash_iterator_fn)debug_form, this);
             cad_cgi_cookies_t *cookies = response->cookies(response);
-            log_debug(this->log, "cgi_handler", "Listing cookies:");
+            log_pii(this->log, "Listing cookies:");
             cookies->iterate(cookies, (cad_cgi_cookie_iterator_fn)debug_cookie, this);
-            log_debug(this->log, "cgi_handler", "End of listing.");
+            log_pii(this->log, "End of listing.");
          }
          post_read(this, response);
       } else {
@@ -71,11 +71,11 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
 
 static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
    if (this->automaton->state(this->automaton) == State_write_to_client) {
-      log_info(this->log, "cgi_handler", "CGI write");
+      log_info(this->log, "CGI write");
       cad_cgi_meta_t *meta = response->meta_variables(response);
       const char *verb = meta->request_method(meta);
       if (!strcmp(verb, "GET")) {
-         log_debug(this->log, "cgi_handler", "GET: nothing more to write");
+         log_debug(this->log, "GET: nothing more to write");
       } else if (!strcmp(verb, "POST")) {
          post_write(this, response);
       } else {
@@ -91,13 +91,13 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
 
 static void on_read(circus_automaton_t *automaton, impl_cgi_t *this) {
    assert(this->automaton == automaton);
-   log_debug(this->log, "cgi_handler", "register on_read");
+   log_debug(this->log, "register on_read");
    this->channel->on_read(this->channel, (circus_channel_on_read_cb)impl_cgi_read, this);
 }
 
 static void on_write(circus_automaton_t *automaton, impl_cgi_t *this) {
    assert(this->automaton == automaton);
-   log_debug(this->log, "cgi_handler", "register on_write");
+   log_debug(this->log, "register on_write");
    this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_cgi_write, this);
 }
 
@@ -130,7 +130,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    } else {
       templates_path = szprintf(memory, NULL, "%s", tp);
    }
-   log_info(log, "cgi_handler", "templates path: %s", templates_path);
+   log_info(log, "templates path: %s", templates_path);
 
    result->fn = impl_cgi_fn;
    result->memory = memory;

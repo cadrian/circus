@@ -47,6 +47,8 @@ static void set_log(circus_config_t *config) {
          log_level = LOG_INFO;
       } else if (!strcmp(log_szlevel, "debug")) {
          log_level = LOG_DEBUG;
+      } else if (!strcmp(log_szlevel, "pii")) {
+         log_level = LOG_PII;
       } else {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
@@ -77,7 +79,7 @@ static void usage(const char *cmd, FILE *out) {
 static void run(circus_config_t *config, circus_vault_t *vault) {
    circus_channel_t *channel = circus_zmq_server(MEMORY, LOG, config);
    if (channel == NULL) {
-      log_error(LOG, "server", "Could not allocate channel");
+      log_error(LOG, "Could not allocate channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
@@ -85,7 +87,7 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
 
    circus_server_message_handler_t *mh = circus_message_handler(MEMORY, LOG, vault, config);
    if (mh == NULL) {
-      log_error(LOG, "server", "Could not allocate message handler");
+      log_error(LOG, "Could not allocate message handler");
       channel->free(channel);
       LOG->free(LOG);
       config->free(config);
@@ -94,10 +96,10 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
 
    mh->register_to(mh, channel);
 
-   log_info(LOG, "server", "Server started.");
+   log_info(LOG, "Server started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
-   log_info(LOG, "server", "Server stopped.");
+   log_info(LOG, "Server stopped.");
 
    mh->free(mh);
    channel->free(channel);
@@ -114,7 +116,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       config->free(config);
       exit(1);
    }
-   log_info(LOG, "server", "Server starting.");
+   log_info(LOG, "Server starting.");
 
    circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
    switch (argc) {

@@ -26,7 +26,7 @@ circus_log_t *LOG;
 void wait_for_a_while(uv_idle_t* handle) {
    static int counter=0;
 
-   log_info(LOG, "main", "Idle %d", counter);
+   log_info(LOG, "Idle %d", counter);
 
    counter++;
    if (counter > 10) {

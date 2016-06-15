@@ -84,7 +84,7 @@ static void visit_query_login(circus_message_visitor_query_t *visitor, circus_me
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *userid = visited->userid(visited);
    const char *password = visited->password(visited);
-   log_info(this->log, "message_handler", "Login: user %s", userid);
+   log_info(this->log, "Login: user %s", userid);
    circus_user_t *user = this->vault->get(this->vault, userid, password);
    circus_message_reply_login_t *reply = NULL;
    if (user == NULL) {
@@ -103,7 +103,7 @@ static void visit_query_logout(circus_message_visitor_query_t *visitor, circus_m
    const char *token = visited->token(visited);
    circus_session_data_t *data = this->session->get(this->session, sessionid, token);
    if (data == NULL) {
-      log_warning(this->log, "message_handler", "Logout: unknown session or invalid token");
+      log_warning(this->log, "Logout: unknown session or invalid token");
    } else {
       circus_user_t *user = data->user(data);
       this->session->set(this->session, user); // force a new session i.e. invalidate the current one
@@ -135,7 +135,7 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
 static void visit_query_ping(circus_message_visitor_query_t *visitor, circus_message_query_ping_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *phrase = visited->phrase(visited);
-   log_info(this->log, "message_handler", "Ping: %s", phrase);
+   log_info(this->log, "Ping: %s", phrase);
    circus_message_reply_ping_t *ping = new_circus_message_reply_ping(this->memory, "", phrase);
    this->reply = I(ping);
 }
@@ -161,14 +161,14 @@ static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_mes
 
    circus_session_data_t *data = this->session->get(this->session, sessionid, token);
    if (data == NULL) {
-      log_error(this->log, "message_handler", "Stop query REFUSED, unknown session or invalid token");
+      log_error(this->log, "Stop query REFUSED, unknown session or invalid token");
       token = "";
    } else {
       circus_user_t *user = data->user(data);
       if (!user->is_admin(user)) {
-         log_error(this->log, "message_handler", "Stop query REFUSED, user %s not admin", user->name(user));
+         log_error(this->log, "Stop query REFUSED, user %s not admin", user->name(user));
       } else {
-         log_warning(this->log, "message_handler", "Stopping: %s", reason);
+         log_warning(this->log, "Stopping: %s", reason);
          this->running = 0;
          uv_stop(uv_default_loop());
          ok = 1;
@@ -209,40 +209,40 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
 
    circus_session_data_t *data = this->session->get(this->session, sessionid, token);
    if (data == NULL) {
-      log_error(this->log, "message_handler", "User query REFUSED, unknown session or invalid token");
+      log_error(this->log, "User query REFUSED, unknown session or invalid token");
       token = "";
    } else {
       circus_user_t *user = data->user(data);
       if (!user->is_admin(user)) {
-         log_error(this->log, "message_handler", "User query REFUSED, user %s not admin", user->name(user));
+         log_error(this->log, "User query REFUSED, user %s not admin", user->name(user));
       } else {
          const char *username = visited->username(visited);
          const char *email = visited->email(visited);
          const char *permissions = visited->permissions(visited);
          if (strcmp(permissions, "user") != 0) {
-            log_error(this->log, "message_handler", "User permissions must be \"user\" for now.");
+            log_error(this->log, "User permissions must be \"user\" for now.");
          } else {
             password = szrandom(this->memory, this->tmppwd_len);
             if (password == NULL) {
-               log_error(this->log, "message_handler", "User error: could not allocate random password.");
+               log_error(this->log, "User error: could not allocate random password.");
             } else {
                uint64_t valid = absolute_validity(this->tmppwd_validity);
                circus_user_t *new_user = this->vault->get(this->vault, username, NULL);
                if (new_user == NULL) {
-                  log_info(this->log, "message_handler", "Creating new user: %s", username);
+                  log_info(this->log, "Creating new user: %s", username);
                   new_user = this->vault->new(this->vault, username, password, valid);
                   if (new_user == NULL) {
-                     log_error(this->log, "message_handler", "User error: could not allocate user.");
+                     log_error(this->log, "User error: could not allocate user.");
                   } else {
                      ok = 1;
                   }
                } else {
-                  log_info(this->log, "message_handler", "Updating user: %s", username);
+                  log_info(this->log, "Updating user: %s", username);
                   this->session->set(this->session, new_user); // invalidates any currently running session for that user
                   if (new_user->set_password(new_user, password, valid)) {
                      ok = 1;
                   } else {
-                     log_error(this->log, "message_handler", "User error: could not set password.");
+                     log_error(this->log, "User error: could not set password.");
                   }
                }
                if (ok) {
@@ -250,7 +250,7 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
                   if (new_user->set_email(new_user, email)) {
                      // TODO send email with the password
                   } else {
-                     log_warning(this->log, "message_handler", "User error: could not set email.");
+                     log_warning(this->log, "User error: could not set email.");
                   }
                }
                if (ok) {
@@ -271,7 +271,7 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
                         again = 0;
                      }
                   } while (again);
-                  log_info(this->log, "message_handler", "Temporary password for %s is valid until %s", username, validity);
+                  log_info(this->log, "Temporary password for %s is valid until %s", username, validity);
                }
             }
          }
@@ -332,20 +332,20 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
          }
       } while (n > 0);
 
-      log_debug(this->log, "message_handler", "<< %s", buf);
+      log_pii(this->log, "<< %s", buf);
       cad_input_stream_t *in = new_cad_input_stream_from_string(buf, this->memory);
       if (in == NULL) {
-         log_error(this->log, "message_handler", "Could not allocate input stream");
+         log_error(this->log, "Could not allocate input stream");
       } else {
          json_value_t *jmsg = json_parse(in, NULL, NULL, this->memory);
          if (jmsg == NULL) {
-            log_error(this->log, "message_handler", "Could not parse JSON");
+            log_error(this->log, "Could not parse JSON");
          } else {
             circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
             if (msg == NULL) {
-               log_error(this->log, "message_handler", "Could not deserialize message");
+               log_error(this->log, "Could not deserialize message");
             } else {
-               log_info(this->log, "message_handler", "Received message: type: %s, command: %s", msg->type(msg), msg->command(msg));
+               log_info(this->log, "Received message: type: %s, command: %s", msg->type(msg), msg->command(msg));
                msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
                msg->free(msg);
             }
@@ -363,17 +363,17 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
    if (this->reply != NULL) {
       json_object_t *reply = this->reply->serialize(this->reply);
       if (reply == NULL) {
-         log_error(this->log, "message_handler", "Could not serialize message");
+         log_error(this->log, "Could not serialize message");
       } else {
          cad_output_stream_t *out = new_cad_output_stream_from_string(&szout, this->memory);
          if (out == NULL) {
-            log_error(this->log, "message_handler", "Could not allocate output stream");
+            log_error(this->log, "Could not allocate output stream");
          } else {
             json_visitor_t *writer = json_write_to(out, this->memory, json_compact);
             if (writer == NULL) {
-               log_error(this->log, "message_handler", "Could not allocate JSON writer");
+               log_error(this->log, "Could not allocate JSON writer");
             } else {
-               log_info(this->log, "message_handler", "Sending message: type: %s, command: %s", this->reply->type(this->reply), this->reply->command(this->reply));
+               log_info(this->log, "Sending message: type: %s, command: %s", this->reply->type(this->reply), this->reply->command(this->reply));
                reply->accept(reply, writer);
                reply->free(reply);
             }
@@ -383,7 +383,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
       }
 
       if (szout != NULL) {
-         log_debug(this->log, "message_handler", ">> %s", szout);
+         log_pii(this->log, ">> %s", szout);
          channel->write(channel, szout, strlen(szout));
          this->memory.free(szout);
       }
@@ -443,7 +443,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
       if ((tpl != ULONG_MAX || errno != ERANGE) && errno != EINVAL) {
          result->tmppwd_len = (size_t)tpl;
       } else {
-         log_warning(log, "message_handler", "Invalid temporary_password_length: %s", tmppwd_len);
+         log_warning(log, "Invalid temporary_password_length: %s", tmppwd_len);
       }
    }
 
@@ -454,7 +454,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
       if ((tpv != ULONG_MAX || errno != ERANGE) && errno != EINVAL && tpv <= UINT64_MAX) {
          result->tmppwd_validity = (uint64_t)tpv;
       } else {
-         log_warning(log, "message_handler", "Invalid temporary_password_validity: %s", tmppwd_validity);
+         log_warning(log, "Invalid temporary_password_validity: %s", tmppwd_validity);
       }
    }
 

@@ -99,7 +99,7 @@ cat > $RUN/circus/cgi.conf <<EOF
         "secure": "No: Test"
     },
     "log": {
-        "level": "debug",
+        "level": "pii",
         "filename": "$base.client_log"
     }
 }
@@ -111,7 +111,7 @@ cat > $RUN/circus/server.conf <<EOF
         "filename": "$base.vault"
     },
     "log": {
-        "level": "debug",
+        "level": "pii",
         "filename": "$base.server_log"
     }
 }

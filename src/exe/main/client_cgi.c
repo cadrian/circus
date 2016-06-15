@@ -48,6 +48,8 @@ static void set_log(circus_config_t *config) {
          log_level = LOG_INFO;
       } else if (!strcmp(log_szlevel, "debug")) {
          log_level = LOG_DEBUG;
+      } else if (!strcmp(log_szlevel, "pii")) {
+         log_level = LOG_PII;
       } else {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
@@ -73,14 +75,14 @@ static void usage(const char *cmd, FILE *out) {
 }
 
 static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) {
-   log_debug(LOG, "client_cgi", "Finished");
+   log_debug(LOG, "Finished");
    uv_stop(uv_default_loop());
 }
 
 static void run(circus_config_t *config) {
    circus_channel_t *zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
-      log_error(LOG, "client_cgi", "Could not allocate zmq_channel");
+      log_error(LOG, "Could not allocate zmq_channel");
       LOG->free(LOG);
       config->free(config);
       exit(1);
@@ -88,7 +90,7 @@ static void run(circus_config_t *config) {
 
    circus_client_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
-      log_error(LOG, "client_cgi", "Could not allocate message handler");
+      log_error(LOG, "Could not allocate message handler");
       zmq_channel->free(zmq_channel);
       LOG->free(LOG);
       config->free(config);
@@ -97,7 +99,7 @@ static void run(circus_config_t *config) {
 
    circus_channel_t *cgi_channel = circus_cgi(MEMORY, LOG, config);
    if (cgi_channel == NULL) {
-      log_error(LOG, "client_cgi", "Could not allocate cgi_channel");
+      log_error(LOG, "Could not allocate cgi_channel");
       mh->free(mh);
       LOG->free(LOG);
       config->free(config);
@@ -106,7 +108,7 @@ static void run(circus_config_t *config) {
 
    circus_client_cgi_handler_t *ch = circus_cgi_handler(MEMORY, LOG, config);
    if (ch == NULL) {
-      log_error(LOG, "client_cgi", "Could not allocate CGI handler");
+      log_error(LOG, "Could not allocate CGI handler");
       cgi_channel->free(cgi_channel);
       mh->free(mh);
       zmq_channel->free(zmq_channel);
@@ -123,10 +125,10 @@ static void run(circus_config_t *config) {
    automaton->on_state(automaton, State_finished, finished, NULL);
    automaton->set_state(automaton, State_read_from_client, NULL);
 
-   log_info(LOG, "client_cgi", "Client started.");
+   log_info(LOG, "Client started.");
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
-   log_info(LOG, "client_cgi", "Client stopped.");
+   log_info(LOG, "Client stopped.");
 
    ch->free(ch);
    cgi_channel->free(cgi_channel);
@@ -145,7 +147,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       config->free(config);
       exit(1);
    }
-   log_info(LOG, "client_cgi", "Client starting.");
+   log_info(LOG, "Client starting.");
 
    if (argc != 1) {
       usage(argv[0], stderr);

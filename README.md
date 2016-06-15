@@ -105,9 +105,6 @@ XDG is not an object.
 
 Missing lots of tests.
 
-Debug logging may reveal sensitive information. Maybe have a specific
-log level for those?
-
 ## TODO
 
 Using `sqlite_open_v2`, define a new vfs layer that uses the uv loop
@@ -115,3 +112,11 @@ instead of sleeping; and maybe more operations such as encryption,
 secure malloc…
 
 Implement key tags. The database table exists, but is not used yet.
+
+# Usage
+
+## Warning!!
+
+PII logging ("Personally-Identifiable Information") may reveal
+sensitive information. Its level is lower than DEBUG, on purpose. Use
+with care!

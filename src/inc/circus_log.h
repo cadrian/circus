@@ -30,6 +30,7 @@ typedef enum {
    LOG_WARNING,
    LOG_INFO,
    LOG_DEBUG,
+   LOG_PII,
    __LOG_MAX
 } log_level_t;
 
@@ -54,9 +55,22 @@ struct circus_log_s {
 __PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
 __PUBLIC__ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t max_level, int fd);
 
-__PUBLIC__ void log_error(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void log_warning(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void log_info(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void log_debug(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_error(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_warning(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_info(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_debug(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_pii(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+
+#define log_error(logger, format, arg...) logger_error((logger), __FILE__, (format) , ##arg)
+#define log_warning(logger, format, arg...) logger_warning((logger), __FILE__, (format) , ##arg)
+#define log_info(logger, format, arg...) logger_info((logger), __FILE__, (format) , ##arg)
+#define log_debug(logger, format, arg...) logger_debug((logger), __FILE__, (format) , ##arg)
+#define log_pii(logger, format, arg...) logger_pii((logger), __FILE__, (format) , ##arg)
+
+#define log_is_error(logger) ((logger)->is_log((logger), __FILE__, LOG_ERROR))
+#define log_is_warning(logger) ((logger)->is_log((logger), __FILE__, LOG_WARNING))
+#define log_is_info(logger) ((logger)->is_log((logger), __FILE__, LOG_INFO))
+#define log_is_debug(logger) ((logger)->is_log((logger), __FILE__, LOG_DEBUG))
+#define log_is_pii(logger) ((logger)->is_log((logger), __FILE__, LOG_PII))
 
 #endif /* __CIRCUS_LOG_H */

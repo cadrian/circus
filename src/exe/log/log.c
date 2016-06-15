@@ -33,7 +33,7 @@
 #include <circus_log.h>
 #include <circus_time.h>
 
-static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG"};
+static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG", "PII"};
 
 static int format_log(char *buf, const int buflen, const char *format, const struct timeval *tv, const char *tag, const char *module, const char *message) {
    int result = 0;
@@ -545,7 +545,7 @@ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t ma
    return I(result);
 }
 
-void log_error(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_error(circus_log_t *logger, const char *module, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_ERROR);
    va_start(arg, format);
@@ -553,7 +553,7 @@ void log_error(circus_log_t *logger, const char *module, const char *format, ...
    va_end(arg);
 }
 
-void log_warning(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_warning(circus_log_t *logger, const char *module, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_WARNING);
    va_start(arg, format);
@@ -561,7 +561,7 @@ void log_warning(circus_log_t *logger, const char *module, const char *format, .
    va_end(arg);
 }
 
-void log_info(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_info(circus_log_t *logger, const char *module, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_INFO);
    va_start(arg, format);
@@ -569,9 +569,17 @@ void log_info(circus_log_t *logger, const char *module, const char *format, ...)
    va_end(arg);
 }
 
-void log_debug(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_debug(circus_log_t *logger, const char *module, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_DEBUG);
+   va_start(arg, format);
+   s->vput(s, format, arg);
+   va_end(arg);
+}
+
+void logger_pii(circus_log_t *logger, const char *module, const char *format, ...) {
+   va_list arg;
+   cad_output_stream_t *s = logger->stream(logger, module, LOG_PII);
    va_start(arg, format);
    s->vput(s, format, arg);
    va_end(arg);

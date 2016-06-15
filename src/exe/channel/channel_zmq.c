@@ -52,7 +52,7 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_cb = cb;
    this->read_data = data;
    if (!this->started) {
-      log_debug(this->log, "channel_zmq", "on_read: starting uv poll");
+      log_debug(this->log, "on_read: starting uv poll");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;
@@ -63,7 +63,7 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void 
    this->write_cb = cb;
    this->write_data = data;
    if (!this->started) {
-      log_debug(this->log, "channel_zmq", "on_read: starting uv poll");
+      log_debug(this->log, "on_read: starting uv poll");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;
@@ -77,7 +77,7 @@ static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
       zmq_msg_init_size(&query, buflen);
       int n = zmq_msg_recv(&query, this->socket, 0);
       if (n < 0) {
-         log_error(this->log, "channel_zmq", "Error %d while receiving message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
+         log_error(this->log, "Error %d while receiving message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
       } else {
          this->read_buffer = this->memory.malloc(n + 1);
          memcpy(this->read_buffer, zmq_msg_data(&query), n);
@@ -109,7 +109,7 @@ static void impl_write(zmq_impl_t *this, const char *buffer, size_t buflen) {
    memcpy(zmq_msg_data(&reply), buffer, buflen);
    int n = zmq_msg_send(&reply, this->socket, 0);
    if (n < 0) {
-      log_error(this->log, "channel_zmq", "Error %d while sending message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
+      log_error(this->log, "Error %d while sending message -- %s", zmq_errno(), zmq_strerror(zmq_errno()));
    }
    zmq_msg_close(&reply);
 }
@@ -136,7 +136,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    zmq_impl_t *this = handle->data;
    assert(this == container_of(handle, zmq_impl_t, handle));
    if (status != 0) {
-      log_warning(this->log, "channel_zmq", "impl_zmq_callback: status=%d", status);
+      log_warning(this->log, "impl_zmq_callback: status=%d", status);
       return;
    }
 
@@ -243,7 +243,7 @@ circus_channel_t *circus_zmq_server(cad_memory_t memory, circus_log_t *log, circ
    } else {
       result = memory.malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
-         log_error(log, "channel_zmq", "Could not malloc zmq_server");
+         log_error(log, "Could not malloc zmq_server");
       } else {
          result->fn = impl_fn;
          result->memory = memory;
@@ -286,7 +286,7 @@ circus_channel_t *circus_zmq_client(cad_memory_t memory, circus_log_t *log, circ
    } else {
       result = memory.malloc(sizeof(zmq_impl_t));
       if (result == NULL) {
-         log_error(log, "channel_zmq", "Could not malloc zmq_server");
+         log_error(log, "Could not malloc zmq_server");
       } else {
          result->fn = impl_fn;
          result->memory = memory;

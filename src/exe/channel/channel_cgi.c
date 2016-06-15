@@ -51,7 +51,7 @@ static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_cb = cb;
    this->read_data = data;
    if (this->read == starting) {
-      log_debug(this->log, "channel_cgi", "on_read: starting uv poll");
+      log_debug(this->log, "on_read: starting uv poll");
       int n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
       assert(n == 0);
       this->read = started;
@@ -64,7 +64,7 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void 
    this->write_cb = cb;
    this->write_data = data;
    if (this->write == starting) {
-      log_debug(this->log, "channel_cgi", "on_write: starting uv poll");
+      log_debug(this->log, "on_write: starting uv poll");
       int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
       assert(n == 0);
       this->write = started;
@@ -100,18 +100,18 @@ static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
    cad_cgi_response_t *response = handle->data;
    assert(response != NULL);
    if (status != 0) {
-      log_warning(this->log, "channel_cgi", "impl_cgi_write_callback: status=%d", status);
+      log_warning(this->log, "impl_cgi_write_callback: status=%d", status);
       return;
    }
-   log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: event write: %s", events & UV_WRITABLE ? "true": "false");
+   log_debug(this->log, "impl_cgi_write_callback: event write: %s", events & UV_WRITABLE ? "true": "false");
    if (events & UV_WRITABLE) {
       if (this->write_cb != NULL) {
-         log_debug(this->log, "channel_cgi", "impl_cgi_write_callback: calling callback");
+         log_debug(this->log, "impl_cgi_write_callback: calling callback");
          (this->write_cb)((circus_channel_t*)this, this->write_data, response);
          n = response->flush(response);
          assert(n == 0);
       } else {
-         log_warning(this->log, "channel_cgi", "no write callback!");
+         log_warning(this->log, "no write callback!");
       }
       response->free(response);
       n = uv_poll_stop(&(this->write_handle));
@@ -127,7 +127,7 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
    this->write_handle.data = response;
    if (this->write_cb != NULL) {
       if (this->write == idle) {
-         log_debug(this->log, "channel_cgi", "start_write: starting uv poll");
+         log_debug(this->log, "start_write: starting uv poll");
          n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
          assert(n == 0);
       }
@@ -141,18 +141,18 @@ static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
    cgi_impl_t *this = handle->data;
    assert(this == container_of(handle, cgi_impl_t, read_handle));
    if (status != 0) {
-      log_warning(this->log, "channel_cgi", "impl_cgi_read_callback: status=%d", status);
+      log_warning(this->log, "impl_cgi_read_callback: status=%d", status);
       return;
    }
-   log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: event read: %s", events & UV_READABLE ? "true": "false");
+   log_debug(this->log, "impl_cgi_read_callback: event read: %s", events & UV_READABLE ? "true": "false");
    if (events & UV_READABLE) {
-      log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: calling CGI run");
+      log_debug(this->log, "impl_cgi_read_callback: calling CGI run");
       cad_cgi_response_t *response = this->cgi->run(this->cgi);
       if (response != NULL) {
-         log_debug(this->log, "channel_cgi", "impl_cgi_read_callback: got response from CGI run");
+         log_debug(this->log, "impl_cgi_read_callback: got response from CGI run");
          start_write(this, response);
       } else {
-         log_error(this->log, "channel_cgi", "NULL response!!");
+         log_error(this->log, "NULL response!!");
       }
       int n = uv_poll_stop(&(this->read_handle));
       assert(n == 0);
@@ -167,7 +167,7 @@ static void start_read(cgi_impl_t *this) {
    this->read_handle.data = this;
    if (this->read_cb != NULL) {
       if (this->read == idle) {
-         log_debug(this->log, "channel_cgi", "start_read: starting uv poll");
+         log_debug(this->log, "start_read: starting uv poll");
          n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
          assert(n == 0);
       }
@@ -179,12 +179,12 @@ static void start_read(cgi_impl_t *this) {
 
 static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response, cgi_impl_t *this) {
    assert(this->cgi == cgi);
-   log_debug(this->log, "channel_cgi", "cgi_handler: response=%p", response);
+   log_debug(this->log, "cgi_handler: response=%p", response);
    if (this->read_cb != NULL) {
       (this->read_cb)((circus_channel_t*)this, this->read_data, response);
       return 0;
    } else {
-      log_warning(this->log, "channel_cgi", "no read callback!");
+      log_warning(this->log, "no read callback!");
    }
    return 1;
 }

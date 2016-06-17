@@ -36,5 +36,6 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
 
 char *szrandom(cad_memory_t memory, size_t len);
 char *szrandom_strong(cad_memory_t memory, size_t len);
+unsigned int irandom(unsigned int max);
 
 #endif /* __CIRCUS_CRYPT_H */

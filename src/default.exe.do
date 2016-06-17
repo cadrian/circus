@@ -69,6 +69,9 @@ case $(basename $out) in
         DEPS="$DEPS $(dirname $out)/_test_server$obj_suffix $xdgo"
         libs="$libs -lsqlite3 -lgcrypt -lcallback"
         ;;
+    test_password)
+        libs="$libs -lgcrypt"
+        ;;
 esac
 
 export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} /.+/ {a=sprintf("%s-Wl,%s ", a, $0)} END {print a}')"

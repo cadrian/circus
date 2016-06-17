@@ -22,6 +22,7 @@
 #include <circus_channel.h>
 #include <circus_config.h>
 #include <circus_log.h>
+#include <circus_vault.h>
 
 typedef struct circus_server_message_handler_s circus_server_message_handler_t;
 

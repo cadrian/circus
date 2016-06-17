@@ -1,6 +1,6 @@
 set -e
 
-export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=now"
+export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=gcry_create_nonce --wrap=now"
 
 case $(basename $2) in
     test_server*)
@@ -27,15 +27,19 @@ if [ -f ${1%.test}.c ]; then
     (
         cd $(dirname $exe)
         exec valgrind --leak-check=full --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
-    )
+    ) >$lognew 2>$logerr || {
+        echo "**** Exited with status $?" >>$lognew
+        cat $lognew >&2
+        exit 1
+    }
 elif [ -f ${1%.test}.sh ]; then
     redo-ifchange ${1%.test}.sh
-    ${1%.test}.sh
-fi >$lognew 2>$logerr || {
-    echo "**** Exited with status $?" >>$lognew
-    cat $lognew >&2
-    exit 1
-}
+    ${1%.test}.sh >$lognew 2>$logerr || {
+        echo "**** Exited with status $?" >>$lognew
+        cat $lognew >&2
+        exit 1
+    }
+fi
 
 if [ -r $logref ]; then
     diff -u $logref $lognew >&2

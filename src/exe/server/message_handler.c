@@ -28,6 +28,7 @@
 #include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_message_impl.h>
+#include <circus_password.h>
 #include <circus_session.h>
 #include <circus_time.h>
 #include <circus_vault.h>
@@ -128,8 +129,45 @@ static void visit_query_set_prompt_pass(circus_message_visitor_query_t *visitor,
 
 static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_recipe_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   const char *keyname = visited->key(visited);
+   const char *recipe = visited->recipe(visited);
+   int ok = 0;
+   char *pass = NULL;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "Set_recipe_pass query REFUSED, unknown session or invalid token");
+      token = "";
+   } else {
+      circus_user_t *user = data->user(data);
+      if (user->is_admin(user)) {
+         log_error(this->log, "Set_recipe_pass query REFUSED, user %s is admin", user->name(user));
+      } else {
+         circus_key_t *key = user->get(user, keyname);
+         if (key == NULL) {
+            key = user->new(user, keyname);
+         }
+         if (key == NULL) {
+            log_error(this->log, "Set_recipe_pass query REFUSED, could not create key");
+         } else {
+            pass = generate_pass(this->memory, this->log, recipe);
+            if (pass == NULL) {
+               log_error(this->log, "Set_recipe_pass query REFUSED, could not generate pass");
+            } else {
+               ok = 1;
+            }
+         }
+      }
+      token = data->set_token(data);
+   }
+
+   cad_array_t *properties = cad_new_array(this->memory, sizeof(char*)); // TODO: fill in properties
+   circus_message_reply_pass_t *reply = new_circus_message_reply_pass(this->memory, ok ? "" : "refused", token, keyname, pass, properties);
+   properties->free(properties);
+   this->memory.free(pass);
+   this->reply = I(reply);
 }
 
 static void visit_query_ping(circus_message_visitor_query_t *visitor, circus_message_query_ping_t *visited) {

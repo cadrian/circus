@@ -185,6 +185,13 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
    return result;
 }
 
+unsigned int irandom(unsigned int max) {
+   unsigned int result = 0;
+   gcry_create_nonce((unsigned char*)&result, sizeof(unsigned int));
+   result %= max;
+   return result;
+}
+
 static char *szrandom_level(cad_memory_t memory, size_t len, enum gcry_random_level level) {
    assert(len > 0);
    char *raw = memory.malloc(len + 1);
@@ -208,4 +215,8 @@ void __wrap_gcry_randomize(unsigned char *buffer, size_t length, enum gcry_rando
    for (size_t i = 0; i < length; i++) {
       buffer[i] = c++;
    }
+}
+
+void __wrap_gcry_create_nonce(unsigned char *buffer, size_t length) {
+   __wrap_gcry_randomize(buffer, length, 0);
 }

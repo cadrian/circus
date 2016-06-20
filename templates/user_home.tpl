@@ -45,7 +45,7 @@
         </tr>
 
         <tr>
-          <td rowspan="3">
+          <td rowspan="3" style="vertical-align:top;">
             Set password:
           </td>
           <td>

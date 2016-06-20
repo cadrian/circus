@@ -295,9 +295,11 @@ function reply_webc() {
                     msg_type=$(jq_msg '.["'$reply'"]["reply"]["'$extrum'"]')
                     case $msg_type in
                         STRING)
+                            echo "      log_pii(this->log, \"Setting extra: \\\"$extrum\\\" = %s\", (char*)${reply}_reply->$extrum(${reply}_reply));"
                             echo "      ${reply}_extra->set(${reply}_extra, \"$extrum\", (char*)${reply}_reply->$extrum(${reply}_reply));"
                             ;;
                         STRINGS)
+                            echo "      log_pii(this->log, \"Setting extra: \\\"#$extrum\\\" = (%d)\", ${reply}_reply->$extrum(${reply}_reply)->count(${reply}_reply->$extrum(${reply}_reply)));"
                             echo "      ${reply}_extra->set(${reply}_extra, \"#$extrum\", ${reply}_reply->$extrum(${reply}_reply));"
                             ;;
                         *)

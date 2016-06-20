@@ -144,12 +144,19 @@
         }
     },
     "user": {
-        "query": {
+        "query_show": {
             "sessionid": "STRING",
             "token": "STRING",
             "username": "STRING",
             "email": "STRING",
             "permissions": "STRING"
+        },
+        "query_chpwd": {
+            "sessionid": "STRING",
+            "token": "STRING",
+            "old": "STRING",
+            "pass1": "STRING",
+            "pass2": "STRING"
         },
         "reply": {
             "token": "STRING",

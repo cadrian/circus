@@ -22,7 +22,7 @@
             }
         },
         "add_user": {
-            "query": "user",
+            "query": "show_user",
             "params": [ "token", "username", "email", "permissions" ],
             "reply": "user",
             "extra": [ "token", "password", "validity" ],

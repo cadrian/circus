@@ -69,10 +69,35 @@ static void visit_query_is_open(circus_message_visitor_query_t *visitor, circus_
    (void)visited; (void)this;
 }
 
+typedef struct fill_key_name_s {
+   cad_memory_t memory;
+   cad_array_t *data;
+} fill_key_name_t;
+
+static void fill_key_name(void *UNUSED(hash), int UNUSED(index), const char *key, circus_key_t *UNUSED(value), fill_key_name_t *data) {
+   data->data->insert(data->data, data->data->count(data->data), szprintf(data->memory, NULL, "%s", key));
+}
+
 static void visit_query_all_list(circus_message_visitor_query_t *visitor, circus_message_query_all_list_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   circus_message_reply_list_t *list;
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   cad_array_t *keys = cad_new_array(this->memory, sizeof(char*));
+   if (data == NULL) {
+      log_warning(this->log, "Logout: unknown session or invalid token");
+      list = new_circus_message_reply_list(this->memory, "Invalid credentials", "", keys);
+   } else {
+      circus_user_t *user = data->user(data);
+      cad_hash_t *keys_map = user->get_all(user);
+      fill_key_name_t filler = {this->memory, keys};
+      keys_map->iterate(keys_map, (cad_hash_iterator_fn)fill_key_name, &filler);
+      keys->sort(keys, (comparator_fn)strcmp);
+      list = new_circus_message_reply_list(this->memory, "", data->set_token(data), keys);
+   }
+
+   this->reply = I(list);
 }
 
 static void visit_query_tag_list(circus_message_visitor_query_t *visitor, circus_message_query_tag_list_t *visited) {
@@ -237,7 +262,7 @@ static uint64_t absolute_validity(uint64_t validity_d) {
    return (uint64_t)t;
 }
 
-static void visit_query_user(circus_message_visitor_query_t *visitor, circus_message_query_user_t *visited) {
+static void visit_query_show_user(circus_message_visitor_query_t *visitor, circus_message_query_show_user_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *sessionid = visited->sessionid(visited);
    const char *token = visited->token(visited);
@@ -324,6 +349,12 @@ static void visit_query_user(circus_message_visitor_query_t *visitor, circus_mes
    this->reply = I(userr);
 }
 
+static void visit_query_chpwd_user(circus_message_visitor_query_t *visitor, circus_message_query_chpwd_user_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   // TODO
+   (void)visited; (void)this;
+}
+
 static void visit_query_version(circus_message_visitor_query_t *visitor, circus_message_query_version_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    // TODO
@@ -347,7 +378,8 @@ static circus_message_visitor_query_t visitor_fn = {
    (circus_message_visitor_query_stop_fn)visit_query_stop,
    (circus_message_visitor_query_tags_fn)visit_query_tags,
    (circus_message_visitor_query_unset_fn)visit_query_unset,
-   (circus_message_visitor_query_user_fn)visit_query_user,
+   (circus_message_visitor_query_chpwd_user_fn)visit_query_chpwd_user,
+   (circus_message_visitor_query_show_user_fn)visit_query_show_user,
    (circus_message_visitor_query_version_fn)visit_query_version,
 };
 

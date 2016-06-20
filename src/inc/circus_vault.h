@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <cad_hash.h>
+
 #include <circus.h>
 #include <circus_config.h>
 #include <circus_log.h>
@@ -42,6 +44,7 @@ struct circus_key_s {
 typedef struct circus_user_s circus_user_t;
 
 typedef circus_key_t *(*circus_user_get_fn)(circus_user_t *this, const char *keyname);
+typedef cad_hash_t *(*circus_user_get_all_fn)(circus_user_t *this);
 typedef circus_key_t *(*circus_user_new_fn)(circus_user_t *this, const char *keyname);
 typedef const char *(*circus_user_name_fn)(circus_user_t *this);
 typedef int (*circus_user_set_password_fn)(circus_user_t *this, const char *password, uint64_t validity);
@@ -52,6 +55,7 @@ typedef void (*circus_user_free_fn)(circus_user_t *this);
 
 struct circus_user_s {
    circus_user_get_fn get;
+   circus_user_get_all_fn get_all;
    circus_user_new_fn new;
    circus_user_name_fn name;
    circus_user_set_password_fn set_password;

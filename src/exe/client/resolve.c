@@ -62,6 +62,7 @@ static cad_stache_resolved_t meta_resolved_string_fn = {
 struct meta_resolved_strings {
    cad_stache_resolved_t fn;
    cad_memory_t memory;
+   circus_log_t *log;
    cad_array_t *value;
    unsigned int meta_index;
    struct meta_data *meta;
@@ -70,8 +71,8 @@ struct meta_resolved_strings {
 int meta_resolved_strings_get(struct meta_resolved_strings *this, unsigned int index) {
    int result = 0;
    if (index < this->value->count(this->value)) {
-      cad_hash_t *hash = this->meta->nested->get(this->meta->nested, this->meta_index);
       char *item = this->value->get(this->value, index);
+      cad_hash_t *hash = *(cad_hash_t**)this->meta->nested->get(this->meta->nested, this->meta_index);
       hash->set(hash, "item", item);
       result = 1;
    }
@@ -80,7 +81,7 @@ int meta_resolved_strings_get(struct meta_resolved_strings *this, unsigned int i
 
 int meta_resolved_strings_close(struct meta_resolved_strings *this) {
    assert(this->meta_index == this->meta->nested->count(this->meta->nested) - 1);
-   cad_hash_t *hash = this->meta->nested->del(this->meta->nested, this->meta_index);
+   cad_hash_t *hash = *(cad_hash_t**)this->meta->nested->del(this->meta->nested, this->meta_index);
    hash->free(hash);
    this->memory.free(this);
    return 1;
@@ -96,22 +97,36 @@ static cad_stache_resolved_t meta_resolved_strings_fn = {
 static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const char *name, struct meta_data *meta, cad_stache_resolved_t **resolved) {
    cad_hash_t *dict = NULL;
    const char *key = NULL;
+   log_debug(meta->log, "Resolving %s...", name);
+
    if (!strncmp(name, "form:", 5)) {
+      log_debug(meta->log, " -> input form variable");
       dict = meta->data->input_as_form(meta->data);
       key = name + 5;
    } else if (!strncmp(name, "query:", 6)) {
+      log_debug(meta->log, " -> input query variable");
       dict = meta->data->query_string(meta->data);
       key = name + 6;
    } else if (!strncmp(name, "cgi:", 4)) {
+      log_debug(meta->log, " -> CGI variable");
       dict = meta->cgi;
       key = name + 4;
    } else if (strchr(name, ':') == NULL) {
-      dict = meta->extra;
+      int n = meta->nested->count(meta->nested);
+      if (n > 0) {
+         log_debug(meta->log, " -> reply variable, nested #%d", n);
+         dict = *(cad_hash_t**)meta->nested->get(meta->nested, n - 1);
+      } else {
+         log_debug(meta->log, " -> reply variable");
+         dict = meta->extra;
+      }
       key = name;
    }
+
    if (dict != NULL) {
       assert(key != NULL);
 
+      log_debug(meta->log, "Trying %s => %s...", name, key);
       const char *sz_value = dict->get(dict, key);
       if (sz_value != NULL) {
          struct meta_resolved_string *res = meta->memory.malloc(sizeof(struct meta_resolved_string));
@@ -125,21 +140,23 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
       }
 
       char *akey = szprintf(meta->memory, NULL, "#%s", key);
-      cad_array_t *ar_value = dict->get(dict, key);
+      log_debug(meta->log, "Trying %s => %s...", name, akey);
+      cad_array_t *ar_value = dict->get(dict, akey);
       meta->memory.free(akey);
       if (ar_value != NULL) {
          struct meta_resolved_strings *res = meta->memory.malloc(sizeof(struct meta_resolved_strings));
          assert(res != NULL);
          unsigned int meta_index = meta->nested->count(meta->nested);
          cad_hash_t *hash = cad_new_hash(meta->memory, cad_hash_strings);
-         meta->nested->insert(meta->nested, meta_index, hash);
+         meta->nested->insert(meta->nested, meta_index, &hash);
          res->fn = meta_resolved_strings_fn;
          res->memory = meta->memory;
+         res->log = meta->log;
          res->value = ar_value;
          res->meta_index = meta_index;
          res->meta = meta;
          *resolved = I(res);
-         log_debug(meta->log, "Resolved %s (%s) as list", key, name);
+         log_debug(meta->log, "Resolved %s (%s) as list: %p / %p", key, name, res, res->value);
          return Cad_stache_list;
       }
    }

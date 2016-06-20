@@ -88,6 +88,15 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
    return result;
 }
 
+static cad_hash_t *vault_user_get_all(user_impl_t *this) {
+   if (((this->permissions) & PERMISSION_USER) == 0) {
+      log_error(this->log, "User %ld does not have permission to get keys", (long int)this->userid);
+      return NULL;
+   }
+
+   return this->keys;
+}
+
 static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    assert(vault_user_get(this, keyname) == NULL);
 
@@ -268,6 +277,7 @@ static void vault_user_free(user_impl_t *this) {
 
 static circus_user_t vault_user_fn = {
    (circus_user_get_fn)vault_user_get,
+   (circus_user_get_all_fn)vault_user_get_all,
    (circus_user_new_fn)vault_user_new,
    (circus_user_name_fn)vault_user_name,
    (circus_user_set_password_fn)vault_user_set_password,

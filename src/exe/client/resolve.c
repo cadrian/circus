@@ -40,7 +40,7 @@ struct meta_data {
 struct meta_resolved_string {
    cad_stache_resolved_t fn;
    cad_memory_t memory;
-   const char *value;
+   char *value;
 };
 
 static const char *meta_resolved_string_get(struct meta_resolved_string *this) {
@@ -48,6 +48,7 @@ static const char *meta_resolved_string_get(struct meta_resolved_string *this) {
 }
 
 static int meta_resolved_string_free(struct meta_resolved_string *this) {
+   this->memory.free(this->value);
    this->memory.free(this);
    return 1;
 }
@@ -95,22 +96,24 @@ static cad_stache_resolved_t meta_resolved_strings_fn = {
 };
 
 static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const char *name, struct meta_data *meta, cad_stache_resolved_t **resolved) {
+   cad_stache_lookup_type result = Cad_stache_not_found;
    cad_hash_t *dict = NULL;
-   const char *key = NULL;
+   char *key = NULL;
+   char *operator = NULL;
    log_debug(meta->log, "Resolving %s...", name);
 
    if (!strncmp(name, "form:", 5)) {
       log_debug(meta->log, " -> input form variable");
       dict = meta->data->input_as_form(meta->data);
-      key = name + 5;
+      key = szprintf(meta->memory, NULL, "%s", name + 5);
    } else if (!strncmp(name, "query:", 6)) {
       log_debug(meta->log, " -> input query variable");
       dict = meta->data->query_string(meta->data);
-      key = name + 6;
+      key = szprintf(meta->memory, NULL, "%s", name + 6);
    } else if (!strncmp(name, "cgi:", 4)) {
       log_debug(meta->log, " -> CGI variable");
       dict = meta->cgi;
-      key = name + 4;
+      key = szprintf(meta->memory, NULL, "%s", name + 4);
    } else if (strchr(name, ':') == NULL) {
       int n = meta->nested->count(meta->nested);
       if (n > 0) {
@@ -120,11 +123,16 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          log_debug(meta->log, " -> reply variable");
          dict = meta->extra;
       }
-      key = name;
+      key = szprintf(meta->memory, NULL, "%s", name);
    }
 
    if (dict != NULL) {
       assert(key != NULL);
+
+      operator = strchr(key, '.');
+      if (operator != NULL) {
+         *operator++ = '\0';
+      }
 
       log_debug(meta->log, "Trying %s => %s...", name, key);
       const char *sz_value = dict->get(dict, key);
@@ -133,36 +141,54 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          assert(res != NULL);
          res->fn = meta_resolved_string_fn;
          res->memory = meta->memory;
-         res->value = sz_value;
-         *resolved = I(res);
+         if (operator != NULL && !strcmp("count", operator)) {
+            res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+         } else {
+            res->value = szprintf(meta->memory, NULL, "%s", sz_value);
+         }
          log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
-         return Cad_stache_string;
-      }
-
-      char *akey = szprintf(meta->memory, NULL, "#%s", key);
-      log_debug(meta->log, "Trying %s => %s...", name, akey);
-      cad_array_t *ar_value = dict->get(dict, akey);
-      meta->memory.free(akey);
-      if (ar_value != NULL) {
-         struct meta_resolved_strings *res = meta->memory.malloc(sizeof(struct meta_resolved_strings));
-         assert(res != NULL);
-         unsigned int meta_index = meta->nested->count(meta->nested);
-         cad_hash_t *hash = cad_new_hash(meta->memory, cad_hash_strings);
-         meta->nested->insert(meta->nested, meta_index, &hash);
-         res->fn = meta_resolved_strings_fn;
-         res->memory = meta->memory;
-         res->log = meta->log;
-         res->value = ar_value;
-         res->meta_index = meta_index;
-         res->meta = meta;
          *resolved = I(res);
-         log_debug(meta->log, "Resolved %s (%s) as list: %p / %p", key, name, res, res->value);
-         return Cad_stache_list;
+         result = Cad_stache_string;
+      } else {
+         char *akey = szprintf(meta->memory, NULL, "#%s", key);
+         log_debug(meta->log, "Trying %s => %s...", name, akey);
+         cad_array_t *ar_value = dict->get(dict, akey);
+         meta->memory.free(akey);
+         if (ar_value != NULL) {
+            if (operator != NULL && !strcmp("count", operator)) {
+               struct meta_resolved_string *res = meta->memory.malloc(sizeof(struct meta_resolved_string));
+               assert(res != NULL);
+               res->fn = meta_resolved_string_fn;
+               res->memory = meta->memory;
+               res->value = szprintf(meta->memory, NULL, "%d", ar_value->count(ar_value));
+               log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
+               *resolved = I(res);
+               result = Cad_stache_string;
+            } else {
+               struct meta_resolved_strings *res = meta->memory.malloc(sizeof(struct meta_resolved_strings));
+               assert(res != NULL);
+               unsigned int meta_index = meta->nested->count(meta->nested);
+               cad_hash_t *hash = cad_new_hash(meta->memory, cad_hash_strings);
+               meta->nested->insert(meta->nested, meta_index, &hash);
+               res->fn = meta_resolved_strings_fn;
+               res->memory = meta->memory;
+               res->log = meta->log;
+               res->value = ar_value;
+               res->meta_index = meta_index;
+               res->meta = meta;
+               *resolved = I(res);
+               log_debug(meta->log, "Resolved %s (%s) as list: %p / %p", key, name, res, res->value);
+               result = Cad_stache_list;
+            }
+         }
       }
    }
 
-   log_debug(meta->log, "Resolved %s (%s) as not found", key, name);
-   return Cad_stache_not_found;
+   if (result == Cad_stache_not_found) {
+      log_debug(meta->log, "Resolved %s (%s) as not found", key, name);
+   }
+   meta->memory.free(key);
+   return result;
 }
 
 static void response_security_headers(cad_cgi_response_t *response) {

@@ -9,7 +9,7 @@
       <table>
         <tr>
           <td>
-            User name:
+            <b>User name:</b>
           </td>
           <td>
             <input type="text" name="userid"/>
@@ -17,7 +17,7 @@
         </tr>
         <tr>
           <td>
-            Password:
+            <b>Password:</b>
           </td>
           <td>
             <input type="password" name="password"/>

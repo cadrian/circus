@@ -6,10 +6,11 @@
     <h1>Circus: pass</h1>
     <form method="POST" action="{{cgi:script_name}}/user_home.do">
       <input type="hidden" name="token" value="{{token}}"/>
+      <input type="hidden" name="action" value="list"/>
       <table>
         <tr>
           <td>
-            Key:
+            <b>Key:</b>
           </td>
           <td>
             {{key}}
@@ -17,7 +18,7 @@
         </tr>
         <tr>
           <td>
-            Pass:
+            <b>Pass:</b>
           </td>
           <td>
             {{pass}}
@@ -25,7 +26,7 @@
         </tr>
         <tr>
           <td colspan="2">
-            <input type="submit" name="action" value="list"/>
+            <input type="submit" value="Back"/>
           </td>
         </tr>
       </table>

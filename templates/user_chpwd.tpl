@@ -9,7 +9,7 @@
       <table>
         <tr>
           <td>
-            Current password:
+            <b>Current password:</b>
           </td>
           <td>
             <input type="password" name="old"/>
@@ -17,7 +17,7 @@
         </tr>
         <tr>
           <td>
-            New password:
+            <b>New password:</b>
           </td>
           <td>
             <input type="password" name="pass1"/>
@@ -25,7 +25,7 @@
         </tr>
         <tr>
           <td>
-            Confirm:
+            <b>Confirm:</b>
           </td>
           <td>
             <input type="password" name="pass2"/>

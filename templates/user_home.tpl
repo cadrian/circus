@@ -20,16 +20,23 @@
       <input type="hidden" name="name"/>
 
       <table>
-        {{#names}}
+        {{#names.count}}
         <tr>
-          <td>
-            Show password:
+          <td rowspan="{{names.count}}">
+            <h2>Show password:</h2>
           </td>
           <td>
-            <button type="button" onclick="get_pass("{{item}}")">{{item}}</button><br/>
+            {{#names}}
+            <button type="button" onclick="get_pass('{{item}}')">{{item}}</button><br/>
           </td>
         </tr>
-        {{/names}}
+        <tr>
+          <td>
+            {{/names}}
+            &nbsp;
+          </td>
+        </tr>
+        {{/names.count}}
         {{^names}}
         <tr>
           <td colspan="2">
@@ -45,19 +52,27 @@
         </tr>
 
         <tr>
-          <td rowspan="3" style="vertical-align:top;">
-            Set password:
+          <td style="vertical-align:top;">
+            <h2>Set password:</h2>
           </td>
-          <td>
-            <input type="text" name="key"/>
-          </td>
-        </tr>
-        <tr>
           <td>
             <table>
               <tr>
                 <td>
-                  Recipe:
+                  <b>Name:</b>
+                </td>
+                <td>
+                  <input type="text" name="key"/>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  &mdash;<i>Either generate using a recipe</i>&mdash;
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <b>Recipe:</b>
                 </td>
                 <td>
                   <input type="text" name="recipe" value="16ans"/>
@@ -68,15 +83,14 @@
                   <button type="button" onclick="submit_action('add_recipe')">Generate</button>
                 </td>
               </tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <table>
+              <tr>
+                <td colspan="2">
+                  &mdash;<i>Or enter the new password</i>&mdash;
+                </td>
+              </tr>
               <tr>
                 <td>
-                  Password:
+                  <b>Password:</b>
                 </td>
                 <td>
                   <input type="password" name="pass1"/>
@@ -84,7 +98,7 @@
               </tr>
               <tr>
                 <td>
-                  Again:
+                  <b>Again:</b>
                 </td>
                 <td>
                   <input type="password" name="pass2"/>

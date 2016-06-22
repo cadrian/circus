@@ -16,12 +16,12 @@
       <table>
         <tr>
           <td colspan="2">
-            Add a user
+            <h2>Add a user</h2>
           </td>
         </tr>
         <tr>
           <td>
-            User name:
+            <b>User name:</b>
           </td>
           <td>
             <input type="test" name="username"/>
@@ -29,7 +29,7 @@
         </tr>
         <tr>
           <td>
-            E-mail:
+            <b>E-mail:</b>
           </td>
           <td>
             <input type="text" name="email"/>
@@ -37,7 +37,7 @@
         </tr>
         <tr>
           <td>
-            Permissions:
+            <b>Permissions:</b>
           </td>
           <td>
             <select name="permissions">

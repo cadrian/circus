@@ -17,6 +17,9 @@ mkdir -p $TESTDIR
     exec redo all
 ) || exit 1
 
+echo "Test base is $base"
+
+echo "Setting up..."
 exe=".exe"
 . $TSTDIR/_test_client_cgi_setup.sh
 
@@ -30,7 +33,7 @@ teardown() {
 
 trap teardown INT TERM QUIT EXIT
 
-echo "Test base is $base"
+echo
 echo "Circus server pid is $server_pid"
 echo "Web server pid is $lighttpd_pid"
 echo

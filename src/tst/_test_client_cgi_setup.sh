@@ -90,7 +90,7 @@ tee $base\$ext.in |
 EOF
 
 mkdir -p $RUN/circus $CONF/templates
-rm -f $base.client_log $base.server_log
+rm -f $LOG/client.log $LOG/server.log
 
 cat > $RUN/circus/cgi.conf <<EOF
 {
@@ -100,7 +100,7 @@ cat > $RUN/circus/cgi.conf <<EOF
     },
     "log": {
         "level": "pii",
-        "filename": "$base.client_log"
+        "filename": "$LOG/client.log"
     }
 }
 EOF
@@ -112,7 +112,7 @@ cat > $RUN/circus/server.conf <<EOF
     },
     "log": {
         "level": "pii",
-        "filename": "$base.server_log"
+        "filename": "$LOG/server.log"
     }
 }
 EOF
@@ -120,14 +120,18 @@ EOF
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR
+    # cannot use valgrind (illegal instruction in libgcrypt)
+    # exec valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind_server_install.log $ROOT/exe/main/server$exe --install admin password
     exec $ROOT/exe/main/server$exe --install admin password
-) >$base.install_out 2>$base.install_err
+) >$LOG/server_install.out 2>$LOG/server_install.err
 
 (
     export PATH=/bin:/usr/bin
     export HOME=$DIR
+    # cannot use valgrind (illegal instruction in libgcrypt)
+    # exec valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind_server.log $ROOT/exe/main/server$exe
     exec $ROOT/exe/main/server$exe
-) >$base.server_out 2>$base.server_err &
+) >$LOG/server.out 2>$LOG/server.err &
 server_pid=$!
 
 (

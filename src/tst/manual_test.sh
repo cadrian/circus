@@ -13,7 +13,9 @@ mkdir -p $TESTDIR
 
 (
     cd ../..
+    export CFLAGS="-DDEBUG -g"
     export LD_FLAGS="--wrap=mlock --wrap=munlock" # we are not root
+    export STRIP_EXE=false
     exec redo all
 ) || exit 1
 

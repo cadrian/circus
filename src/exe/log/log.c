@@ -193,6 +193,7 @@ struct uv_logger_s {
 
 static void file_free(uv_logger_t *this) {
    assert(this->log_handle == NULL);
+   this->memory.free(this->format);
    this->memory.free(this);
 }
 
@@ -224,6 +225,7 @@ static uv_logger_fn logger_file_fn = {
 
 static void tty_free(uv_logger_t *this) {
    uv_tty_reset_mode();
+   this->memory.free(this->format);
    this->memory.free(this->log_handle);
    this->memory.free(this);
 }
@@ -249,6 +251,7 @@ static uv_logger_fn logger_tty_fn = {
 static void pipe_free(uv_logger_t *this) {
    uv_fs_t req;
    uv_fs_close(uv_default_loop(), &req, this->fd, NULL);
+   this->memory.free(this->format);
    this->memory.free(this->log_handle);
    this->memory.free(this);
 }
@@ -488,6 +491,7 @@ static cad_output_stream_t *impl_stream(circus_log_impl *this, const char *modul
 static void impl_module_stream_free_iterator(void *UNUSED(hash), int UNUSED(index), const char *UNUSED(key), cad_output_stream_t **module_streams, circus_log_impl *this) {
    int l;
    for (l = 0; l < __LOG_MAX; l++) {
+      module_streams[l]->flush(module_streams[l]);
       module_streams[l]->free(module_streams[l]);
    }
    this->memory.free(module_streams);
@@ -503,6 +507,9 @@ static void impl_close(circus_log_impl *this) {
 }
 
 static void impl_free(circus_log_impl *this) {
+   // running the loop again will just ensure that all the logs are flushed and freed
+   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+   uv_loop_close(uv_default_loop());
    impl_close(this);
    this->memory.free(this);
 }

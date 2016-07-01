@@ -78,6 +78,6 @@ export LD_FLAGS="$(echo ${LD_FLAGS-""} | sed 's/ /\n/g' | awk 'BEGIN {a=""} /.+/
 
 gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers $LD_FLAGS -fsanitize=undefined -o $3 $out$obj_suffix $DEPS $libs
 
-if [ $out == $2 ]; then
+if ${STRIP_EXE-true} && [ $out == $2 ]; then
     strip $out$obj_suffix
 fi

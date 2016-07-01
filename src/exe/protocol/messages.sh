@@ -494,6 +494,9 @@ function gsm_factoryc() {
     } >> $struct_file
     local free_file=$(init_file msg/$type/$msg.free.c)
     {
+        if [ "${msg#reply}" != "${msg}" ]; then
+            echo "this->memory.free(this->error);"
+        fi
         echo "this->memory.free(this);"
     } >> $free_file
     local serialize_file=$(init_file msg/$type/$msg.serialize.c)

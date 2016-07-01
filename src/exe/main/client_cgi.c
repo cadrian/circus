@@ -130,6 +130,7 @@ static void run(circus_config_t *config) {
    uv_loop_close(uv_default_loop());
    log_info(LOG, "Client stopped.");
 
+   automaton->free(automaton);
    ch->free(ch);
    cgi_channel->free(cgi_channel);
    mh->free(mh);

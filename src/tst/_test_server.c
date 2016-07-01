@@ -55,7 +55,7 @@ static void send(circus_message_t *message, void *zmq_sock) {
    stdlib_memory.free(szout);
    writer->free(writer);
    out->free(out);
-   jmsg->free(jmsg);
+   jmsg->accept(jmsg, json_kill());
 }
 
 static circus_message_t *recv(void *zmq_sock) {
@@ -87,7 +87,7 @@ static circus_message_t *recv(void *zmq_sock) {
       result = deserialize_circus_message(stdlib_memory, jin);
 
       /* at last free the memory */
-      jin->free(jin);
+      jin->accept(jin, json_kill());
       in->free(in);
       stdlib_memory.free(szin);
    }

@@ -225,6 +225,7 @@ static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_c
    log_debug(this->log, "Rendering stache template name");
    stache->render(stache, in, out, template_error, this);
    stache->free(stache);
+   out->free(out);
    in->free(in);
    assert(nested->count(nested) == 0);
    nested->free(nested);

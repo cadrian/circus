@@ -17,6 +17,7 @@
 */
 
 #include <string.h>
+#include <strings.h>
 
 #include <cad_array.h>
 #include <circus_crypt.h>
@@ -139,29 +140,30 @@ static char *parse_string(cad_memory_t memory, buffer_t *buffer) {
 static void parse_more_ingredient(cad_memory_t memory, buffer_t *buffer) {
    char c;
    skip_blanks(buffer);
-   char* ingredient;
+   char* ingredient = buffer->last_ingredient, *new_ingredient;
    int ok = 1;
    while (ok && buffer->index < buffer->size) {
       c = buffer->string[buffer->index];
       switch (c) {
       case 'a': case 'A':
-         ingredient = szprintf(memory, NULL, "%s%s", buffer->last_ingredient, LETTERS);
-         buffer->index++;
+         new_ingredient = szprintf(memory, NULL, "%s%s", ingredient, LETTERS);
          break;
       case 'n': case 'N':
-         ingredient = szprintf(memory, NULL, "%s%s", buffer->last_ingredient, FIGURES);
-         buffer->index++;
+         new_ingredient = szprintf(memory, NULL, "%s%s", ingredient, FIGURES);
          break;
       case 's': case 'S':
-         ingredient = szprintf(memory, NULL, "%s%s", buffer->last_ingredient, SYMBOLS);
-         buffer->index++;
+         new_ingredient = szprintf(memory, NULL, "%s%s", ingredient, SYMBOLS);
          break;
       default:
          ok = 0;
       }
-      memory.free(buffer->last_ingredient);
-      buffer->last_ingredient = ingredient;
+      if (ok) {
+         memory.free(ingredient);
+         ingredient = new_ingredient;
+         buffer->index++;
+      }
    }
+   buffer->last_ingredient = ingredient;
 }
 
 static void parse_ingredient(cad_memory_t memory, buffer_t *buffer) {
@@ -201,7 +203,7 @@ static void parse_mix(cad_memory_t memory, circus_log_t *log, buffer_t *buffer, 
    if (!buffer->error && buffer->index < buffer->size) {
       parse_ingredient(memory, buffer);
       if (!buffer->error) {
-         log_debug(log, "mix: %d / %s", buffer->last_quantity, buffer->last_ingredient);
+         log_debug(log, "mix: %u / %s", buffer->last_quantity, buffer->last_ingredient);
          pass_generator_mix_t mix = {buffer->last_quantity, buffer->last_ingredient};
          generator->mixes->insert(generator->mixes, generator->mixes->count(generator->mixes), &mix);
          generator->passlen += buffer->last_quantity;
@@ -214,7 +216,7 @@ static pass_generator_t *parse_recipe(cad_memory_t memory, circus_log_t *log, co
    if (result != NULL) {
       result->mixes = cad_new_array(memory, sizeof(pass_generator_mix_t));
       result->passlen = 0;
-      buffer_t buffer = {recipe, 0, strlen(recipe), 0};
+      buffer_t buffer = {recipe, 0, strlen(recipe), 0, 0, NULL};
       while (buffer.index < buffer.size && !buffer.error) {
          parse_mix(memory, log, &buffer, result);
       }
@@ -239,6 +241,7 @@ char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe) 
 
    char *result = memory.malloc(generator->passlen + 1);
    if (result != NULL) {
+      bzero(result, generator->passlen + 1);
       for (i = 0; i < n; i++) {
          pass_generator_mix_t *mix = generator->mixes->get(generator->mixes, i);
          l = strlen(mix->ingredient);

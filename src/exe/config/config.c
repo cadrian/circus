@@ -163,6 +163,7 @@ static void config_write(config_impl *this) {
 }
 
 static void config_free(config_impl *this) {
+   this->data->accept(this->data, json_kill());
    this->memory.free(this);
 }
 

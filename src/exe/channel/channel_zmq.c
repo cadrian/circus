@@ -52,7 +52,7 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_cb = cb;
    this->read_data = data;
    if (!this->started) {
-      log_debug(this->log, "on_read: starting uv poll");
+      log_debug(this->log, "starting uv poll");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;
@@ -63,7 +63,7 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void 
    this->write_cb = cb;
    this->write_data = data;
    if (!this->started) {
-      log_debug(this->log, "on_read: starting uv poll");
+      log_debug(this->log, "starting uv poll");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;

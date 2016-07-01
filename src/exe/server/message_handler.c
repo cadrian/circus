@@ -419,7 +419,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
                msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
                msg->free(msg);
             }
-            jmsg->free(jmsg);
+            jmsg->accept(jmsg, json_kill());
          }
          in->free(in);
       }
@@ -445,7 +445,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
             } else {
                log_info(this->log, "Sending message: type: %s, command: %s", this->reply->type(this->reply), this->reply->command(this->reply));
                reply->accept(reply, writer);
-               reply->free(reply);
+               reply->accept(reply, json_kill());
             }
             writer->free(writer);
          }

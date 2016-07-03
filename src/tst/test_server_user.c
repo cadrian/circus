@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <callback.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -34,6 +35,7 @@ static int send_login() {
       circus_message_t *reply = NULL;
       circus_message_query_show_user_t *admin_user = new_circus_message_query_show_user(stdlib_memory, admin_sessionid, admin_token, "noob", "noob@clueless.lol", "user");
       send_message(I(admin_user), &reply);
+      I(admin_user)->free(I(admin_user));
       circus_message_reply_user_t *admin_userr = check_reply(reply, "user", "reply", "");
       if (admin_userr == NULL) {
          result = 1;
@@ -50,7 +52,7 @@ static int send_login() {
             result = 1;
          } else {
             char *password = szprintf(stdlib_memory, NULL, "%s", p);
-            stdlib_memory.free(reply);
+            reply->free(reply);
 
             char *user_sessionid = NULL;
             char *user_token = NULL;
@@ -78,7 +80,9 @@ static int send_login() {
 
    sleep(1);
    int count;
-   database("select email from users where username='noob' and email='noob@clueless.lol'", db_count(&count));
+   database_fn count_fn = db_count(&count);
+   database("select email from users where username='noob' and email='noob@clueless.lol'", count_fn);
+   free_callback(count_fn);
    if (count == 1) {
       printf("Checked noob's email: OK\n");
    } else {

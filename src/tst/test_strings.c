@@ -25,5 +25,6 @@ int main() {
    char *message = szprintf(stdlib_memory, &len, "%s:%d", "test", 42);
    assert(!strcmp(message, "test:42"));
    assert(len == 7);
+   stdlib_memory.free(message);
    return 0;
 }

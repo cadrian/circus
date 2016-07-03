@@ -39,6 +39,7 @@ int main() {
    pass = generate_pass(stdlib_memory, LOG, "14'azerty'");
    assert(!strcmp(pass, "eataatttaaeeee"));
    free(pass);
+
    LOG->free(LOG);
    return 0;
 }

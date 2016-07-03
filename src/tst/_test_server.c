@@ -133,6 +133,7 @@ void database(const char *query, database_fn fn) {
    int n = sqlite3_open_v2(path, &db,
                            SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,
                            "unix-excl");
+   stdlib_memory.free(path);
    if (n != SQLITE_OK) {
       printf("error opening database: %s\n", sqlite3_errstr(n));
       return;

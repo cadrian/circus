@@ -161,12 +161,13 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
       assert(wmsg != NULL);
       jmsg->accept(jmsg, wmsg);
       assert(outmsg != NULL);
-      jmsg->free(jmsg);
+      jmsg->accept(jmsg, json_kill());
       wmsg->free(wmsg);
       outmsg->free(outmsg);
 
       channel->write(channel, szmsg, strlen(szmsg));
       this->memory.free(szmsg);
+      msg->free(msg);
 
       this->automaton->set_state(this->automaton, State_read_from_server, NULL);
    }
@@ -199,7 +200,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
       circus_message_t *msg = deserialize_circus_message(this->memory, (json_object_t*)jmsg); // TODO what if not an object?
       assert(msg != NULL);
 
-      jmsg->free(jmsg);
+      jmsg->accept(jmsg, json_kill());
       inmsg->free(inmsg);
       this->memory.free(buf);
 

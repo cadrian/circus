@@ -17,7 +17,6 @@
 */
 
 #include <string.h>
-#include <strings.h>
 
 #include <cad_array.h>
 #include <circus_crypt.h>
@@ -48,7 +47,7 @@ struct buffer_s {
 
 static char *FIGURES = "0123456789";
 static char *LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-static char *SYMBOLS = "(-_)~#{[|^@]}+=<>,?./!§";
+static char *SYMBOLS = "(-_)~#{[|^@]}+=<>,?./!";
 
 static void free_generator(cad_memory_t memory, pass_generator_t *generator) {
    unsigned int i, n = generator->mixes->count(generator->mixes);
@@ -241,7 +240,6 @@ char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe) 
 
    char *result = memory.malloc(generator->passlen + 1);
    if (result != NULL) {
-      bzero(result, generator->passlen + 1);
       for (i = 0; i < n; i++) {
          pass_generator_mix_t *mix = generator->mixes->get(generator->mixes, i);
          l = strlen(mix->ingredient);
@@ -255,6 +253,7 @@ char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe) 
             result[p] = c;
          }
       }
+      result[generator->passlen] = '\0';
       log_pii(log, "Generated a new password of length %d: %s", passlen, result);
    } else {
       log_debug(log, "Could not generate password");

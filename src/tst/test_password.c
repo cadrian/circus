@@ -31,10 +31,10 @@ int main() {
    assert(!strcmp(pass, "AsI"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "7ans");
-   assert(!strcmp(pass, "AuG0?io"));
+   assert(!strcmp(pass, "YgowIAQ"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "7an 2s");
-   assert(!strcmp(pass, "u(QSs>wOy"));
+   assert(!strcmp(pass, "u@QSs/wOy"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "14'azerty'");
    assert(!strcmp(pass, "eataatttaaeeee"));

@@ -14,7 +14,9 @@ mkdir -p $TESTDIR
 (
     cd ../..
     export CFLAGS="-DDEBUG -g"
-    export LD_FLAGS="--wrap=mlock --wrap=munlock" # we are not root
+    export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=gcry_create_nonce"
+    # mlock/munlock: we are not root
+    # gcry_*: we need valgrind (libgcrypt generates instructions not recognized by Valgrind)
     export STRIP_EXE=false
     exec redo all
 ) || exit 1

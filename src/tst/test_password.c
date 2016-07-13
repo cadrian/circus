@@ -28,16 +28,16 @@ int main() {
    LOG = circus_new_log_file_descriptor(stdlib_memory, LOG_PII, 1);
    char *pass;
    pass = generate_pass(stdlib_memory, LOG, "3a");
-   assert(!strcmp(pass, "AsI"));
+   assert(!strcmp(pass, "FVN"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "7ans");
-   assert(!strcmp(pass, "YgowIAQ"));
+   assert(!strcmp(pass, "LpDpxc,"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "7an 2s");
-   assert(!strcmp(pass, "u@QSs/wOy"));
+   assert(!strcmp(pass, "P^dmRz.xT"));
    free(pass);
    pass = generate_pass(stdlib_memory, LOG, "14'azerty'");
-   assert(!strcmp(pass, "eataatttaaeeee"));
+   assert(!strcmp(pass, "yyyyrtyyrzrtzz"));
    free(pass);
 
    LOG->free(LOG);

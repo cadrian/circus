@@ -210,10 +210,41 @@ char *szrandom_strong(cad_memory_t memory, size_t len) {
    return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM);
 }
 
+/* ---------------- TESTING FUNCTIONS ---------------- */
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+static char *WRAP_RANDOM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 void __wrap_gcry_randomize(unsigned char *buffer, size_t length, enum gcry_random_level UNUSED(level)) {
-   static unsigned char c = 0;
+   static char *random = NULL;
+   static off_t size = 256;
+   static off_t index = 0;
+   if (random == NULL) {
+      int fd = open(__FILE__, O_RDONLY | O_CLOEXEC);
+      if (fd == -1) {
+         random = WRAP_RANDOM;
+      } else {
+         random = malloc(size);
+         ssize_t s = read(fd, random, size);
+         if (s <= 0) {
+            free(random);
+            random = WRAP_RANDOM;
+         } else {
+            size = s;
+         }
+         close(fd);
+      }
+   }
    for (size_t i = 0; i < length; i++) {
-      buffer[i] = c++;
+      buffer[i] = random[index];
+      index = (index + 1) % size;
    }
 }
 

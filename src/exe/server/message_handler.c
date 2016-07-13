@@ -445,7 +445,6 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
             } else {
                log_info(this->log, "Sending message: type: %s, command: %s", this->reply->type(this->reply), this->reply->command(this->reply));
                reply->accept(reply, writer);
-               reply->accept(reply, json_kill());
             }
             writer->free(writer);
          }
@@ -458,7 +457,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
          this->memory.free(szout);
       }
 
-      this->reply->free(this->reply);
+      reply->accept(reply, json_kill());
       this->reply = NULL;
    }
 }

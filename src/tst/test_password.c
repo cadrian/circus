@@ -23,22 +23,64 @@
 #include <circus_log.h>
 
 circus_log_t *LOG;
+char *error;
+
+static char *genpass(const char *recipe) {
+   error = NULL;
+   char *result = generate_pass(stdlib_memory, LOG, recipe, &error);
+   if (error) {
+      log_error(LOG, "recipe error: %s", error);
+   }
+   return result;
+}
 
 int main() {
    LOG = circus_new_log_file_descriptor(stdlib_memory, LOG_PII, 1);
    char *pass;
-   pass = generate_pass(stdlib_memory, LOG, "3a");
+   pass = genpass("3a");
+   assert(!error);
    assert(!strcmp(pass, "FVN"));
    free(pass);
-   pass = generate_pass(stdlib_memory, LOG, "7ans");
+   pass = genpass("7ans");
+   assert(!error);
    assert(!strcmp(pass, "LpDpxc,"));
    free(pass);
-   pass = generate_pass(stdlib_memory, LOG, "7an 2s");
-   assert(!strcmp(pass, "P^dmRz.xT"));
+   pass = genpass("s5-14an");
+   assert(!error);
+   assert(!strcmp(pass, "Bf9j<FD2w"));
    free(pass);
-   pass = generate_pass(stdlib_memory, LOG, "14'azerty'");
-   assert(!strcmp(pass, "yyyyrtyyrzrtzz"));
+   pass = genpass("7an 2s");
+   assert(!error);
+   assert(!strcmp(pass, "2)<fBwFjD"));
    free(pass);
+   pass = genpass("14'azerty'");
+   assert(!error);
+   assert(!strcmp(pass, "ryyeayaerzyzzr"));
+   free(pass);
+
+   pass = genpass("");
+   assert(!pass);
+   assert(!strcmp(error, "0: empty recipe"));
+
+   pass = genpass("4");
+   assert(!pass);
+   assert(!strcmp(error, "2: Expecting ingredient specification"));
+
+   pass = genpass("4q");
+   assert(!pass);
+   assert(!strcmp(error, "2: Invalid ingredient specification"));
+
+   pass = genpass("4-q");
+   assert(!pass);
+   assert(!strcmp(error, "3: Invalid quantity range: min > max"));
+
+   pass = genpass("\"");
+   assert(!pass);
+   assert(!strcmp(error, "2: Unterminated string"));
+
+   pass = genpass("7'\\");
+   assert(!pass);
+   assert(!strcmp(error, "4: Unterminated string"));
 
    LOG->free(LOG);
    return 0;

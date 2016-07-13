@@ -22,6 +22,6 @@
 #include <circus.h>
 #include <circus_log.h>
 
-__PUBLIC__ char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe);
+__PUBLIC__ char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe, char **error);
 
 #endif /* __CIRCUS_PASSWORD_H */

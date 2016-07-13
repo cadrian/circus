@@ -22,16 +22,33 @@
 #include <circus_crypt.h>
 #include <circus_password.h>
 
+/*
+ * RECIPE GRAMMAR:
+ *
+ * Recipe          ::= Mix+                                    # at least one mix
+ * Mix             ::= Quantities Ingredient
+ * Quantities      ::= Quantity                                # fixed quantity
+ *                   | Quantity "-" Quantity                   # quantity in random range
+ * Quantity        ::= "[0-9]*"
+ * Ingredient      ::= StandardSets
+ *                   | FreeIngredients
+ * StandardSets    ::= StandardSet+
+ * StandardSet     ::= "[Aa]"                                  # alphabetic
+ *                   | "[Nn]"                                  # numeric
+ *                   | "[Ss]"                                  # symbols
+ * FreeIngredients ::= "["]([^"]|["].)["]|[']([^']|['].)[']"
+ */
+
 typedef struct pass_generator_mix_s pass_generator_mix_t;
 struct pass_generator_mix_s {
-   unsigned int quantity;
+   unsigned int min_quantity;
+   unsigned int max_quantity;
    char *ingredient;
 };
 
 typedef struct pass_generator_s pass_generator_t;
 struct pass_generator_s {
    cad_array_t *mixes;
-   unsigned int passlen;
 };
 
 typedef struct buffer_s buffer_t;
@@ -39,7 +56,7 @@ struct buffer_s {
    const char *string;
    unsigned int index;
    unsigned int size;
-   int error;
+   const char *error;
 
    unsigned int last_quantity;
    char *last_ingredient;
@@ -128,7 +145,7 @@ static char *parse_string(cad_memory_t memory, buffer_t *buffer) {
          }
          buffer->index++;
       } else {
-         buffer->error = 1;
+         buffer->error = "Unterminated string";
          s = 0;
       }
    }
@@ -169,7 +186,7 @@ static void parse_ingredient(cad_memory_t memory, buffer_t *buffer) {
    char c;
    skip_blanks(buffer);
    if (buffer->index >= buffer->size) {
-      buffer->error = 1;
+      buffer->error = "Expecting ingredient specification";
    } else {
       c = buffer->string[buffer->index];
       switch (c) {
@@ -192,35 +209,61 @@ static void parse_ingredient(cad_memory_t memory, buffer_t *buffer) {
          buffer->last_ingredient = parse_string(memory, buffer);
          break;
       default:
-         buffer->error = 1;
+         buffer->error = "Invalid ingredient specification";
       }
    }
 }
 
 static void parse_mix(cad_memory_t memory, circus_log_t *log, buffer_t *buffer, pass_generator_t *generator) {
+   unsigned int min_quantity, max_quantity;
    parse_quantity(buffer);
-   if (!buffer->error && buffer->index < buffer->size) {
-      parse_ingredient(memory, buffer);
-      if (!buffer->error) {
-         log_debug(log, "mix: %u / %s", buffer->last_quantity, buffer->last_ingredient);
-         pass_generator_mix_t mix = {buffer->last_quantity, buffer->last_ingredient};
-         generator->mixes->insert(generator->mixes, generator->mixes->count(generator->mixes), &mix);
-         generator->passlen += buffer->last_quantity;
+   if (!buffer->error) {
+      if (buffer->index < buffer->size) {
+         min_quantity = buffer->last_quantity;
+         skip_blanks(buffer);
+         if (!buffer->error && buffer->index < buffer->size) {
+            if (buffer->string[buffer->index] == '-') {
+               buffer->index++;
+               skip_blanks(buffer);
+               parse_quantity(buffer);
+               max_quantity = buffer->last_quantity;
+               if (max_quantity < min_quantity) {
+                  buffer->error = "Invalid quantity range: min > max";
+               }
+            } else {
+               max_quantity = min_quantity;
+            }
+         }
+         if (!buffer->error && buffer->index < buffer->size) {
+            parse_ingredient(memory, buffer);
+            if (!buffer->error) {
+               log_debug(log, "mix: %u-%u / %s", min_quantity, max_quantity, buffer->last_ingredient);
+               pass_generator_mix_t mix = {min_quantity, max_quantity, buffer->last_ingredient};
+               generator->mixes->insert(generator->mixes, generator->mixes->count(generator->mixes), &mix);
+            }
+         }
+      } else {
+         buffer->error = "Expecting ingredient specification";
       }
    }
 }
 
-static pass_generator_t *parse_recipe(cad_memory_t memory, circus_log_t *log, const char *recipe) {
+static pass_generator_t *parse_recipe(cad_memory_t memory, circus_log_t *log, const char *recipe, char **error) {
    pass_generator_t *result = memory.malloc(sizeof(pass_generator_t));
    if (result != NULL) {
       result->mixes = cad_new_array(memory, sizeof(pass_generator_mix_t));
-      result->passlen = 0;
-      buffer_t buffer = {recipe, 0, strlen(recipe), 0, 0, NULL};
+      buffer_t buffer = {recipe, 0, strlen(recipe), NULL, 0, NULL};
       while (buffer.index < buffer.size && !buffer.error) {
          parse_mix(memory, log, &buffer, result);
       }
       if (buffer.error) {
-         log_error(log, "Invalid recipe [%s]: error at %d", recipe, buffer.index + 1);
+         *error = szprintf(memory, NULL, "%d: %s", buffer.index + 1, buffer.error);
+         log_error(log, "Invalid recipe [%s]: %s", recipe, *error);
+         free_generator(memory, result);
+         result = NULL;
+      } else if (result->mixes->count(result->mixes) == 0) {
+         *error = szprintf(memory, NULL, "0: empty recipe");
+         log_error(log, "Invalid recipe [%s]: %s", recipe, *error);
          free_generator(memory, result);
          result = NULL;
       }
@@ -228,37 +271,51 @@ static pass_generator_t *parse_recipe(cad_memory_t memory, circus_log_t *log, co
    return result;
 }
 
-char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe) {
-   pass_generator_t *generator = parse_recipe(memory, log, recipe);
+char *generate_pass(cad_memory_t memory, circus_log_t *log, const char *recipe, char **error) {
+   pass_generator_t *generator = parse_recipe(memory, log, recipe, error);
    if (generator == NULL) {
       return NULL;
    }
-   unsigned int passlen = 0, n = generator->mixes->count(generator->mixes), i, j, l, p;
+   unsigned int passlen = 0, minlen = 0, maxlen = 0, n = generator->mixes->count(generator->mixes), i, j, l, p, index = 0;
+   unsigned int *mixlens = memory.malloc(n * sizeof(unsigned int));
    char c;
 
-   log_debug(log, "Generator passlen=%d, mix count=%d", generator->passlen, n);
+   for (i = 0; i < n; i++) {
+      pass_generator_mix_t *mix = generator->mixes->get(generator->mixes, i);
+      unsigned int delta = mix->max_quantity - mix->min_quantity;
+      minlen += mix->min_quantity;
+      maxlen += mix->max_quantity;
+      if (delta == 0) {
+         mixlens[i] = mix->max_quantity;
+      } else {
+         mixlens[i] = mix->min_quantity + irandom(mix->max_quantity - mix->min_quantity);
+      }
+      passlen += mixlens[i];
+   }
+   log_debug(log, "Generator passlen[%d-%d]=%d, mix count=%d", minlen, maxlen, passlen, n);
 
-   char *result = memory.malloc(generator->passlen + 1);
+   char *result = memory.malloc(passlen + 1);
    if (result != NULL) {
       for (i = 0; i < n; i++) {
          pass_generator_mix_t *mix = generator->mixes->get(generator->mixes, i);
          l = strlen(mix->ingredient);
-         for (j = 0; j < mix->quantity; j++) {
+         for (j = 0; j < mixlens[i]; j++) {
             c = mix->ingredient[irandom(l)];
-            passlen++;
-            p = irandom(passlen);
-            if (p < passlen - 1) {
-               memmove(result + p + 1, result + p, passlen - p);
+            index++;
+            p = irandom(index);
+            if (p < index - 1) {
+               memmove(result + p + 1, result + p, index - p);
             }
             result[p] = c;
          }
       }
-      result[generator->passlen] = '\0';
+      result[passlen] = '\0';
       log_pii(log, "Generated a new password of length %d: %s", passlen, result);
    } else {
       log_debug(log, "Could not generate password");
    }
 
+   memory.free(mixlens);
    free_generator(memory, generator);
    return result;
 }

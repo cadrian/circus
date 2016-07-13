@@ -160,6 +160,7 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
    const char *recipe = visited->recipe(visited);
    int ok = 0;
    char *pass = NULL;
+   char *error = NULL;
 
    circus_session_data_t *data = this->session->get(this->session, sessionid, token);
    if (data == NULL) {
@@ -177,7 +178,7 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
          if (key == NULL) {
             log_error(this->log, "Set_recipe_pass query REFUSED, could not create key");
          } else {
-            pass = generate_pass(this->memory, this->log, recipe);
+            pass = generate_pass(this->memory, this->log, recipe, &error);
             if (pass == NULL) {
                log_error(this->log, "Set_recipe_pass query REFUSED, could not generate pass");
             } else {
@@ -189,9 +190,10 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
    }
 
    cad_array_t *properties = cad_new_array(this->memory, sizeof(char*)); // TODO: fill in properties
-   circus_message_reply_pass_t *reply = new_circus_message_reply_pass(this->memory, ok ? "" : "refused", token, keyname, pass, properties);
+   circus_message_reply_pass_t *reply = new_circus_message_reply_pass(this->memory, ok ? "" : error ? error : "refused", token, keyname, pass, properties);
    properties->free(properties);
    this->memory.free(pass);
+   this->memory.free(error);
    this->reply = I(reply);
 }
 

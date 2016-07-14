@@ -1,6 +1,7 @@
 <html>
   <head>
     <title>Circus</title>
+    <link href="{{config:static_path}}/circus.css" rel="stylesheet" type="text/css">
   </head>
   <body>
     <h1>New user created: {{form:username}}</h1>

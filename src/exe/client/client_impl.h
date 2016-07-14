@@ -20,6 +20,7 @@
 #include <cad_cgi.h>
 #include <cad_hash.h>
 
+#include <circus_config.h>
 #include <circus_log.h>
 
 #include "cgi_handler.h"
@@ -28,6 +29,7 @@ typedef struct {
    circus_client_cgi_handler_t fn;
    cad_memory_t memory;
    circus_log_t *log;
+   circus_config_t *config;
    circus_channel_t *channel;
    circus_automaton_t *automaton;
    char *templates_path;

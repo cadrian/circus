@@ -28,6 +28,7 @@ exe=".exe"
 . $TSTDIR/_test_client_cgi_setup.sh
 
 cp -a ../../templates/* $CONF/templates/
+cp -a ../../static/* $CONF/static/
 
 teardown() {
     kill $lighttpd_pid 2>/dev/null

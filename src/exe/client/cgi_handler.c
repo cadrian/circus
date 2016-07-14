@@ -135,6 +135,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    result->fn = impl_cgi_fn;
    result->memory = memory;
    result->log = log;
+   result->config = config;
    result->channel = NULL;
    result->automaton = NULL;
    result->templates_path = templates_path;

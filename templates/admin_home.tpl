@@ -1,12 +1,8 @@
 <html>
   <head>
     <title>Circus</title>
-    <script>
-      function submit_action(action) {
-          document.action_form.action.value = action;
-          document.action_form.submit();
-      }
-    </script>
+    <link href="{{config:static_path}}/circus.css" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="{{config:static_path}}/circus.js"></script>
   </head>
   <body>
     <h1>Welcome to Circus</h1>

@@ -23,7 +23,7 @@ cat > $CONF/lighttpd.conf <<EOF
 server.document-root = "$WEB"
 server.port = 8888
 server.tag = "test_cgi"
-server.modules = ("mod_cgi","mod_auth","mod_accesslog")
+server.modules = ("mod_cgi","mod_auth","mod_accesslog","mod_alias")
 
 auth.backend = "plain"
 auth.backend.plain.userfile = "$CONF/users"
@@ -52,6 +52,9 @@ accesslog.filename = "$LOG/access.log"
 \$HTTP["url"] =~ "^/test_cgi\.cgi" {
     cgi.assign = ( ".cgi" => "$(which bash)" )
 }
+
+alias.url = ( "/static" => "$CONF/static" )
+
 EOF
 
 cat > $CONF/users <<EOF
@@ -89,7 +92,7 @@ tee $base\$ext.in |
     tee $base\$ext.out
 EOF
 
-mkdir -p $RUN/circus $CONF/templates
+mkdir -p $RUN/circus $CONF/templates $CONF/static
 rm -f $LOG/client.log $LOG/server.log
 
 cat > $RUN/circus/cgi.conf <<EOF
@@ -101,6 +104,9 @@ cat > $RUN/circus/cgi.conf <<EOF
     "log": {
         "level": "pii",
         "filename": "$LOG/client.log"
+    },
+    "variables": {
+        "static_path": "/static"
     }
 }
 EOF

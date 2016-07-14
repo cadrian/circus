@@ -35,6 +35,7 @@ struct meta_data {
    cad_memory_t memory;
    cad_array_t *nested;
    cad_hash_t *cgi;
+   circus_config_t *config;
 };
 
 struct meta_resolved_string {
@@ -182,6 +183,24 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
             }
          }
       }
+   } else if (!strncmp(name, "config:", 7)) {
+      log_debug(meta->log, " -> Config variable");
+      key = szprintf(meta->memory, NULL, "%s", name + 7);
+      const char *sz_value = meta->config->get(meta->config, "variables", key);
+      if (sz_value != NULL) {
+         struct meta_resolved_string *res = meta->memory.malloc(sizeof(struct meta_resolved_string));
+         assert(res != NULL);
+         res->fn = meta_resolved_string_fn;
+         res->memory = meta->memory;
+         if (operator != NULL && !strcmp("count", operator)) {
+            res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+         } else {
+            res->value = szprintf(meta->memory, NULL, "%s", sz_value);
+         }
+         log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
+         *resolved = I(res);
+         result = Cad_stache_string;
+      }
    }
 
    if (result == Cad_stache_not_found) {
@@ -216,7 +235,7 @@ static void template_error(const char *error, int offset, void *data) {
 static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_cgi_meta_t *meta, cad_hash_t *extra) {
    char *result = NULL;
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
-   struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL};
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL, this->config};
    cad_input_stream_t *in = new_cad_input_stream_from_string(template, this->memory);
    cad_output_stream_t *out = new_cad_output_stream_from_string(&result, this->memory);
    assert(in != NULL);
@@ -241,7 +260,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    cgi->set(cgi, "path_info", (void*)meta->path_info(meta));
    cgi->set(cgi, "script_name", (void*)meta->script_name(meta));
 
-   struct meta_data data = {this->log, meta, extra, this->memory, nested, cgi};
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, cgi, this->config};
    char *template_name = resolve_template_name(this, template, meta, extra);
    assert(template_name != NULL);
    char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template_name);

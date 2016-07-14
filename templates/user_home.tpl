@@ -20,6 +20,13 @@
       <input type="hidden" name="name"/>
 
       <table>
+
+        <tr>
+          <td colspan="2">
+            <h2>Your passwords</h2>
+          </td>
+        </tr>
+
         {{#names.count}}
         <tr>
           <td rowspan="{{names.count}}">
@@ -112,6 +119,49 @@
             </table>
           </td>
         </tr>
+
+        <tr>
+          <td colspan="2">
+            <h2>Your passwords</h2>
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="2">
+            &nbsp;
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <b>Current password:</b>
+          </td>
+          <td>
+            <input type="password" name="old"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <b>New password:</b>
+          </td>
+          <td>
+            <input type="password" name="pass1"/>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <b>Confirm:</b>
+          </td>
+          <td>
+            <input type="password" name="pass2"/>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <button type="button" onclick="submit_action('password')">Change password</button><br/>
+          </td>
+        </tr>
+
         <tr>
           <td>
             <button type="button" onclick="submit_action('logout');">Disconnect</button>

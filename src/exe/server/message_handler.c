@@ -353,8 +353,37 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
 
 static void visit_query_chpwd_user(circus_message_visitor_query_t *visitor, circus_message_query_chpwd_user_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   int ok = 0;
+   const char *oldpass = visited->old(visited);
+   const char *pass1 = visited->pass1(visited);
+   const char *pass2 = visited->pass2(visited);
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "User query REFUSED, unknown session or invalid token");
+      token = "";
+   } else if (strcmp(pass1, pass2)) {
+      log_error(this->log, "User query REFUSED, pass1 and pass2 do not match");
+   } else {
+      circus_user_t *user = data->user(data);
+      circus_user_t *user_check = this->vault->get(this->vault, user->name(user), oldpass);
+      if (user_check == NULL) {
+         log_error(this->log, "User query REFUSED, bad old password");
+      } else if (user != user_check) {
+         log_error(this->log, "User query REFUSED, unexpected user do not match");
+      } else if (user->is_admin(user)) {
+         log_error(this->log, "User query REFUSED, user %s is admin", user->name(user));
+      } else {
+         ok = user->set_password(user, pass1, 0);
+         log_info(this->log, "User %s set new password", user->name(user));
+      }
+   }
+
+   circus_message_reply_user_t *userr = new_circus_message_reply_user(this->memory, ok ? "" : "refused", token,
+                                                                      ok ? pass1 : "", "");
+   this->reply = I(userr);
 }
 
 static void visit_query_version(circus_message_visitor_query_t *visitor, circus_message_query_version_t *visited) {

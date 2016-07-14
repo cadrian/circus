@@ -86,6 +86,16 @@
             "cookie": {
                 "read": "sessionid"
             }
+        },
+        "password": {
+            "query": "chpwd_user",
+            "params": [ "token", "old", "pass1", "pass2" ],
+            "reply": "user",
+            "extra": [ "token", "password", "validity" ],
+            "template": "user_chpwd",
+            "cookie": {
+                "read": "sessionid"
+            }
         }
     },
     "/user_pass.do": {

@@ -5,161 +5,128 @@
     <script type="text/javascript" src="{{config:static_path}}/circus.js"></script>
   </head>
   <body>
-    <h1>Welcome to Circus</h1>
     <form method="POST" name="action_form" action="{{cgi:script_name}}/user_home.do">
       <input type="hidden" name="token" value="{{token}}"/>
       <input type="hidden" name="action"/>
-      <input type="hidden" name="name"/>
+      <div id="navigation">
+        <ul>
+          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-list')">Your passwords</a></li>
+          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-form')">Define a password</a></li>
+          <li><a class="tablink" href="#" onclick="tabulate(event, 'credentials')">Your account</a></li>
+        </ul>
+      </div>
+      <div id="centerDoc">
+        <h1>Circus: user</h1>
+        <input type="hidden" name="name"/>
 
-      <table>
+        <div id="passwords-list" class="tab">
+          <h2>Your passwords</h2>
+          {{#names.count}}
+              {{#names}}
+              <button type="button" onclick="get_pass('{{item}}')">{{item}}</button><br/>
+              {{/names}}
+          {{/names.count}}
+          {{^names}}
+              The passwords list is not yet loaded.<br/>
+              <button type="button" onclick="submit_action('list')">Click to load the passwords list</button><br/>
+          {{/names}}
+        </div>
 
-        <tr>
-          <td colspan="2">
-            <h2>Your passwords</h2>
-          </td>
-        </tr>
+        <div id="passwords-form" class="tab">
+          <h2>Define a password</h2>
+          <table>
+            <tr>
+              <td>
+                <b>Name:</b>
+              </td>
+              <td>
+                <input type="text" name="key"/>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                &mdash;<i>Either generate using a recipe</i>&mdash;
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Recipe:</b>
+              </td>
+              <td>
+                <input type="text" name="recipe" value="16ans"/>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <button type="button" onclick="submit_action('add_recipe')">Generate</button>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                &mdash;<i>Or enter the new password</i>&mdash;
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Password:</b>
+              </td>
+              <td>
+                <input type="password" name="pass1"/>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Again:</b>
+              </td>
+              <td>
+                <input type="password" name="pass2"/>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <button type="button" onclick="submit_action('add_prompt')">Define</button>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-        {{#names.count}}
-        <tr>
-          <td rowspan="{{names.count}}">
-            <h2>Show password:</h2>
-          </td>
-          <td>
-            {{#names}}
-            <button type="button" onclick="get_pass('{{item}}')">{{item}}</button><br/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            {{/names}}
-            &nbsp;
-          </td>
-        </tr>
-        {{/names.count}}
-        {{^names}}
-        <tr>
-          <td colspan="2">
-            <button type="button" onclick="submit_action('list')">Click to load the passwords list</button><br/>
-          </td>
-        </tr>
-        {{/names}}
+        <div id="credentials" class="tab">
+          <h2>Your account</h2>
+          <table>
+            <tr>
+              <td>
+                <b>Current password:</b>
+              </td>
+              <td>
+                <input type="password" name="old"/>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>New password:</b>
+              </td>
+              <td>
+                <input type="password" name="pass1"/>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Confirm:</b>
+              </td>
+              <td>
+                <input type="password" name="pass2"/>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <button type="button" onclick="submit_action('password')">Change password</button><br/>
+              </td>
+            </tr>
+          </table>
+        </div>
 
-        <tr>
-          <td colspan="2">
-            &nbsp;
-          </td>
-        </tr>
-
-        <tr>
-          <td style="vertical-align:top;">
-            <h2>Set password:</h2>
-          </td>
-          <td>
-            <table>
-              <tr>
-                <td>
-                  <b>Name:</b>
-                </td>
-                <td>
-                  <input type="text" name="key"/>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2">
-                  &mdash;<i>Either generate using a recipe</i>&mdash;
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <b>Recipe:</b>
-                </td>
-                <td>
-                  <input type="text" name="recipe" value="16ans"/>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2">
-                  <button type="button" onclick="submit_action('add_recipe')">Generate</button>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2">
-                  &mdash;<i>Or enter the new password</i>&mdash;
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <b>Password:</b>
-                </td>
-                <td>
-                  <input type="password" name="pass1"/>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <b>Again:</b>
-                </td>
-                <td>
-                  <input type="password" name="pass2"/>
-                </td>
-              </tr>
-              <tr>
-                <td colspan="2">
-                  <button type="button" onclick="submit_action('add_prompt')">Define</button>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <tr>
-          <td colspan="2">
-            <h2>Your passwords</h2>
-          </td>
-        </tr>
-
-        <tr>
-          <td colspan="2">
-            &nbsp;
-          </td>
-        </tr>
-
-        <tr>
-          <td>
-            <b>Current password:</b>
-          </td>
-          <td>
-            <input type="password" name="old"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <b>New password:</b>
-          </td>
-          <td>
-            <input type="password" name="pass1"/>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <b>Confirm:</b>
-          </td>
-          <td>
-            <input type="password" name="pass2"/>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <button type="button" onclick="submit_action('password')">Change password</button><br/>
-          </td>
-        </tr>
-
-        <tr>
-          <td>
-            <button type="button" onclick="submit_action('logout');">Disconnect</button>
-          </td>
-        </tr>
-      </table>
+        <button type="button" onclick="submit_action('logout');">Disconnect</button>
+      </div>
     </form>
   </body>
 </html>

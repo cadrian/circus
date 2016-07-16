@@ -4,7 +4,7 @@ function submit_action(action) {
 }
 
 function get_pass(key) {
-    document.action_form.name = key;
+    document.action_form.key.value = key;
     submit_action('pass');
 }
 

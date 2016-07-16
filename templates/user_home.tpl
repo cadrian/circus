@@ -17,14 +17,16 @@
       </div>
       <div id="centerDoc">
         <h1>Circus: user</h1>
-        <input type="hidden" name="name"/>
 
         <div id="passwords-list" class="tab">
           <h2>Your passwords</h2>
           {{#names.count}}
+              <p>You have {{item}} passwords:</p>
+              <ul>
               {{#names}}
-              <button type="button" onclick="get_pass('{{item}}')">{{item}}</button><br/>
+              <li><a href="#" onclick="get_pass('{{item}}')">{{item}}</a></li>
               {{/names}}
+              </ul>
           {{/names.count}}
           {{^names}}
               The passwords list is not yet loaded.<br/>

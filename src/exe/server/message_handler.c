@@ -142,8 +142,38 @@ static void visit_query_logout(circus_message_visitor_query_t *visitor, circus_m
 
 static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus_message_query_get_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   const char *keyname = visited->key(visited);
+   char *password = NULL;
+   int ok = 0;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_warning(this->log, "Get_pass query REFUSED, unknown session or invalid token");
+   } else {
+      circus_user_t *user = data->user(data);
+      if (user->is_admin(user)) {
+         log_error(this->log, "Get_pass query REFUSED, user %s is admin", user->name(user));
+      } else {
+         log_debug(this->log, "Getting key for user %s: %s", user->name(user), keyname);
+         circus_key_t *key = user->get(user, keyname);
+         if (key != NULL) {
+            password = key->get_password(key);
+            log_pii(this->log, "Found key for user %s: %s => %s", user->name(user), keyname, password);
+            ok = 1;
+         } else {
+            log_pii(this->log, "Unknown key for user %s: %s", user->name(user), keyname);
+         }
+      }
+      token = data->set_token(data);
+   }
+
+   cad_array_t *properties = cad_new_array(this->memory, sizeof(char*)); // TODO: fill in properties
+   circus_message_reply_pass_t *reply = new_circus_message_reply_pass(this->memory, ok ? "" : "refused", token, keyname, password, properties);
+   properties->free(properties);
+   this->memory.free(password);
+   this->reply = I(reply);
 }
 
 static void visit_query_set_prompt_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_prompt_pass_t *visited) {

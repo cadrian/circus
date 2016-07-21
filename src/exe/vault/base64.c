@@ -90,6 +90,7 @@ char *unbase64(cad_memory_t memory, const char *b64) {
          *(p++) = (B64_TABLE[B64(1)] << 4 | B64_TABLE[B64(2)] >> 2);
          *(p++) = (B64_TABLE[B64(2)] << 6 | B64_TABLE[B64(3)]);
          len -= 4;
+         b64 += 4;
       }
       assert(len != 1);
       if (len > 1) {

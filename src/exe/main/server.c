@@ -24,6 +24,7 @@
 
 #include <circus_channel.h>
 #include <circus_config.h>
+#include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_memory.h>
 #include <circus_vault.h>
@@ -118,32 +119,36 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
    }
    log_info(LOG, "Server starting.");
 
-   circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
-   switch (argc) {
-   case 1:
-      run(config, vault);
-      assert(0 == status);
-      break;
-   case 2:
-      if (0 == strcmp("--help", argv[1])) {
-         usage(argv[0], stdout);
-      } else {
-         usage(argv[0], stderr);
-         status = 1;
-      }
-      break;
-   case 4:
-      if (0 == strcmp("--install", argv[1])) {
-         status = vault->install(vault, argv[2], argv[3]);
-      } else {
-         usage(argv[0], stderr);
-         status = 1;
-      }
-      break;
-   default:
-      usage(argv[0], stderr);
+   if (!init_crypt(LOG)) {
       status = 1;
-      break;
+   } else {
+      circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
+      switch (argc) {
+      case 1:
+         run(config, vault);
+         assert(0 == status);
+         break;
+      case 2:
+         if (0 == strcmp("--help", argv[1])) {
+            usage(argv[0], stdout);
+         } else {
+            usage(argv[0], stderr);
+            status = 1;
+         }
+         break;
+      case 4:
+         if (0 == strcmp("--install", argv[1])) {
+            status = vault->install(vault, argv[2], argv[3]);
+         } else {
+            usage(argv[0], stderr);
+            status = 1;
+         }
+         break;
+      default:
+         usage(argv[0], stderr);
+         status = 1;
+         break;
+      }
    }
 
    LOG->free(LOG);

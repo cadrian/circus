@@ -1,4 +1,6 @@
-find . -name \*.[od] -exec rm {} +
-find . -name \*.exe -exec rm {} +
-find . -name \*.log.new -exec rm {} +
+find . -name \*-conf.d -exec rm -rf {} +
+find . -name \*.[od] -exec rm -f {} +
+find . -name \*.exe -exec rm -f {} +
+find . -name \*.log.new -exec rm -f {} +
+find . -name \*.log -exec rm -f {} +
 rm -rf exe/protocol/{gen,messages}

@@ -183,7 +183,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
          }
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 4, validity);
+         n = sqlite3_bind_int64(stmt, 3, validity);
          if (n != SQLITE_OK) {
             log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
             ok=0;
@@ -300,6 +300,7 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
       result->vault = vault;
       result->keys = cad_new_hash(memory, cad_hash_strings);
       result->email = email == NULL ? NULL : szprintf(memory, NULL, "%s", email);
+      result->key = NULL;
       result->validity = validity;
       strcpy(result->name, name);
    }

@@ -28,6 +28,65 @@
 
 #include "vault_impl.h"
 
+static void get_symmetric_key(user_impl_t *user, const char *password) {
+   static const char *sql = "SELECT KEYSALT, KEY FROM USERS WHERE USERID=?";
+   sqlite3_stmt *stmt;
+   int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
+   if (n != SQLITE_OK) {
+      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+   } else {
+      n = sqlite3_bind_int64(stmt, 1, user->userid);
+      if (n != SQLITE_OK) {
+         log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+      } else {
+         n = sqlite3_step(stmt);
+         if (n == SQLITE_DONE) {
+            log_error(user->log, "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
+            log_error(user->log, "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+         } else {
+            const char *keysalt = (const char*)sqlite3_column_text(stmt, 0);
+            const char *hashkey = (const char*)sqlite3_column_text(stmt, 1);
+
+            if (hashkey == NULL || strlen(hashkey) == 0) {
+               log_error(user->log, "Error user: %ld -- HASHKEY is NULL", (long int)user->userid);
+            } else if (keysalt == NULL || strlen(keysalt) == 0) {
+               log_error(user->log, "Error user: %ld -- KEYSALT is NULL", (long int)user->userid);
+            } else {
+               char *passslt=NULL;
+               char *passkey=NULL;
+               passslt = salted(user->memory, user->log, keysalt, password);
+               if (passslt == NULL) {
+                  log_error(user->log, "Error user: %ld -- could not salt password", (long int)user->userid);
+               } else {
+                  passkey = hashed(user->memory, user->log, passslt);
+                  if (passkey == NULL) {
+                     log_error(user->log, "Error user: %ld -- could not hash password", (long int)user->userid);
+                  } else {
+                     char *saltedkey = decrypted(user->memory, user->log, hashkey, passkey);
+                     if (saltedkey == NULL) {
+                        log_error(user->log, "Error user: %ld -- could not decrypt", (long int)user->userid);
+                     } else {
+                        user->key = unsalted(user->memory, user->log, keysalt, saltedkey);
+                        if (user->key == NULL) {
+                           log_error(user->log, "Error user: %ld -- could not unsalt", (long int)user->userid);
+                        }
+                        user->memory.free(saltedkey);
+                     }
+                     user->memory.free(passkey);
+                  }
+                  user->memory.free(passslt);
+               }
+            }
+         }
+      }
+      n = sqlite3_finalize(stmt);
+      if (n != SQLITE_OK) {
+         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
+      }
+   }
+}
+
 static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password) {
    log_info(this->log, "Getting user %s%s", username, password == NULL ? "" : " and checking password");
 
@@ -79,6 +138,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
       }
       if (result != NULL) {
          this->users->set(this->users, username, result);
+         get_symmetric_key(result, password);
       }
    }
    return result == NULL ? NULL : password == NULL ? result : check_user_password(result, password);
@@ -174,6 +234,8 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
       char *key=NULL;
       char *enckey=NULL;
       char *sltkey=NULL;
+      char *passslt=NULL;
+      char *passkey=NULL;
       if (ok) {
          enckey = new_symmetric_key(this->memory, this->log);
          if (enckey == NULL) {
@@ -183,14 +245,24 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
             if (sltkey == NULL) {
                ok=0;
             } else {
-               key = encrypted(this->memory, this->log, sltkey, hashpwd);
-               if (key == NULL) {
+               passslt = salted(this->memory, this->log, keysalt, password);
+               if (passslt == NULL) {
                   ok=0;
                } else {
-                  n = sqlite3_bind_text(stmt, 7, key, -1, SQLITE_TRANSIENT);
-                  if (n != SQLITE_OK) {
-                     log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+                  passkey = hashed(this->memory, this->log, passslt);
+                  if (passkey == NULL) {
                      ok=0;
+                  } else {
+                     key = encrypted(this->memory, this->log, sltkey, passkey);
+                     if (key == NULL) {
+                        ok=0;
+                     } else {
+                        n = sqlite3_bind_text(stmt, 7, key, -1, SQLITE_TRANSIENT);
+                        if (n != SQLITE_OK) {
+                           log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+                           ok=0;
+                        }
+                     }
                   }
                }
             }
@@ -201,6 +273,7 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
          n = sqlite3_step(stmt);
          if (n == SQLITE_OK || n == SQLITE_DONE) {
             result = vault_get(this, username, password);
+            assert(result->key != NULL && !strcmp(result->key, enckey));
          } else {
             log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
          }
@@ -213,6 +286,8 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
       this->memory.free(hashpwd);
       this->memory.free(pwd);
       this->memory.free(pwdsalt);
+      this->memory.free(passslt);
+      this->memory.free(passkey);
 
       n = sqlite3_finalize(stmt);
       if (n != SQLITE_OK) {

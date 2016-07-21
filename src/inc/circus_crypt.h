@@ -38,4 +38,8 @@ char *szrandom(cad_memory_t memory, size_t len);
 char *szrandom_strong(cad_memory_t memory, size_t len);
 unsigned int irandom(unsigned int max);
 
+/* init */
+
+int init_crypt(circus_log_t *log);
+
 #endif /* __CIRCUS_CRYPT_H */

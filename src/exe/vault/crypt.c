@@ -63,16 +63,16 @@ char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const cha
 }
 
 char *unsalted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
-   assert(strlen(salt) == SALT_SIZE);
+   assert(strlen(salt) == b64_size(SALT_SIZE));
    assert(value != NULL);
    assert(value[0] != 0);
 
    char *result = NULL;
-   int n = strlen(value) - SALT_SIZE; /* - 1 (for ':') + 1 (for '\0') */
+   int n = strlen(value) - b64_size(SALT_SIZE); /* - 1 (for ':') + 1 (for '\0') */
 
-   if (n > 1 && value[SALT_SIZE] == ':' && memcmp(value, salt, SALT_SIZE) == 0) {
+   if (n > 1 && value[b64_size(SALT_SIZE)] == ':' && memcmp(value, salt, b64_size(SALT_SIZE)) == 0) {
       result = memory.malloc(n);
-      memcpy(result, value + SALT_SIZE + 1, n);
+      memcpy(result, value + b64_size(SALT_SIZE) + 1, n);
    } else {
       log_error(log, "Tampered salted value!!");
    }
@@ -126,22 +126,38 @@ char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const
    if (e != 0) {
       return NULL;
    }
-   int len = strlen(value);
+   int len = strlen(value) + 1; // be sure to encrypt the '\0' at the end of the string, for correct decryption
    int n = len + KEY_SIZE - (len % KEY_SIZE);
-   char *raw = memory.malloc(n);
-   memcpy(raw, value, len);
+   char *enc = memory.malloc(n);
    key = unbase64(memory, b64key);
-   if (key != NULL) {
+   if (key == NULL) {
+      log_error(log, "could not unbase64");
+   } else {
+      assert(gcry_cipher_get_algo_keylen(GCRY_CIPHER_AES256) == KEY_SIZE);
       e = gcrypt(cipher_setkey(hd, key, KEY_SIZE));
       if (e == 0) {
-         e = gcrypt(cipher_encrypt(hd, raw, n, NULL, 0));
-         if (e == 0) {
-            result = base64(memory, raw, n);
+         size_t blklen = gcry_cipher_get_algo_blklen(GCRY_CIPHER_AES256);
+         char *blk = memory.malloc(blklen);
+         if (blk == NULL) {
+            log_error(log, "could not allocate initialization vector");
+         } else {
+            memset(blk, 0, blklen);
+            e = gcrypt(cipher_setiv(hd, blk, blklen));
+            if (e == 0) {
+               e = gcrypt(cipher_encrypt(hd, enc, n, value, len));
+               if (e == 0) {
+                  result = base64(memory, enc, n);
+                  if (result == NULL) {
+                     log_error(log, "could not base64");
+                  }
+               }
+            }
+            memory.free(blk);
          }
       }
       memory.free(key); // TODO try to free it earlier (to be tested)
    }
-   memory.free(raw);
+   memory.free(enc);
    gcry_cipher_close(hd);
 
    return result;
@@ -161,24 +177,37 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
    gcry_cipher_hd_t hd;
    gcry_error_t e = gcrypt(cipher_open(&hd, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CFB, GCRY_CIPHER_SECURE));
    if (e != 0) {
+      memory.free(value);
       return NULL;
    }
    int len = ((strlen(b64value) + 3) / 4) * 3;
    assert(len % KEY_SIZE == 0);
    key = unbase64(memory, b64key);
    if (key != NULL) {
+      assert(gcry_cipher_get_algo_keylen(GCRY_CIPHER_AES256) == KEY_SIZE);
       e = gcrypt(cipher_setkey(hd, key, KEY_SIZE));
       if (e == 0) {
-         e = gcrypt(cipher_decrypt(hd, value, len, NULL, 0));
-         if (e == 0) {
-            result = value;
+         size_t blklen = gcry_cipher_get_algo_blklen(GCRY_CIPHER_AES256);
+         char *blk = memory.malloc(blklen);
+         if (blk == NULL) {
+            log_error(log, "could not allocate initialization vector");
+         } else {
+            memset(blk, 0, blklen);
+            e = gcrypt(cipher_setiv(hd, blk, blklen));
+            if (e == 0) {
+               e = gcrypt(cipher_decrypt(hd, value, len, NULL, 0));
+               if (e == 0) {
+                  result = value;
+               }
+            }
+            memory.free(blk);
          }
       }
       memory.free(key); // TODO try to free it earlier (to be tested)
    }
    gcry_cipher_close(hd);
 
-   if (result != value) {
+   if (result != value) { // i.e. result == NULL
       memory.free(value);
    }
 
@@ -208,6 +237,48 @@ char *szrandom(cad_memory_t memory, size_t len) {
 
 char *szrandom_strong(cad_memory_t memory, size_t len) {
    return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM);
+}
+
+int init_crypt(circus_log_t *log) {
+   static int init = 0;
+   gcry_error_t e;
+   if (!init) {
+      const char *ver = gcry_check_version(GCRYPT_VERSION);
+      if (ver == NULL) {
+         log_error(log, "gcrypt version mismatch");
+         return 0;
+      } else {
+         log_info(log, "gcrypt version: %s", ver);
+      }
+
+      e = gcrypt(control(GCRYCTL_SUSPEND_SECMEM_WARN, 0));
+      if (e != 0) {
+         log_warning(log, "gcrypt suspend secmen warn failed");
+      }
+      e = gcrypt(control(GCRYCTL_INIT_SECMEM, 16384, 0));
+      if (e != 0) {
+         log_error(log, "gcrypt init secmen failed");
+         return 0;
+      }
+      e = gcrypt(control(GCRYCTL_RESUME_SECMEM_WARN, 0));
+      if (e != 0) {
+         log_warning(log, "gcrypt resume secmen warn failed");
+      }
+
+      e = gcrypt(control(GCRYCTL_INITIALIZATION_FINISHED, 0));
+      if (e != 0) {
+         log_error(log, "gcrypt init failed");
+         return 0;
+      }
+   }
+
+   e = gcrypt(control(GCRYCTL_SELFTEST, 0));
+   if (e != 0) {
+      log_error(log, "gcrypt self-test failed");
+      return 0;
+   }
+
+   return 1;
 }
 
 /* ---------------- TESTING FUNCTIONS ---------------- */

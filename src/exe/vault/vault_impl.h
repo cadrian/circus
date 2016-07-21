@@ -98,6 +98,7 @@ typedef struct {
    int permissions;
    char *name;
    char *email;
+   char *key;
    vault_impl_t *vault;
    cad_hash_t *keys;
 } user_impl_t;

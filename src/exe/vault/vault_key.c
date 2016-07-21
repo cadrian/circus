@@ -25,55 +25,9 @@
 
 #include "vault_impl.h"
 
-static char *get_symmetric_key(user_impl_t *user) {
-   char *result = NULL;
-   static const char *sql = "SELECT KEYSALT, KEY, HASHPWD FROM USERS WHERE USERID=?";
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      n = sqlite3_bind_int64(stmt, 1, user->userid);
-      if (n != SQLITE_OK) {
-         log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_step(stmt);
-         if (n == SQLITE_DONE) {
-            log_error(user->log, "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
-         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
-         } else {
-            const char *keysalt = (const char*)sqlite3_column_text(stmt, 1);
-            const char *hashkey = (const char*)sqlite3_column_text(stmt, 2);
-            const char *hashpwd = (const char*)sqlite3_column_text(stmt, 3);
-
-            char *saltedkey = decrypted(user->memory, user->log, hashkey, hashpwd);
-            if (saltedkey != NULL) {
-               char *b64key = unsalted(user->memory, user->log, keysalt, saltedkey);
-               if (b64key != NULL) {
-                  result = unbase64(user->memory, b64key);
-                  user->memory.free(b64key);
-               }
-               user->memory.free(saltedkey);
-            }
-         }
-      }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
-   }
-
-   if (result == NULL) {
-      log_error(user->log, "Could not get encryption key for user %ld", (long int)user->userid);
-   }
-
-   return result;
-}
-
 static char *vault_key_get_password(key_impl_t *this) {
    char *result = NULL;
-   char *enckey = get_symmetric_key(this->user);
+   char *enckey = this->user->key;
    if (enckey != NULL) {
       static const char *sql = "SELECT SALT, VALUE FROM KEYS WHERE KEYID=?";
       sqlite3_stmt *stmt;
@@ -97,8 +51,8 @@ static char *vault_key_get_password(key_impl_t *this) {
                      result = NULL;
                      done = 1;
                   } else {
-                     const char *salt = (const char*)sqlite3_column_text(stmt, 1);
-                     const char *value = (const char*)sqlite3_column_text(stmt, 2);
+                     const char *salt = (const char*)sqlite3_column_text(stmt, 0);
+                     const char *value = (const char*)sqlite3_column_text(stmt, 1);
 
                      char *decvalue = decrypted(this->memory, this->log, value, enckey);
                      if (decvalue != NULL) {
@@ -124,10 +78,12 @@ static char *vault_key_get_password(key_impl_t *this) {
 
 static int vault_key_set_password(key_impl_t *this, const char *password) {
    int result = 0;
-   char *enckey = get_symmetric_key(this->user);
+   char *enckey = this->user->key;
    char *keysalt = NULL;
    char *encpwd = NULL;
-   if (enckey != NULL) {
+   if (enckey == NULL) {
+      log_error(this->log, "Could not get symmetric key");
+   } else {
       keysalt = salt(this->memory, this->log);
       if (keysalt == NULL) {
          log_error(this->log, "Could not allocate salt");

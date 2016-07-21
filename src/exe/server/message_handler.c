@@ -160,8 +160,12 @@ static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus
          circus_key_t *key = user->get(user, keyname);
          if (key != NULL) {
             password = key->get_password(key);
-            log_pii(this->log, "Found key for user %s: %s => %s", user->name(user), keyname, password);
-            ok = 1;
+            if (password == NULL) {
+               log_pii(this->log, "Key not found for user %s: %s", user->name(user), keyname);
+            } else {
+               log_pii(this->log, "Found key for user %s: %s => %s", user->name(user), keyname, password);
+               ok = 1;
+            }
          } else {
             log_pii(this->log, "Unknown key for user %s: %s", user->name(user), keyname);
          }
@@ -212,7 +216,11 @@ static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor,
             if (pass == NULL) {
                log_error(this->log, "Set_recipe_pass query REFUSED, could not generate pass");
             } else {
-               ok = 1;
+               if (key->set_password(key, pass)) {
+                  ok = 1;
+               } else {
+                  log_error(this->log, "Set_recipe_pass query REFUSED, could not set password");
+               }
             }
          }
       }

@@ -26,6 +26,22 @@ if [ -f ${1%.test}.c ]; then
     redo-ifchange $exe
     (
         cd $(dirname $exe)
+
+        export XDG_DATA_HOME=$(basename $2)-conf.d
+        mkdir -p $XDG_DATA_HOME/circus
+        cat > $XDG_DATA_HOME/circus/server.conf <<EOF
+{
+    "vault": {
+        "filename": "vault"
+    },
+    "log": {
+        "level": "pii",
+        "filename": "$(basename $2)-server.log"
+    }
+}
+EOF
+
+
         exec valgrind --leak-check=full --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
     ) >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew

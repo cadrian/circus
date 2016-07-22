@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <alloca.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -551,42 +552,57 @@ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t ma
    return I(result);
 }
 
-void logger_error(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_error(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_ERROR);
+   int n = snprintf("", 0, "%d: %s", line, format) + 1;
+   char *fmt = alloca(n);
+   snprintf(fmt, n, "%d: %s", line, format);
    va_start(arg, format);
-   s->vput(s, format, arg);
+   s->vput(s, fmt, arg);
    va_end(arg);
 }
 
-void logger_warning(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_warning(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_WARNING);
+   int n = snprintf("", 0, "%d: %s", line, format) + 1;
+   char *fmt = alloca(n);
+   snprintf(fmt, n, "%d: %s", line, format);
    va_start(arg, format);
-   s->vput(s, format, arg);
+   s->vput(s, fmt, arg);
    va_end(arg);
 }
 
-void logger_info(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_info(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_INFO);
+   int n = snprintf("", 0, "%d: %s", line, format) + 1;
+   char *fmt = alloca(n);
+   snprintf(fmt, n, "%d: %s", line, format);
    va_start(arg, format);
-   s->vput(s, format, arg);
+   s->vput(s, fmt, arg);
    va_end(arg);
 }
 
-void logger_debug(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_debug(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_DEBUG);
+   int n = snprintf("", 0, "%d: %s", line, format) + 1;
+   char *fmt = alloca(n);
+   snprintf(fmt, n, "%d: %s", line, format);
    va_start(arg, format);
-   s->vput(s, format, arg);
+   s->vput(s, fmt, arg);
    va_end(arg);
 }
 
-void logger_pii(circus_log_t *logger, const char *module, const char *format, ...) {
+void logger_pii(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_PII);
+   int n = snprintf("", 0, "%d: %s", line, format) + 1;
+   char *fmt = alloca(n);
+   snprintf(fmt, n, "%d: %s", line, format);
    va_start(arg, format);
-   s->vput(s, format, arg);
+   s->vput(s, fmt, arg);
    va_end(arg);
 }

@@ -27,15 +27,14 @@
 #define HASH_SIZE 64 // 512 bits
 #define SECURE_MEM_SIZE 65536
 
-#define gcrypt(fn) ({                                                   \
-         gcry_error_t e ## __LINE__ = gcry_ ## fn;                      \
-         if (e ## __LINE__) {                                           \
-            logger_error(log, __FILE__, "%s:%d - %s/%s",                \
-                         __FILE__, __LINE__,                            \
-                         gcry_strsource(e ## __LINE__),                 \
-                         gcry_strerror(e ## __LINE__));                 \
-         }                                                              \
-         e ## __LINE__;                                                 \
+#define gcrypt(fn) ({                                      \
+         gcry_error_t e ## __LINE__ = gcry_ ## fn;         \
+         if (e ## __LINE__) {                              \
+            logger_error(log, __FILE__, __LINE__, "%s/%s", \
+                         gcry_strsource(e ## __LINE__),    \
+                         gcry_strerror(e ## __LINE__));    \
+         }                                                 \
+         e ## __LINE__;                                    \
       })
 
 char *salt(cad_memory_t memory, circus_log_t *log) {

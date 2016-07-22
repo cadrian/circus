@@ -34,7 +34,7 @@ typedef enum {
    __LOG_MAX
 } log_level_t;
 
-#define DEFAULT_FORMAT "%Y-%M-%D %h:%m:%s.%u [%T] %O: %G\n"
+#define DEFAULT_FORMAT "%Y-%M-%D %h:%m:%s.%u [%T] %O:%G\n"
 
 typedef void (*circus_log_set_log_fn)(circus_log_t *this, const char *module, log_level_t max_level);
 typedef int (*circus_log_is_log_fn)(circus_log_t *this, const char *module, log_level_t level);
@@ -55,17 +55,17 @@ struct circus_log_s {
 __PUBLIC__ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log_level_t max_level);
 __PUBLIC__ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t max_level, int fd);
 
-__PUBLIC__ void logger_error(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void logger_warning(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void logger_info(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void logger_debug(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
-__PUBLIC__ void logger_pii(circus_log_t *logger, const char *module, const char *format, ...) __attribute__((format(printf, 3, 4)));
+__PUBLIC__ void logger_error(circus_log_t *logger, const char *module, int line, const char *format, ...) __attribute__((format(printf, 4, 5)));
+__PUBLIC__ void logger_warning(circus_log_t *logger, const char *module, int line, const char *format, ...) __attribute__((format(printf, 4, 5)));
+__PUBLIC__ void logger_info(circus_log_t *logger, const char *module, int line, const char *format, ...) __attribute__((format(printf, 4, 5)));
+__PUBLIC__ void logger_debug(circus_log_t *logger, const char *module, int line, const char *format, ...) __attribute__((format(printf, 4, 5)));
+__PUBLIC__ void logger_pii(circus_log_t *logger, const char *module, int line, const char *format, ...) __attribute__((format(printf, 4, 5)));
 
-#define log_error(logger, format, arg...) logger_error((logger), __FILE__, (format) , ##arg)
-#define log_warning(logger, format, arg...) logger_warning((logger), __FILE__, (format) , ##arg)
-#define log_info(logger, format, arg...) logger_info((logger), __FILE__, (format) , ##arg)
-#define log_debug(logger, format, arg...) logger_debug((logger), __FILE__, (format) , ##arg)
-#define log_pii(logger, format, arg...) logger_pii((logger), __FILE__, (format) , ##arg)
+#define log_error(logger, format, arg...) logger_error((logger), __FILE__, __LINE__, (format) , ##arg)
+#define log_warning(logger, format, arg...) logger_warning((logger), __FILE__, __LINE__, (format) , ##arg)
+#define log_info(logger, format, arg...) logger_info((logger), __FILE__, __LINE__, (format) , ##arg)
+#define log_debug(logger, format, arg...) logger_debug((logger), __FILE__, __LINE__, (format) , ##arg)
+#define log_pii(logger, format, arg...) logger_pii((logger), __FILE__, __LINE__, (format) , ##arg)
 
 #define log_is_error(logger) ((logger)->is_log((logger), __FILE__, LOG_ERROR))
 #define log_is_warning(logger) ((logger)->is_log((logger), __FILE__, LOG_WARNING))

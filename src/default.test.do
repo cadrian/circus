@@ -41,8 +41,16 @@ if [ -f ${1%.test}.c ]; then
 }
 EOF
 
-
-        exec valgrind --leak-check=full --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
+        # DETAILED VALGRIND REPORTS:
+        #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
+        #     --xml=yes --xml-file=$(basename $2).log.valgrind.xml --log-file=$(basename $2).log.valgrind $(basename $exe)
+        #
+        # CONCISE VALGRIND REPORTS:
+        #exec valgrind --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
+        #
+        # RAW EXECUTION: (fastest)
+        exec $(basename $exe)
+        #
     ) >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew
         cat $lognew >&2

@@ -120,7 +120,8 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
          if (n != SQLITE_OK) {
             log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
          } else {
-            n = sqlite3_step(stmt);
+            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
+            }
             if (n == SQLITE_OK || n == SQLITE_DONE) {
                result = vault_user_get(this, keyname);
             } else {
@@ -198,7 +199,8 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
       }
 
       if (ok) {
-         n = sqlite3_step(stmt);
+         while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
+         }
          if (n == SQLITE_OK || n == SQLITE_DONE) {
             this->validity = (sqlite3_int64)validity;
             result = 1;
@@ -214,6 +216,13 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
       n = sqlite3_finalize(stmt);
       if (n != SQLITE_OK) {
          log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
+      }
+
+      if (ok) {
+         ok = set_symmetric_key(this, password);
+         if (!ok) {
+            log_error(this->log, "Symmetric key encryption update failed. The user %ld may need help.", (long int)this->userid);
+         }
       }
    }
 
@@ -237,7 +246,8 @@ static int vault_user_set_email(user_impl_t *this, const char *email) {
          if (n != SQLITE_OK) {
             log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
          } else {
-            n = sqlite3_step(stmt);
+            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
+            }
             if (n == SQLITE_OK || n == SQLITE_DONE) {
                this->memory.free(this->email);
                this->email = email == NULL ? NULL : szprintf(this->memory, NULL, "%s", email);
@@ -300,7 +310,7 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
       result->vault = vault;
       result->keys = cad_new_hash(memory, cad_hash_strings);
       result->email = email == NULL ? NULL : szprintf(memory, NULL, "%s", email);
-      result->key = NULL;
+      result->symmkey = NULL;
       result->validity = validity;
       strcpy(result->name, name);
    }
@@ -308,6 +318,7 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
 }
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
+   log_debug(user->log, "Checking user %ld password", (long int)user->userid);
    static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID FROM USERS WHERE USERID=?";
    sqlite3_stmt *stmt;
    user_impl_t *result = NULL;

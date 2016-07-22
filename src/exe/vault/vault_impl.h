@@ -51,7 +51,7 @@
    "  HASHPWD       TEXT NOT NULL,"                        \
    "  PWDVALID      INTEGER,"                              \
    "  KEYSALT       TEXT NOT NULL,"                        \
-   "  KEY           TEST NOT NULL"                         \
+   "  HASHKEY       TEST NOT NULL"                         \
    ");"                                                    \
    "CREATE UNIQUE INDEX IF NOT EXISTS USERS_IX ON USERS (" \
    "  USERNAME"                                            \
@@ -98,7 +98,7 @@ typedef struct {
    int permissions;
    char *name;
    char *email;
-   char *key;
+   char *symmkey;
    vault_impl_t *vault;
    cad_hash_t *keys;
 } user_impl_t;
@@ -116,5 +116,6 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
 key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user);
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);
+int set_symmetric_key(user_impl_t *user, const char *password);
 
 #endif /* __CIRCUS_VAULT_IMPL_H */

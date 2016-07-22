@@ -27,7 +27,7 @@
 
 static char *vault_key_get_password(key_impl_t *this) {
    char *result = NULL;
-   char *enckey = this->user->key;
+   char *enckey = this->user->symmkey;
    if (enckey != NULL) {
       static const char *sql = "SELECT SALT, VALUE FROM KEYS WHERE KEYID=?";
       sqlite3_stmt *stmt;
@@ -78,7 +78,7 @@ static char *vault_key_get_password(key_impl_t *this) {
 
 static int vault_key_set_password(key_impl_t *this, const char *password) {
    int result = 0;
-   char *enckey = this->user->key;
+   char *enckey = this->user->symmkey;
    char *keysalt = NULL;
    char *encpwd = NULL;
    if (enckey == NULL) {
@@ -129,7 +129,8 @@ static int vault_key_set_password(key_impl_t *this, const char *password) {
          }
 
          if (ok) {
-            n = sqlite3_step(stmt);
+            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
+            }
             if (n == SQLITE_OK || n == SQLITE_DONE) {
                result = 1;
             } else {

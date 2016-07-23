@@ -7,7 +7,11 @@ b2=$(basename $2)
 case $b2 in
     test_server*)
         redo-ifchange $(dirname $2)/../exe/main/server.dbg.exe
+        redo-ifchange $(dirname $2)/_test_database.dbg.o
         redo-ifchange $(dirname $2)/_test_server.dbg.o
+        ;;
+    test_database*)
+        redo-ifchange $(dirname $2)/_test_database.dbg.o
         ;;
     test_client*)
         redo-ifchange $(dirname $2)/../exe/main/server.dbg.exe
@@ -48,16 +52,21 @@ EOF
                 ;;
         esac
 
-        # DETAILED VALGRIND REPORTS:
-        #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
-        #     --xml=yes --xml-file=$b2.log.valgrind.xml --log-file=$b2.log.valgrind $(basename $exe)
-        #
-        # CONCISE VALGRIND REPORTS:
-        #exec valgrind --trace-children=yes --log-file=$b2.log.valgrind $(basename $exe)
-        #
-        # RAW EXECUTION: (fastest)
-        exec $(basename $exe)
-        #
+        if [ -f $(basename ${1%.test}.sh) ]; then
+            redo-ifchange $(basename ${1%.test}.sh)
+            exec $(basename ${1%.test}.sh) $(basename $exe)
+        else
+            # DETAILED VALGRIND REPORTS:
+            #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
+            #     --xml=yes --xml-file=$b2.log.valgrind.xml --log-file=$b2.log.valgrind $(basename $exe)
+            #
+            # CONCISE VALGRIND REPORTS:
+            #exec valgrind --trace-children=yes --log-file=$b2.log.valgrind $(basename $exe)
+            #
+            # RAW EXECUTION: (fastest)
+            exec $(basename $exe)
+            #
+        fi
     ) >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew
         cat $lognew >&2

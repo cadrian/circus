@@ -4,4 +4,5 @@ find . -name \*.exe -exec rm -f {} +
 find . -name \*.log.new -exec rm -f {} +
 find . -name \*.log.valgrind\* -exec rm -f {} +
 find . -name \*.log -exec rm -f {} +
+find . -name \*.db -exec rm -f {} +
 rm -rf exe/protocol/{gen,messages}

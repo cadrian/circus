@@ -15,3 +15,4 @@
 *.cookies
 manual_test
 *.vault
+*.db

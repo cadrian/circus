@@ -128,42 +128,9 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
 }
 
 void database(const char *query, database_fn fn) {
-   sqlite3 *db;
    char *path = szprintf(stdlib_memory, NULL, "%s/vault", xdg_data_home());
-   int n = sqlite3_open_v2(path, &db,
-                           SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,
-                           "unix-excl");
+   query_database(path, query, fn);
    stdlib_memory.free(path);
-   if (n != SQLITE_OK) {
-      printf("error opening database: %s\n", sqlite3_errstr(n));
-      return;
-   }
-   sqlite3_stmt *stmt;
-   n = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      printf("error preparing database statement: %s\n", sqlite3_errstr(n));
-      return;
-   }
-
-   int done = 0;
-   do {
-      n = sqlite3_step(stmt);
-      switch(n) {
-      case SQLITE_OK:
-      case SQLITE_ROW:
-         done = !fn(stmt);
-         break;
-      case SQLITE_DONE:
-         done = 1;
-         break;
-      default:
-         printf("database error: %s\n", sqlite3_errstr(n));
-         done = 1;
-      }
-   } while (!done);
-
-   sqlite3_finalize(stmt);
-   sqlite3_close(db);
 }
 
 static int db_count_(int *counter, sqlite3_stmt *UNUSED(stmt)) {

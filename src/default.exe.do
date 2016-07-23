@@ -66,8 +66,12 @@ case $(basename $out) in
     test_server*)
         xdgo=exe/config/xdg$obj_suffix
         redo-ifchange $xdgo
-        DEPS="$DEPS $(dirname $out)/_test_server$obj_suffix $xdgo"
+        DEPS="$DEPS $(dirname $out)/_test_database$obj_suffix $(dirname $out)/_test_server$obj_suffix $xdgo"
         libs="$libs -lsqlite3 -lgcrypt -lcallback"
+        ;;
+    test_database*)
+        DEPS="$DEPS $(dirname $out)/_test_database$obj_suffix"
+        libs="$libs -lsqlite3"
         ;;
     test_password)
         libs="$libs -lgcrypt"

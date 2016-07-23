@@ -14,19 +14,12 @@
     along with Circus.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __CIRCUS__TEST_SERVER_H
-#define __CIRCUS__TEST_SERVER_H
+#ifndef __CIRCUS__TEST_DATABASE_H
+#define __CIRCUS__TEST_DATABASE_H
 
-#include "_test_database.h"
+#include <sqlite3.h>
 
-void send_message(circus_message_t *query, circus_message_t **reply);
-void *check_reply(circus_message_t *reply, const char *type, const char *command, const char *error);
+typedef int (*database_fn)(sqlite3_stmt*);
+void query_database(const char *path, const char *query, database_fn fn);
 
-void database(const char *query, database_fn fn);
-database_fn db_count(int *counter);
-
-int do_login(const char *userid, const char *password, char **sessionid, char **token);
-
-int test(int argc, char **argv, int (*fn)(void));
-
-#endif /* __CIRCUS__TEST_SERVER_H */
+#endif /* __CIRCUS__TEST_DATABASE_H */

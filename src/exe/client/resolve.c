@@ -219,11 +219,13 @@ static void response_security_headers(cad_cgi_response_t *response) {
 }
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string) {
+   assert(!this->ready);
    cad_output_stream_t *body = response->body(response);
    log_debug(this->log, "response string: status %d -- %s", status, string);
    response->set_status(response, status);
    body->put(body, string);
    response_security_headers(response);
+   this->ready = 1;
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
 }
 
@@ -252,6 +254,7 @@ static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_c
 }
 
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
+   assert(!this->ready);
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
@@ -285,6 +288,7 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
       close(template_fd);
       assert(nested->count(nested) == 0);
       response_security_headers(response);
+      this->ready = 1;
       this->automaton->set_state(this->automaton, State_write_to_client, NULL);
    }
 

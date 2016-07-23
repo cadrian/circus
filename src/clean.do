@@ -6,3 +6,4 @@ find . -name \*.log.valgrind\* -exec rm -f {} +
 find . -name \*.log -exec rm -f {} +
 find . -name \*.db -exec rm -f {} +
 rm -rf exe/protocol/{gen,messages}
+rm -rf exe/client/{gen,web}

@@ -34,6 +34,7 @@ typedef struct {
    circus_automaton_t *automaton;
    char *templates_path;
    cad_cgi_cookie_flag_e cookie_flag;
+   int ready;
 } impl_cgi_t;
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string);

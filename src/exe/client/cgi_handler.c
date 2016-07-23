@@ -143,6 +143,7 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    if (secure == NULL || strcmp(secure, "No: Test")) {
       result->cookie_flag = Cookie_secure | Cookie_http_only;
    }
+   result->ready = 0;
 
    return I(result);
 }

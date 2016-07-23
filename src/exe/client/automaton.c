@@ -44,9 +44,8 @@ static void set_state(automaton_impl *this, circus_automaton_state_e state, circ
    this->message = message;
    if (changed && (state != State_error)) {
       circus_automaton_state_cb cb = this->cb[state];
-      void *data = this->cb_data[state];
       if (cb) {
-         cb(I(this), data);
+         cb(I(this), this->cb_data[state]);
       }
    }
 }

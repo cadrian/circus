@@ -562,7 +562,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->memory = memory;
    result->log = log;
    result->vault = vault;
-   result->session = circus_session(memory, log);
+   result->session = circus_session(memory, log, config);
    result->reply = NULL;
 
    result->tmppwd_len = 15;

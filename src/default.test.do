@@ -61,10 +61,10 @@ EOF
             #     --xml=yes --xml-file=$b2.log.valgrind.xml --log-file=$b2.log.valgrind $(basename $exe)
             #
             # CONCISE VALGRIND REPORTS:
-            #exec valgrind --trace-children=yes --log-file=$b2.log.valgrind $(basename $exe)
+            exec valgrind --trace-children=yes --log-file=$b2.log.valgrind $(basename $exe)
             #
             # RAW EXECUTION: (fastest)
-            exec $(basename $exe)
+            #exec $(basename $exe)
             #
         fi
     ) >$lognew 2>$logerr || {

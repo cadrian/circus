@@ -55,6 +55,6 @@ struct circus_session_s {
    circus_session_free_fn free;
 };
 
-__PUBLIC__ circus_session_t *circus_session(cad_memory_t memory, circus_log_t *log);
+__PUBLIC__ circus_session_t *circus_session(cad_memory_t memory, circus_log_t *log, circus_config_t *config);
 
 #endif /* __CIRCUS_SESSION_H */

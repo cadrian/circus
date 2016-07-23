@@ -37,49 +37,31 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
    key_impl_t *result = this->keys->get(this->keys, keyname);
    if (result == NULL) {
       static const char *sql = "SELECT KEYID FROM KEYS WHERE USERID=? AND KEYNAME=?";
-      sqlite3_stmt *stmt;
-      int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_bind_int64(stmt, 1, this->userid);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-         } else {
-            n = sqlite3_bind_text(stmt, 2, keyname, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            } else {
-               int done = 0;
-               do {
-                  n = sqlite3_step(stmt);
-                  switch(n) {
-                  case SQLITE_OK:
-                  case SQLITE_ROW:
+      circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
+      int ok;
+      if (q != NULL) {
+         ok = q->set_int(q, 0, this->userid);
+         if (ok) {
+            ok = q->set_string(q, 1, keyname);
+            if (ok) {
+               circus_database_resultset_t *rs = q->run(q);
+               if (rs != NULL) {
+                  while (rs->has_next(rs)) {
+                     rs->next(rs);
                      if (result != NULL) {
                         log_error(this->log, "Error: multiple entries for user %"PRId64" key %s", this->userid, keyname);
                         result->fn.free(&(result->fn));
                         result = NULL;
-                        done = 1;
                      } else {
-                        int64_t keyid = (int64_t)sqlite3_column_int64(stmt, 0);
+                        int64_t keyid = rs->get_int(rs, 0);
                         result = new_vault_key(this->memory, this->log, keyid, this);
                      }
-                     break;
-                  case SQLITE_DONE:
-                     done = 1;
-                     break;
-                  default:
-                     log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
-                     done = 1;
                   }
-               } while (!done);
+                  rs->free(rs);
+               }
             }
          }
-      }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
+         q->free(q);
       }
       if (result != NULL) {
          this->keys->set(this->keys, keyname, result);
@@ -107,32 +89,23 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
 
    key_impl_t *result = NULL;
    static const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, VALUE) VALUES (?, ?, \"\", \"\")";
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      n = sqlite3_bind_int64(stmt, 1, this->userid);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_bind_text(stmt, 2, keyname, -1, SQLITE_TRANSIENT);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-         } else {
-            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-            }
-            if (n == SQLITE_OK || n == SQLITE_DONE) {
-               result = vault_user_get(this, keyname);
-            } else {
-               log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+   circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
+   int ok;
+   if (q != NULL) {
+      ok = q->set_int(q, 0, this->userid);
+      if (ok) {
+         ok = q->set_string(q, 1, keyname);
+         if (ok) {
+            circus_database_resultset_t *rs = q->run(q);
+            if (rs != NULL) {
+               if (!rs->has_error(rs)) {
+                  result = vault_user_get(this, keyname);
+               }
+               rs->free(rs);
             }
          }
       }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
 
    return result;
@@ -144,24 +117,17 @@ static const char *vault_user_name(user_impl_t *this) {
 
 static int vault_user_set_password(user_impl_t *this, const char *password, uint64_t validity) {
    static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=?, PWDVALID=? WHERE USERID=?";
-   sqlite3_stmt *stmt;
+   circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
    int result = 0;
-   int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      int ok=1;
+   if (q != NULL) {
+      int ok = 1;
       char *pwdsalt=NULL;
       if (ok) {
          pwdsalt = salt(this->memory, this->log);
          if (pwdsalt == NULL) {
-            ok=0;
+            ok = 0;
          } else {
-            n = sqlite3_bind_text(stmt, 1, pwdsalt, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_string(q, 0, pwdsalt);
          }
       }
       char *pwd=NULL;
@@ -169,43 +135,31 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
       if (ok) {
          pwd = salted(this->memory, this->log, pwdsalt, password);
          if (pwd == NULL) {
-            ok=0;
+            ok = 0;
          } else {
             hashpwd = hashed(this->memory, this->log, pwd);
             if (hashpwd == NULL) {
-               ok=0;
+               ok = 0;
             } else {
-               n = sqlite3_bind_text(stmt, 2, hashpwd, -1, SQLITE_TRANSIENT);
-               if (n != SQLITE_OK) {
-                  log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-                  ok=0;
-               }
+               ok = q->set_string(q, 1, hashpwd);
             }
          }
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 3, (sqlite3_int64)validity);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_int(q, 2, validity);
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 4, this->userid);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_int(q, 3, this->userid);
       }
 
       if (ok) {
-         while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-         }
-         if (n == SQLITE_OK || n == SQLITE_DONE) {
-            this->validity = validity;
-            result = 1;
-         } else {
-            log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs != NULL) {
+            if (!rs->has_error(rs)) {
+               this->validity = validity;
+               result = 1;
+            }
+            rs->free(rs);
          }
       }
 
@@ -213,10 +167,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
       this->memory.free(pwd);
       this->memory.free(pwdsalt);
 
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
 
       if (ok) {
          ok = set_symmetric_key(this, password);
@@ -231,37 +182,31 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
 
 static int vault_user_set_email(user_impl_t *this, const char *email) {
    static const char *sql = "UPDATE USERS SET EMAIL=? WHERE USERID=?";
-   sqlite3_stmt *stmt;
    int result = 0;
 
-   int n = sqlite3_prepare_v2(this->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      n = sqlite3_bind_text(stmt, 1, email, -1, SQLITE_TRANSIENT);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_bind_int64(stmt, 2, this->userid);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-         } else {
-            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-            }
-            if (n == SQLITE_OK || n == SQLITE_DONE) {
-               this->memory.free(this->email);
-               this->email = email == NULL ? NULL : szprintf(this->memory, NULL, "%s", email);
-               result = 1;
-            } else {
-               log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+   circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
+   int ok;
+   if (q != NULL) {
+      ok = q->set_string(q, 0, email);
+      if (ok) {
+         ok = q->set_int(q, 1, this->userid);
+         if (ok) {
+            circus_database_resultset_t *rs = q->run(q);
+            if (rs != NULL) {
+               while (rs->has_next(rs)) {
+                  rs->next(rs);
+               }
+               if (!rs->has_error(rs)) {
+                  this->memory.free(this->email);
+                  this->email = email == NULL ? NULL : szprintf(this->memory, NULL, "%s", email);
+                  result = 1;
+               }
+               rs->free(rs);
             }
          }
       }
 
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
 
    return result;
@@ -320,49 +265,45 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, int64_t user
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
    log_debug(user->log, "Checking user %"PRId64" password", user->userid);
    static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID FROM USERS WHERE USERID=?";
-   sqlite3_stmt *stmt;
    user_impl_t *result = NULL;
-   int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      n = sqlite3_bind_int64(stmt, 1, user->userid);
-      if (n != SQLITE_OK) {
-         log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_step(stmt);
-         if (n == SQLITE_DONE) {
-            log_error(user->log, "Error user not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
-         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "Error user: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
+   circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
+   int ok;
+   if (q != NULL) {
+      ok = q->set_int(q, 0, user->userid);
+      if (ok) {
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs == NULL) {
+            log_error(user->log, "Error user not found: %"PRId64, user->userid);
+         } else if (!rs->has_next(rs)) {
+            log_error(user->log, "Error user not found: %"PRId64, user->userid);
+            rs->free(rs);
          } else {
-            const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);
-            const char *hashpwd = (const char*)sqlite3_column_text(stmt, 2);
-            uint64_t validity = (uint64_t)sqlite3_column_int64(stmt, 3);
+            rs->next(rs);
+
+            const char *pwdsalt = rs->get_string(rs, 1);
+            const char *hashpwd = rs->get_string(rs, 2);
+            uint64_t validity = (uint64_t)rs->get_int(rs, 3);
             if ((validity == 0) || ((time_t)validity > now().tv_sec)) {
                char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
                char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
                if (strcmp(hashedpwd, hashpwd) == 0) {
                   result = user;
                } else {
-                  log_warning(user->log, "Invalid password for user %s", sqlite3_column_text(stmt, 0));
+                  log_warning(user->log, "Invalid password for user %s", rs->get_string(rs, 0));
                }
                user->memory.free(hashedpwd);
                user->memory.free(saltedpwd);
             } else {
-               log_warning(user->log, "Stale password for user %s", sqlite3_column_text(stmt, 0));
+               log_warning(user->log, "Stale password for user %s", rs->get_string(rs, 0));
             }
-            n = sqlite3_step(stmt);
-            if (n != SQLITE_DONE) {
-               log_error(user->log, "Error multiple users not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
+            if (rs->has_next(rs)) {
+               log_error(user->log, "Error multiple users found: %"PRId64, user->userid);
                result = NULL;
             }
+            rs->free(rs);
          }
       }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
    return result;
 }

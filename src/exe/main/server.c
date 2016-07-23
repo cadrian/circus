@@ -122,7 +122,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
    if (!init_crypt(LOG)) {
       status = 1;
    } else {
-      circus_vault_t *vault = circus_vault(MEMORY, LOG, config);
+      circus_vault_t *vault = circus_vault(MEMORY, LOG, config, circus_database_sqlite3);
       switch (argc) {
       case 1:
          run(config, vault);

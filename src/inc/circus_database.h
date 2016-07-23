@@ -66,5 +66,6 @@ struct circus_database_resultset_s {
 };
 
 __PUBLIC__ circus_database_t *circus_database_sqlite3(cad_memory_t memory, circus_log_t *log, const char *path);
+__PUBLIC__ int database_exec(circus_log_t *log, circus_database_t *database, const char *sql);
 
 #endif /* __CIRCUS_DATABASE_H */

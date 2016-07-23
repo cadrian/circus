@@ -21,7 +21,6 @@
 
 #include <cad_hash.h>
 #include <inttypes.h>
-#include <sqlite3.h>
 
 /*
  * Because of how the exe resolver works, it is mandatory that the
@@ -86,7 +85,7 @@ typedef struct {
    circus_vault_t fn;
    cad_memory_t memory;
    circus_log_t *log;
-   sqlite3 *db;
+   circus_database_t *database;
    cad_hash_t *users;
 } vault_impl_t;
 

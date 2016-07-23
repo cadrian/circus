@@ -17,6 +17,8 @@
 */
 
 #include <sqlite3.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <circus_database.h>
 
@@ -104,19 +106,18 @@ static int database_resultset_next_sqlite3(database_resultset_sqlite3_t *this) {
 }
 
 static int64_t database_resultset_get_int_sqlite3(database_resultset_sqlite3_t *this, int index) {
-   assert(index >= 0 && index < sqlite3_bind_parameter_count(this->stmt));
-   fetch(this);
+   assert(index >= 0 && index < sqlite3_column_count(this->stmt));
+   assert(this->fetched == FETCH_TO_DO);
    return (int64_t)sqlite3_column_int64(this->stmt, index);
 }
 
 static const char *database_resultset_get_string_sqlite3(database_resultset_sqlite3_t *this, int index) {
-   assert(index >= 0 && index < sqlite3_bind_parameter_count(this->stmt));
-   fetch(this);
+   assert(index >= 0 && index < sqlite3_column_count(this->stmt));
+   assert(this->fetched == FETCH_TO_DO);
    return (const char*)sqlite3_column_text(this->stmt, index);
 }
 
 static void database_resultset_free_sqlite3(database_resultset_sqlite3_t *this) {
-   fetch(this); // Be sure to run at least once, not sure if it is useful...
    requery(this->query);
    this->memory.free(this);
 }
@@ -166,6 +167,7 @@ static database_resultset_sqlite3_t *database_query_run_sqlite3(database_query_s
    result->query = this;
 
    this->running = 1;
+   fetch(result);
 
    return result;
 }
@@ -216,9 +218,41 @@ static circus_database_t database_sqlite3_fn = {
    (circus_database_free_fn) database_free_sqlite3,
 };
 
+static void mkparentdirs(cad_memory_t memory, const char *dir) {
+   char *tmp;
+   char *p = NULL;
+   int len, i;
+
+   tmp = szprintf(memory, &len, "%s", dir);
+   assert(tmp != NULL);
+   if (tmp[len - 1] == '/') {
+      tmp[--len] = 0;
+   }
+   for (i = len - 1; i > 0 && tmp[i] != '/'; i--) {
+      // just looping to find the last '/', to remove the filename
+   }
+   if (i > 0) {
+      assert(tmp[i] == '/');
+      tmp[i] = 0;
+
+      for (p = tmp + 1; *p; p++) {
+         if (*p == '/') {
+            *p = 0;
+            mkdir(tmp, 0770);
+            *p = '/';
+         }
+      }
+      mkdir(tmp, 0700);
+   }
+
+   memory.free(tmp);
+}
+
 circus_database_t *circus_database_sqlite3(cad_memory_t memory, circus_log_t *log, const char *path) {
    database_sqlite3_t *result = memory.malloc(sizeof(database_sqlite3_t));
    assert(result != NULL);
+
+   mkparentdirs(memory, path);
 
    result->fn = database_sqlite3_fn;
    result->memory = memory;

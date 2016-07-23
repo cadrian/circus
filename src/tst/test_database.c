@@ -62,6 +62,18 @@ int main() {
    }
    q->free(q);
 
+   q = db->query(db, "SELECT ID, VALUE FROM TEST ORDER BY ID;");
+   rs = q->run(q);
+   for (i = 0; data[i] != NULL; i++) {
+      assert(rs->has_next(rs));
+      rs->next(rs);
+      assert((int64_t)i + 1 == rs->get_int(rs, 0));
+      assert(!strcmp(data[i], rs->get_string(rs, 1)));
+   }
+   assert(!rs->has_next(rs));
+   rs->free(rs);
+   q->free(q);
+
    db->free(db);
 
    query_database(path, "SELECT * FROM TEST;", check_data);

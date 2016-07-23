@@ -30,59 +30,36 @@ static char *vault_key_get_password(key_impl_t *this) {
    char *enckey = this->user->symmkey;
    if (enckey != NULL) {
       static const char *sql = "SELECT SALT, VALUE FROM KEYS WHERE KEYID=?";
-      sqlite3_stmt *stmt;
-      log_debug(this->log, "preparing: %s", sql);
-      int n = sqlite3_prepare_v2(this->user->vault->db, sql, -1, &stmt, NULL);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         log_debug(this->log, "binding keyid=%"PRId64, this->keyid);
-         n = sqlite3_bind_int64(stmt, 1, this->keyid);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-         } else {
-            int done = 0;
-            do {
-               log_debug(this->log, "stepping");
-               n = sqlite3_step(stmt);
-               switch(n) {
-               case SQLITE_OK:
-               case SQLITE_ROW:
-                  log_debug(this->log, "ok/row");
-                  if (result != NULL) {
-                     log_error(this->log, "Error: multiple entries for key %"PRId64, this->keyid);
-                     this->memory.free(result);
-                     result = NULL;
-                     done = 1;
-                  } else {
-                     const char *salt = (const char*)sqlite3_column_text(stmt, 0);
-                     const char *value = (const char*)sqlite3_column_text(stmt, 1);
-
-                     log_debug(this->log, "decrypting salt:%s|value:%s", salt, value);
-
+      circus_database_query_t *q = this->user->vault->database->query(this->user->vault->database, sql);
+      int ok;
+      if (q != NULL) {
+         ok = q->set_int(q, 0, this->keyid);
+         if (ok) {
+            circus_database_resultset_t *rs = q->run(q);
+            if (rs != NULL) {
+               while (rs->has_next(rs)) {
+                  rs->next(rs);
+                  if (result == NULL) {
+                     const char *salt = rs->get_string(rs, 0);
+                     const char *value = rs->get_string(rs, 1);
                      char *decvalue = decrypted(this->memory, this->log, value, enckey);
-                     log_debug(this->log, "decrypted:%s", decvalue);
                      if (decvalue != NULL) {
-                        log_debug(this->log, "unsalting");
                         result = unsalted(this->memory, this->log, salt, decvalue);
                         this->memory.free(decvalue);
                      }
+                  } else {
+                     log_error(this->log, "Error: multiple entries for key %"PRId64, this->keyid);
+                     this->memory.free(result);
+                     result = NULL;
                   }
-                  break;
-               case SQLITE_DONE:
-                  log_debug(this->log, "done");
-                  done = 1;
-                  break;
-               default:
-                  log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
-                  done = 1;
                }
-            } while (!done);
+               rs->free(rs);
+            }
          }
+         q->free(q);
       }
    }
 
-   log_debug(this->log, "result=%s", result);
    return result;
 }
 
@@ -110,51 +87,31 @@ static int vault_key_set_password(key_impl_t *this, const char *password) {
    } else {
       assert(keysalt != NULL);
       static const char *sql = "UPDATE KEYS SET SALT=?, VALUE=? WHERE KEYID=?";
-      sqlite3_stmt *stmt;
-      int n = sqlite3_prepare_v2(this->user->vault->db, sql, -1, &stmt, NULL);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         int ok=1;
+      circus_database_query_t *q = this->user->vault->database->query(this->user->vault->database, sql);
+      if (q != NULL) {
+         int ok = 1;
          if (ok) {
-            n = sqlite3_bind_text(stmt, 1, keysalt, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_string(q, 0, keysalt);
          }
          if (ok) {
-            n = sqlite3_bind_text(stmt, 2, encpwd, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_string(q, 1, encpwd);
          }
          if (ok) {
-            n = sqlite3_bind_int64(stmt, 3, this->keyid);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_int(q, 2, this->keyid);
          }
 
          if (ok) {
-            while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-            }
-            if (n == SQLITE_OK || n == SQLITE_DONE) {
-               result = 1;
-            } else {
-               log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+            circus_database_resultset_t *rs = q->run(q);
+            if (rs != NULL) {
+               result = !rs->has_error(rs);
+               rs->free(rs);
             }
          }
 
          this->memory.free(encpwd);
          this->memory.free(keysalt);
 
-         n = sqlite3_finalize(stmt);
-         if (n != SQLITE_OK) {
-            log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-         }
+         q->free(q);
       }
    }
    return result;

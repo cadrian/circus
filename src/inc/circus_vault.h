@@ -27,6 +27,7 @@
 
 #include <circus.h>
 #include <circus_config.h>
+#include <circus_database.h>
 #include <circus_log.h>
 
 typedef struct circus_key_s circus_key_t;
@@ -79,6 +80,7 @@ struct circus_vault_s {
    circus_vault_free_fn free;
 };
 
-__PUBLIC__ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_config_t *config);
+typedef circus_database_t *(*database_factory_fn)(cad_memory_t memory, circus_log_t *log, const char *path);
+__PUBLIC__ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_config_t *config, database_factory_fn db_factory);
 
 #endif /* __CIRCUS_VAULT_H */

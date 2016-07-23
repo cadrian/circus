@@ -17,8 +17,6 @@
 */
 
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include <circus.h>
 #include <circus_crypt.h>
@@ -30,83 +28,74 @@
 
 static void get_symmetric_key(user_impl_t *user, const char *password) {
    static const char *sql = "SELECT KEYSALT, HASHKEY FROM USERS WHERE USERID=?";
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      n = sqlite3_bind_int64(stmt, 1, user->userid);
-      if (n != SQLITE_OK) {
-         log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_step(stmt);
-         if (n == SQLITE_DONE) {
-            log_error(user->log, "Error user not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
-         } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "Error user: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
-         } else {
-            const char *keysalt = (const char*)sqlite3_column_text(stmt, 0);
-            const char *hashkey = (const char*)sqlite3_column_text(stmt, 1);
+   circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
+   int ok;
 
-            if (hashkey == NULL || strlen(hashkey) == 0) {
-               log_error(user->log, "Error user: %"PRId64" -- HASHKEY is NULL", user->userid);
-            } else if (keysalt == NULL || strlen(keysalt) == 0) {
-               log_error(user->log, "Error user: %"PRId64" -- KEYSALT is NULL", user->userid);
+   if (q != NULL) {
+      ok = q->set_int(q, 0, user->userid);
+      if (ok) {
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs != NULL) {
+            if (!rs->has_next(rs)) {
+               log_error(user->log, "Error user not found: %"PRId64, user->userid);
+               ok = 0;
             } else {
-               char *passslt=NULL;
-               char *passkey=NULL;
-               passslt = salted(user->memory, user->log, keysalt, password);
-               if (passslt == NULL) {
-                  log_error(user->log, "Error user: %"PRId64" -- could not salt password", user->userid);
+               rs->next(rs);
+
+               const char *keysalt = rs->get_string(rs, 0);
+               const char *hashkey = rs->get_string(rs, 1);
+
+               if (hashkey == NULL || strlen(hashkey) == 0) {
+                  log_error(user->log, "Error user: %"PRId64" -- HASHKEY is NULL", user->userid);
+               } else if (keysalt == NULL || strlen(keysalt) == 0) {
+                  log_error(user->log, "Error user: %"PRId64" -- KEYSALT is NULL", user->userid);
                } else {
-                  passkey = hashed(user->memory, user->log, passslt);
-                  if (passkey == NULL) {
-                     log_error(user->log, "Error user: %"PRId64" -- could not hash password", user->userid);
+                  char *passslt=NULL;
+                  char *passkey=NULL;
+                  passslt = salted(user->memory, user->log, keysalt, password);
+                  if (passslt == NULL) {
+                     log_error(user->log, "Error user: %"PRId64" -- could not salt password", user->userid);
                   } else {
-                     char *saltedkey = decrypted(user->memory, user->log, hashkey, passkey);
-                     if (saltedkey == NULL) {
-                        log_error(user->log, "Error user: %"PRId64" -- could not decrypt", user->userid);
+                     passkey = hashed(user->memory, user->log, passslt);
+                     if (passkey == NULL) {
+                        log_error(user->log, "Error user: %"PRId64" -- could not hash password", user->userid);
                      } else {
-                        user->symmkey = unsalted(user->memory, user->log, keysalt, saltedkey);
-                        if (user->symmkey == NULL) {
-                           log_error(user->log, "Error user: %"PRId64" -- could not unsalt", user->userid);
+                        char *saltedkey = decrypted(user->memory, user->log, hashkey, passkey);
+                        if (saltedkey == NULL) {
+                           log_error(user->log, "Error user: %"PRId64" -- could not decrypt", user->userid);
+                        } else {
+                           user->symmkey = unsalted(user->memory, user->log, keysalt, saltedkey);
+                           if (user->symmkey == NULL) {
+                              log_error(user->log, "Error user: %"PRId64" -- could not unsalt", user->userid);
+                           }
+                           user->memory.free(saltedkey);
                         }
-                        user->memory.free(saltedkey);
+                        user->memory.free(passkey);
                      }
-                     user->memory.free(passkey);
+                     user->memory.free(passslt);
                   }
-                  user->memory.free(passslt);
                }
             }
+            rs->free(rs);
          }
       }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
 }
 
 int set_symmetric_key(user_impl_t *user, const char *password) {
    int result = 0;
    static const char *sql = "UPDATE USERS SET KEYSALT=?, HASHKEY=? WHERE USERID=?";
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(user->vault->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(user->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      int ok=1;
+   circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
+   if (q != NULL) {
+      int ok = 1;
       char *keysalt=NULL;
       if (ok) {
          keysalt = salt(user->memory, user->log);
          if (keysalt == NULL) {
-            ok=0;
+            ok = 0;
          } else {
-            n = sqlite3_bind_text(stmt, 1, keysalt, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_string(q, 0, keysalt);
          }
       }
 
@@ -121,29 +110,25 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
          }
          enckey = szprintf(user->memory, NULL, "%s", user->symmkey);
          if (enckey == NULL) {
-            ok=0;
+            ok = 0;
          } else {
             sltkey = salted(user->memory, user->log, keysalt, enckey);
             if (sltkey == NULL) {
-               ok=0;
+               ok = 0;
             } else {
                passslt = salted(user->memory, user->log, keysalt, password);
                if (passslt == NULL) {
-                  ok=0;
+                  ok = 0;
                } else {
                   passkey = hashed(user->memory, user->log, passslt);
                   if (passkey == NULL) {
-                     ok=0;
+                     ok = 0;
                   } else {
                      hashkey = encrypted(user->memory, user->log, sltkey, passkey);
                      if (hashkey == NULL) {
-                        ok=0;
+                        ok = 0;
                      } else {
-                        n = sqlite3_bind_text(stmt, 2, hashkey, -1, SQLITE_TRANSIENT);
-                        if (n != SQLITE_OK) {
-                           log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-                           ok=0;
-                        }
+                        ok = q->set_string(q, 1, hashkey);
                      }
                   }
                }
@@ -152,20 +137,14 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
       }
 
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 3, user->userid);
-         if (n != SQLITE_OK) {
-            log_error(user->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_int(q, 2, user->userid);
       }
 
       if (ok) {
-         while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-         }
-         if (n == SQLITE_OK || n == SQLITE_DONE) {
-            result = 1;
-         } else {
-            log_error(user->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs != NULL) {
+            result = !rs->has_error(rs);
+            rs->free(rs);
          }
       }
 
@@ -176,10 +155,7 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
       user->memory.free(passslt);
       user->memory.free(passkey);
 
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(user->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
 
    return result;
@@ -192,47 +168,31 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
    if (result == NULL) {
       log_debug(this->log, "User %s not found in dict, loading from database", username);
       static const char *sql = "SELECT USERID, PERMISSIONS, EMAIL, PWDVALID FROM USERS WHERE USERNAME=?";
-      sqlite3_stmt *stmt;
-      int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-      } else {
-         n = sqlite3_bind_text(stmt, 1, username, -1, SQLITE_TRANSIENT);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-         } else {
-            int done = 0;
-            do {
-               n = sqlite3_step(stmt);
-               switch(n) {
-               case SQLITE_OK:
-               case SQLITE_ROW:
+      circus_database_query_t *q = this->database->query(this->database, sql);
+      int ok;
+      if (q != NULL) {
+         ok = q->set_string(q, 0, username);
+         if (ok) {
+            circus_database_resultset_t *rs = q->run(q);
+            if (rs != NULL) {
+               while (rs->has_next(rs)) {
+                  rs->next(rs);
                   if (result != NULL) {
                      log_error(this->log, "Error: multiple entries for user %s", username);
                      result->fn.free(&(result->fn));
                      result = NULL;
-                     done = 1;
                   } else {
-                     int64_t userid = (int64_t)sqlite3_column_int64(stmt, 0);
-                     int permissions = (int)sqlite3_column_int64(stmt, 1);
-                     const char *email = (const char*)sqlite3_column_text(stmt, 2);
-                     uint64_t validity = (uint64_t)sqlite3_column_int64(stmt, 3);
+                     int64_t userid = rs->get_int(rs, 0);
+                     int permissions = (int)rs->get_int(rs, 1);
+                     const char *email = rs->get_string(rs, 2);
+                     uint64_t validity = (uint64_t)rs->get_int(rs, 3);
                      result = new_vault_user(this->memory, this->log, userid, validity, permissions, email, username, this);
                   }
-                  break;
-               case SQLITE_DONE:
-                  done = 1;
-                  break;
-               default:
-                  log_error(this->log, "Error stepping statement: %s -- %d: %s", sql, n, sqlite3_errstr(n));
-                  done = 1;
                }
-            } while (!done);
+               rs->free(rs);
+            }
          }
-      }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
+         q->free(q);
       }
       if (result != NULL) {
          log_debug(this->log, "Updating users cache");
@@ -247,7 +207,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
    if (result == NULL) {
       log_error(this->log, "Could not find user %s", username);
    } else {
-      log_pii(this->log, "User %s is user %"PRId64, username, result->userid);
+      log_pii(this->log, "User %s has userid %"PRId64, username, result->userid);
       if (password != NULL) {
          log_debug(this->log, "Checking user password");
          result = check_user_password(result, password);
@@ -271,38 +231,24 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
 
    user_impl_t *result = NULL;
    static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, PWDVALID, KEYSALT, HASHKEY) values (?, ?, ?, ?, ?, 'invalid', 'invalid')";
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      int ok=1;
+   circus_database_query_t *q = this->database->query(this->database, sql);
+
+   if (q != NULL) {
+      int ok = 1;
       if (ok) {
-         n = sqlite3_bind_text(stmt, 1, username, -1, SQLITE_TRANSIENT);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_string(q, 0, username);
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 2, (sqlite3_int64)permissions);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_int(q, 1, permissions);
       }
       char *pwdsalt=NULL;
       if (ok) {
          pwdsalt = salt(this->memory, this->log);
          if (pwdsalt == NULL) {
             log_error(this->log, "Error creating salt");
-            ok=0;
+            ok = 0;
          } else {
-            n = sqlite3_bind_text(stmt, 3, pwdsalt, -1, SQLITE_TRANSIENT);
-            if (n != SQLITE_OK) {
-               log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-               ok=0;
-            }
+            ok = q->set_string(q, 2, pwdsalt);
          }
       }
       char *pwd=NULL;
@@ -311,34 +257,25 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
          pwd = salted(this->memory, this->log, pwdsalt, password);
          if (pwd == NULL) {
             log_error(this->log, "Error salting password");
-            ok=0;
+            ok = 0;
          } else {
             hashpwd = hashed(this->memory, this->log, pwd);
             if (hashpwd == NULL) {
                log_error(this->log, "Error hashing password");
-               ok=0;
+               ok = 0;
             } else {
-               n = sqlite3_bind_text(stmt, 4, hashpwd, -1, SQLITE_TRANSIENT);
-               if (n != SQLITE_OK) {
-                  log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-                  ok=0;
-               }
+               ok = q->set_string(q, 3, hashpwd);
             }
          }
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 5, (sqlite3_int64)validity);
-         if (n != SQLITE_OK) {
-            log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
-            ok=0;
-         }
+         ok = q->set_int(q, 4, validity);
       }
 
       if (ok) {
-         while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-         }
-         if (n != SQLITE_OK && n != SQLITE_DONE) {
-            log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs != NULL) {
+            rs->free(rs);
          }
       }
 
@@ -346,19 +283,16 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
       this->memory.free(pwd);
       this->memory.free(pwdsalt);
 
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
 
       if (ok) {
          result = vault_get_(this, username, password, 0);
          if (result == NULL) {
             log_error(this->log, "Error getting the just-created user from the database");
-            ok=0;
+            ok = 0;
          } else {
             log_debug(this->log, "Creating user symmetric key");
-            ok=set_symmetric_key(result, password);
+            ok = set_symmetric_key(result, password);
             if (!ok) {
                log_error(this->log, "Symmetric key encryption creation failed. The user %"PRId64" may need help.", result->userid);
             }
@@ -376,64 +310,50 @@ static user_impl_t *vault_new(vault_impl_t *this, const char *username, const ch
 
 static int vault_install(vault_impl_t *this, const char *admin_username, const char *admin_password) {
    int status = 0;
-   int n;
-   char *err;
+   int ok;
 
-   n = sqlite3_exec(this->db, META_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error creating META table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(this->db);
+   ok = database_exec(this->log, this->database, META_SCHEMA);
+   if (!ok) {
+      log_error(this->log, "Error creating META table");
       status = 1;
    }
 
-   n = sqlite3_exec(this->db, USERS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error creating USERS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(this->db);
+   ok = database_exec(this->log, this->database, USERS_SCHEMA);
+   if (!ok) {
+      log_error(this->log, "Error creating USERS table");
       status = 1;
    }
 
-   n = sqlite3_exec(this->db, KEYS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error creating KEYS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(this->db);
+   ok = database_exec(this->log, this->database, KEYS_SCHEMA);
+   if (!ok) {
+      log_error(this->log, "Error creating KEYS table");
       status = 1;
    }
 
-   n = sqlite3_exec(this->db, TAGS_SCHEMA, NULL, NULL, &err);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error creating TAGS table: %s", err);
-      sqlite3_free(err);
-      sqlite3_close(this->db);
+   ok = database_exec(this->log, this->database, TAGS_SCHEMA);
+   if (!ok) {
+      log_error(this->log, "Error creating TAGS table");
       status = 1;
    }
 
    static const char *sql = "INSERT INTO META (KEY, VALUE) VALUES ('VERSION', ?)";
-   sqlite3_stmt *stmt;
-   n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
+   circus_database_query_t *q = this->database->query(this->database, sql);
+   if (q == NULL) {
       status = 1;
    } else {
-      n = sqlite3_bind_text(stmt, 1, DB_VERSION, -1, SQLITE_STATIC);
-      if (n != SQLITE_OK) {
-         log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
+      ok = q->set_string(q, 0, DB_VERSION);
+      if (!ok) {
          status = 1;
       } else {
-         while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
-         }
-         if (n != SQLITE_OK && n != SQLITE_DONE) {
-            log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs == NULL) {
             status = 1;
+         } else {
+            status = !!rs->has_error(rs);
+            rs->free(rs);
          }
       }
-      n = sqlite3_finalize(stmt);
-      if (n != SQLITE_OK) {
-         log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
-      }
+      q->free(q);
    }
 
    user_impl_t *admin = vault_get_(this, admin_username, NULL, 1);
@@ -453,7 +373,7 @@ static void vault_clean(cad_hash_t *UNUSED(hash), int UNUSED(index), const char 
 static void vault_free(vault_impl_t *this) {
    this->users->clean(this->users, (cad_hash_iterator_fn)vault_clean, this);
    this->users->free(this->users);
-   sqlite3_close(this->db);
+   this->database->free(this->database);
    this->memory.free(this);
 }
 
@@ -464,49 +384,11 @@ static circus_vault_t vault_fn = {
    (circus_vault_free_fn)vault_free,
 };
 
-static void mkparentdirs(cad_memory_t memory, const char *dir) {
-   char *tmp;
-   char *p = NULL;
-   int len, i;
 
-   tmp = szprintf(memory, &len, "%s", dir);
-   assert(tmp != NULL);
-   if (tmp[len - 1] == '/') {
-      tmp[--len] = 0;
-   }
-   for (i = len - 1; i > 0 && tmp[i] != '/'; i--) {
-      // just looping to find the last '/', to remove the filename
-   }
-   assert(i > 0);
-   assert(tmp[i] == '/');
-   tmp[i] = 0;
-
-   for (p = tmp + 1; *p; p++) {
-      if (*p == '/') {
-         *p = 0;
-         mkdir(tmp, 0770);
-         *p = '/';
-      }
-   }
-   mkdir(tmp, 0700);
-
-   memory.free(tmp);
-}
-
-
-circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_config_t *config) {
+circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_config_t *config, database_factory_fn db_factory) {
    vault_impl_t *result = NULL;
    char *path;
-   int n;
    const char *filename = config->get(config, "vault", "filename");
-   if (filename == NULL || filename[0] == 0) {
-      filename = "vault";
-   }
-   if (filename[0] == '/') {
-      path = szprintf(memory, NULL, "%s", filename);
-   } else {
-      path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
-   }
 
    result = memory.malloc(sizeof(vault_impl_t));
    assert(result != NULL);
@@ -515,16 +397,15 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    result->log = log;
    result->users = cad_new_hash(memory, cad_hash_strings);
 
-   mkparentdirs(memory, path);
-   n = sqlite3_open_v2(path, &(result->db),
-                       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE,
-                       "unix-excl");
-   if (n != SQLITE_OK) {
-      log_error(log, "Cannot open database: %s -- %s", path, sqlite3_errmsg(result->db));
-      sqlite3_close(result->db);
-      memory.free(result);
-      return NULL;
+   if (filename == NULL || filename[0] == 0) {
+      filename = "vault";
    }
+   if (filename[0] == '/') {
+      path = szprintf(memory, NULL, "%s", filename);
+   } else {
+      path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+   }
+   result->database = db_factory(memory, log, path);
    memory.free(path);
 
    return I(result);

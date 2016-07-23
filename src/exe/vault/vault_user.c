@@ -30,7 +30,7 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
    assert(keyname[0] != 0);
 
    if (((this->permissions) & PERMISSION_USER) == 0) {
-      log_error(this->log, "User %ld does not have permission to get keys", (long int)this->userid);
+      log_error(this->log, "User %"PRId64" does not have permission to get keys", this->userid);
       return NULL;
    }
 
@@ -57,12 +57,12 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
                   case SQLITE_OK:
                   case SQLITE_ROW:
                      if (result != NULL) {
-                        log_error(this->log, "Error: multiple entries for user %ld key %s", (long int)this->userid, keyname);
+                        log_error(this->log, "Error: multiple entries for user %"PRId64" key %s", this->userid, keyname);
                         result->fn.free(&(result->fn));
                         result = NULL;
                         done = 1;
                      } else {
-                        sqlite3_int64 keyid = sqlite3_column_int64(stmt, 0);
+                        int64_t keyid = (int64_t)sqlite3_column_int64(stmt, 0);
                         result = new_vault_key(this->memory, this->log, keyid, this);
                      }
                      break;
@@ -90,7 +90,7 @@ static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
 
 static cad_hash_t *vault_user_get_all(user_impl_t *this) {
    if (((this->permissions) & PERMISSION_USER) == 0) {
-      log_error(this->log, "User %ld does not have permission to get keys", (long int)this->userid);
+      log_error(this->log, "User %"PRId64" does not have permission to get keys", this->userid);
       return NULL;
    }
 
@@ -101,7 +101,7 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    assert(vault_user_get(this, keyname) == NULL);
 
    if (((this->permissions) & PERMISSION_USER) == 0) {
-      log_error(this->log, "User %ld does not have permission to get keys", (long int)this->userid);
+      log_error(this->log, "User %"PRId64" does not have permission to get keys", this->userid);
       return NULL;
    }
 
@@ -184,7 +184,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
          }
       }
       if (ok) {
-         n = sqlite3_bind_int64(stmt, 3, validity);
+         n = sqlite3_bind_int64(stmt, 3, (sqlite3_int64)validity);
          if (n != SQLITE_OK) {
             log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
             ok=0;
@@ -202,7 +202,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
          while ((n = sqlite3_step(stmt)) == SQLITE_ROW) {
          }
          if (n == SQLITE_OK || n == SQLITE_DONE) {
-            this->validity = (sqlite3_int64)validity;
+            this->validity = validity;
             result = 1;
          } else {
             log_error(this->log, "Error stepping statement: %s -- %s", sql, sqlite3_errstr(n));
@@ -221,7 +221,7 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
       if (ok) {
          ok = set_symmetric_key(this, password);
          if (!ok) {
-            log_error(this->log, "Symmetric key encryption update failed. The user %ld may need help.", (long int)this->userid);
+            log_error(this->log, "Symmetric key encryption update failed. The user %"PRId64" may need help.", this->userid);
          }
       }
    }
@@ -297,7 +297,7 @@ static circus_user_t vault_user_fn = {
    (circus_user_free_fn)vault_user_free,
 };
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, sqlite3_int64 validity, int permissions,
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, int64_t userid, uint64_t validity, int permissions,
                             const char *email, const char *name, vault_impl_t *vault) {
    user_impl_t *result = memory.malloc(sizeof(user_impl_t) + strlen(name) + 1);
    if (result != NULL) {
@@ -318,7 +318,7 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int6
 }
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
-   log_debug(user->log, "Checking user %ld password", (long int)user->userid);
+   log_debug(user->log, "Checking user %"PRId64" password", user->userid);
    static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID FROM USERS WHERE USERID=?";
    sqlite3_stmt *stmt;
    user_impl_t *result = NULL;
@@ -332,13 +332,13 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
       } else {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
-            log_error(user->log, "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
          } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
          } else {
             const char *pwdsalt = (const char*)sqlite3_column_text(stmt, 1);
             const char *hashpwd = (const char*)sqlite3_column_text(stmt, 2);
-            sqlite3_int64 validity = sqlite3_column_int64(stmt, 3);
+            uint64_t validity = (uint64_t)sqlite3_column_int64(stmt, 3);
             if ((validity == 0) || ((time_t)validity > now().tv_sec)) {
                char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
                char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
@@ -354,7 +354,7 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
             }
             n = sqlite3_step(stmt);
             if (n != SQLITE_DONE) {
-               log_error(user->log, "Error multiple users not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+               log_error(user->log, "Error multiple users not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
                result = NULL;
             }
          }

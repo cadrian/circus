@@ -2,7 +2,9 @@ set -e
 
 export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=gcry_create_nonce --wrap=now"
 
-case $(basename $2) in
+b2=$(basename $2)
+
+case $b2 in
     test_server*)
         redo-ifchange $(dirname $2)/../exe/main/server.dbg.exe
         redo-ifchange $(dirname $2)/_test_server.dbg.o
@@ -24,29 +26,34 @@ fi
 if [ -f ${1%.test}.c ]; then
     exe=$2.dbg.exe
     redo-ifchange $exe
+
     (
         cd $(dirname $exe)
 
-        export XDG_DATA_HOME=$(basename $2)-conf.d
-        mkdir -p $XDG_DATA_HOME/circus
-        cat > $XDG_DATA_HOME/circus/server.conf <<EOF
+        case $b2 in
+            test_server*)
+                export XDG_DATA_HOME=$b2-conf.d
+                mkdir -p $XDG_DATA_HOME/circus
+                cat > $XDG_DATA_HOME/circus/server.conf <<EOF
 {
     "vault": {
         "filename": "vault"
     },
     "log": {
         "level": "pii",
-        "filename": "$(basename $2)-server.log"
+        "filename": "$b2-server.log"
     }
 }
 EOF
+                ;;
+        esac
 
         # DETAILED VALGRIND REPORTS:
         #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
-        #     --xml=yes --xml-file=$(basename $2).log.valgrind.xml --log-file=$(basename $2).log.valgrind $(basename $exe)
+        #     --xml=yes --xml-file=$b2.log.valgrind.xml --log-file=$b2.log.valgrind $(basename $exe)
         #
         # CONCISE VALGRIND REPORTS:
-        #exec valgrind --trace-children=yes --log-file=$(basename $2).log.valgrind $(basename $exe)
+        #exec valgrind --trace-children=yes --log-file=$b2.log.valgrind $(basename $exe)
         #
         # RAW EXECUTION: (fastest)
         exec $(basename $exe)

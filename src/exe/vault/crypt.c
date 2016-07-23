@@ -148,6 +148,8 @@ char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const
                   result = base64(memory, enc, n);
                   if (result == NULL) {
                      log_error(log, "could not base64");
+                  } else {
+                     log_pii(log, "len:%d|n:%d|result:%s", len, n, result);
                   }
                }
             }
@@ -180,7 +182,6 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
       return NULL;
    }
    int len = ((strlen(b64value) + 3) / 4) * 3;
-   assert(len % KEY_SIZE == 0);
    key = unbase64(memory, b64key);
    if (key != NULL) {
       assert(gcry_cipher_get_algo_keylen(GCRY_CIPHER_AES256) == KEY_SIZE);

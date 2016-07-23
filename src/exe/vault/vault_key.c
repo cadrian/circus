@@ -31,22 +31,26 @@ static char *vault_key_get_password(key_impl_t *this) {
    if (enckey != NULL) {
       static const char *sql = "SELECT SALT, VALUE FROM KEYS WHERE KEYID=?";
       sqlite3_stmt *stmt;
+      log_debug(this->log, "preparing: %s", sql);
       int n = sqlite3_prepare_v2(this->user->vault->db, sql, -1, &stmt, NULL);
       if (n != SQLITE_OK) {
          log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
       } else {
+         log_debug(this->log, "binding keyid=%"PRId64, this->keyid);
          n = sqlite3_bind_int64(stmt, 1, this->keyid);
          if (n != SQLITE_OK) {
             log_error(this->log, "Error binding statement: %s -- %s", sql, sqlite3_errstr(n));
          } else {
             int done = 0;
             do {
+               log_debug(this->log, "stepping");
                n = sqlite3_step(stmt);
                switch(n) {
                case SQLITE_OK:
                case SQLITE_ROW:
+                  log_debug(this->log, "ok/row");
                   if (result != NULL) {
-                     log_error(this->log, "Error: multiple entries for key %ld", (long int)this->keyid);
+                     log_error(this->log, "Error: multiple entries for key %"PRId64, this->keyid);
                      this->memory.free(result);
                      result = NULL;
                      done = 1;
@@ -54,14 +58,19 @@ static char *vault_key_get_password(key_impl_t *this) {
                      const char *salt = (const char*)sqlite3_column_text(stmt, 0);
                      const char *value = (const char*)sqlite3_column_text(stmt, 1);
 
+                     log_debug(this->log, "decrypting salt:%s|value:%s", salt, value);
+
                      char *decvalue = decrypted(this->memory, this->log, value, enckey);
+                     log_debug(this->log, "decrypted:%s", decvalue);
                      if (decvalue != NULL) {
+                        log_debug(this->log, "unsalting");
                         result = unsalted(this->memory, this->log, salt, decvalue);
                         this->memory.free(decvalue);
                      }
                   }
                   break;
                case SQLITE_DONE:
+                  log_debug(this->log, "done");
                   done = 1;
                   break;
                default:
@@ -73,6 +82,7 @@ static char *vault_key_get_password(key_impl_t *this) {
       }
    }
 
+   log_debug(this->log, "result=%s", result);
    return result;
 }
 
@@ -160,7 +170,7 @@ static circus_key_t vault_key_fn = {
    (circus_key_free_fn)vault_key_free,
 };
 
-key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user) {
+key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, int64_t keyid, user_impl_t *user) {
    key_impl_t *result = memory.malloc(sizeof(key_impl_t));
    if (result != NULL) {
       result->fn = vault_key_fn;

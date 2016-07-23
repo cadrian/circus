@@ -41,35 +41,35 @@ static void get_symmetric_key(user_impl_t *user, const char *password) {
       } else {
          n = sqlite3_step(stmt);
          if (n == SQLITE_DONE) {
-            log_error(user->log, "Error user not found: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user not found: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
          } else if (n != SQLITE_OK && n != SQLITE_ROW) {
-            log_error(user->log, "Error user: %ld -- %s", (long int)user->userid, sqlite3_errstr(n));
+            log_error(user->log, "Error user: %"PRId64" -- %s", user->userid, sqlite3_errstr(n));
          } else {
             const char *keysalt = (const char*)sqlite3_column_text(stmt, 0);
             const char *hashkey = (const char*)sqlite3_column_text(stmt, 1);
 
             if (hashkey == NULL || strlen(hashkey) == 0) {
-               log_error(user->log, "Error user: %ld -- HASHKEY is NULL", (long int)user->userid);
+               log_error(user->log, "Error user: %"PRId64" -- HASHKEY is NULL", user->userid);
             } else if (keysalt == NULL || strlen(keysalt) == 0) {
-               log_error(user->log, "Error user: %ld -- KEYSALT is NULL", (long int)user->userid);
+               log_error(user->log, "Error user: %"PRId64" -- KEYSALT is NULL", user->userid);
             } else {
                char *passslt=NULL;
                char *passkey=NULL;
                passslt = salted(user->memory, user->log, keysalt, password);
                if (passslt == NULL) {
-                  log_error(user->log, "Error user: %ld -- could not salt password", (long int)user->userid);
+                  log_error(user->log, "Error user: %"PRId64" -- could not salt password", user->userid);
                } else {
                   passkey = hashed(user->memory, user->log, passslt);
                   if (passkey == NULL) {
-                     log_error(user->log, "Error user: %ld -- could not hash password", (long int)user->userid);
+                     log_error(user->log, "Error user: %"PRId64" -- could not hash password", user->userid);
                   } else {
                      char *saltedkey = decrypted(user->memory, user->log, hashkey, passkey);
                      if (saltedkey == NULL) {
-                        log_error(user->log, "Error user: %ld -- could not decrypt", (long int)user->userid);
+                        log_error(user->log, "Error user: %"PRId64" -- could not decrypt", user->userid);
                      } else {
                         user->symmkey = unsalted(user->memory, user->log, keysalt, saltedkey);
                         if (user->symmkey == NULL) {
-                           log_error(user->log, "Error user: %ld -- could not unsalt", (long int)user->userid);
+                           log_error(user->log, "Error user: %"PRId64" -- could not unsalt", user->userid);
                         }
                         user->memory.free(saltedkey);
                      }
@@ -213,10 +213,10 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
                      result = NULL;
                      done = 1;
                   } else {
-                     sqlite3_int64 userid = sqlite3_column_int64(stmt, 0);
+                     int64_t userid = (int64_t)sqlite3_column_int64(stmt, 0);
                      int permissions = (int)sqlite3_column_int64(stmt, 1);
                      const char *email = (const char*)sqlite3_column_text(stmt, 2);
-                     sqlite3_int64 validity = sqlite3_column_int64(stmt, 3);
+                     uint64_t validity = (uint64_t)sqlite3_column_int64(stmt, 3);
                      result = new_vault_user(this->memory, this->log, userid, validity, permissions, email, username, this);
                   }
                   break;
@@ -247,7 +247,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
    if (result == NULL) {
       log_error(this->log, "Could not find user %s", username);
    } else {
-      log_pii(this->log, "User %s is user %ld", username, (long int)result->userid);
+      log_pii(this->log, "User %s is user %"PRId64, username, result->userid);
       if (password != NULL) {
          log_debug(this->log, "Checking user password");
          result = check_user_password(result, password);
@@ -360,7 +360,7 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
             log_debug(this->log, "Creating user symmetric key");
             ok=set_symmetric_key(result, password);
             if (!ok) {
-               log_error(this->log, "Symmetric key encryption creation failed. The user %ld may need help.", (long int)result->userid);
+               log_error(this->log, "Symmetric key encryption creation failed. The user %"PRId64" may need help.", result->userid);
             }
          }
       }

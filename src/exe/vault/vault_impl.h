@@ -20,6 +20,7 @@
 #define __CIRCUS_VAULT_IMPL_H
 
 #include <cad_hash.h>
+#include <inttypes.h>
 #include <sqlite3.h>
 
 /*
@@ -93,8 +94,8 @@ typedef struct {
    circus_user_t fn;
    cad_memory_t memory;
    circus_log_t *log;
-   sqlite3_int64 userid;
-   sqlite3_int64 validity;
+   int64_t userid;
+   uint64_t validity;
    int permissions;
    char *name;
    char *email;
@@ -107,13 +108,13 @@ typedef struct {
    circus_key_t fn;
    cad_memory_t memory;
    circus_log_t *log;
-   sqlite3_int64 keyid;
+   int64_t keyid;
    user_impl_t *user;
 } key_impl_t;
 
-user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, sqlite3_int64 userid, sqlite3_int64 validity, int permissions,
+user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, int64_t userid, uint64_t validity, int permissions,
                             const char *email, const char *name, vault_impl_t *vault);
-key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, sqlite3_int64 keyid, user_impl_t *user);
+key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, int64_t keyid, user_impl_t *user);
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);
 int set_symmetric_key(user_impl_t *user, const char *password);

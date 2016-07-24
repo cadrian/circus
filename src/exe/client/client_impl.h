@@ -39,5 +39,6 @@ typedef struct {
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string);
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra);
+void set_response_redirect(impl_cgi_t *this, cad_cgi_response_t *response, const char *redirect, cad_hash_t *extra);
 
 #endif /* __CIRCUS_CLIENT_IMPL_H */

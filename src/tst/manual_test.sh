@@ -19,7 +19,7 @@ case x"$1" in
         (
             cd ../..
             export CFLAGS="-DDEBUG -g"
-            export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize --wrap=gcry_create_nonce"
+            export LD_FLAGS="--wrap=mlock --wrap=munlock --wrap=gcry_randomize_rnd --wrap=gcry_create_nonce_rnd"
             # mlock/munlock: we are not root
             # gcry_*: we need valgrind (libgcrypt generates instructions not recognized by Valgrind)
             export STRIP_EXE=false

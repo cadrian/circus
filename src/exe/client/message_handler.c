@@ -165,6 +165,8 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
       wmsg->free(wmsg);
       outmsg->free(outmsg);
 
+      log_pii(this->log, ">> %s", szmsg);
+
       channel->write(channel, szmsg, strlen(szmsg));
       this->memory.free(szmsg);
       msg->free(msg);
@@ -192,6 +194,8 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
             nbuf += n;
          }
       } while (n > 0);
+
+      log_pii(this->log, "<< %s", buf);
 
       cad_input_stream_t *inmsg = new_cad_input_stream_from_string(buf, this->memory);
       assert(inmsg != NULL);

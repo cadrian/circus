@@ -28,6 +28,8 @@
 
 #include "client_impl.h"
 
+typedef char *(*encode_fn)(cad_memory_t memory, const char *in);
+
 struct meta_data {
    circus_log_t *log;
    cad_cgi_meta_t *data;
@@ -36,6 +38,7 @@ struct meta_data {
    cad_array_t *nested;
    cad_hash_t *cgi;
    circus_config_t *config;
+   encode_fn encode;
 };
 
 struct meta_resolved_string {
@@ -43,6 +46,37 @@ struct meta_resolved_string {
    cad_memory_t memory;
    char *value;
 };
+
+static char HEX[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+static char *encode_url(cad_memory_t memory, const char *in) {
+   size_t len = strlen(in), outlen = len;
+   size_t index, outindex;
+   char *result;
+   char c;
+   for (index = 0; index < len; index++) {
+      c = in[index];
+      if ((c < '0' || c > '9') && (c < 'A' || c > 'Z') && (c < 'a' || c > 'z')) {
+         outlen += 2;
+      }
+   }
+   result = memory.malloc(outlen + 1);
+   assert(result != NULL);
+   for (index = 0, outindex = 0; index < len; index++) {
+      c = in[index];
+      if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+         result[outindex++] = c;
+      } else {
+         int lo, hi;
+         lo = c & 0x0f;
+         hi = (c >> 4) & 0x0f;
+         result[outindex++] = '%';
+         result[outindex++] = HEX[hi];
+         result[outindex++] = HEX[lo];
+      }
+   }
+   return result;
+}
 
 static const char *meta_resolved_string_get(struct meta_resolved_string *this) {
    return this->value;
@@ -144,6 +178,8 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          res->memory = meta->memory;
          if (operator != NULL && !strcmp("count", operator)) {
             res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+         } else if (meta->encode != NULL) {
+            res->value = meta->encode(meta->memory, sz_value);
          } else {
             res->value = szprintf(meta->memory, NULL, "%s", sz_value);
          }
@@ -194,6 +230,8 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          res->memory = meta->memory;
          if (operator != NULL && !strcmp("count", operator)) {
             res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+         } else if (meta->encode != NULL) {
+            res->value = meta->encode(meta->memory, sz_value);
          } else {
             res->value = szprintf(meta->memory, NULL, "%s", sz_value);
          }
@@ -223,7 +261,7 @@ void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int sta
    cad_output_stream_t *body = response->body(response);
    log_debug(this->log, "response string: status %d -- %s", status, string);
    response->set_status(response, status);
-   body->put(body, string);
+   body->put(body, "%s", string);
    response_security_headers(response);
    this->ready = 1;
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
@@ -234,16 +272,16 @@ static void template_error(const char *error, int offset, void *data) {
    log_error(this->log, "Stache error: %s at %d", error, offset);
 }
 
-static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_cgi_meta_t *meta, cad_hash_t *extra) {
+static char *resolve_string(impl_cgi_t *this, const char *string, cad_cgi_meta_t *meta, cad_hash_t *extra, encode_fn encode) {
    char *result = NULL;
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
-   struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL, this->config};
-   cad_input_stream_t *in = new_cad_input_stream_from_string(template, this->memory);
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL, this->config, encode};
+   cad_input_stream_t *in = new_cad_input_stream_from_string(string, this->memory);
    cad_output_stream_t *out = new_cad_output_stream_from_string(&result, this->memory);
    assert(in != NULL);
    cad_stache_t *stache = new_cad_stache(this->memory, (cad_stache_resolve_cb)resolve_meta, &data);
    assert(stache != NULL);
-   log_debug(this->log, "Rendering stache template name");
+   log_debug(this->log, "Rendering string");
    stache->render(stache, in, out, template_error, this);
    stache->free(stache);
    out->free(out);
@@ -251,6 +289,40 @@ static char *resolve_template_name(impl_cgi_t *this, const char *template, cad_c
    assert(nested->count(nested) == 0);
    nested->free(nested);
    return result;
+}
+
+void set_response_redirect(impl_cgi_t *this, cad_cgi_response_t *response, const char *redirect, cad_hash_t *extra) {
+   assert(!this->ready);
+   cad_output_stream_t *body = response->body(response);
+   cad_cgi_meta_t *meta = response->meta_variables(response);
+   char *resolved_redirect = resolve_string(this, redirect, meta, extra, encode_url);
+   assert(resolved_redirect != NULL);
+   char *full_redirect;
+   if (resolved_redirect[0] == '/') {
+      full_redirect = resolved_redirect;
+      resolved_redirect = NULL;
+   } else {
+      full_redirect = szprintf(this->memory, NULL, "%s/%s", meta->script_name(meta), resolved_redirect);
+      this->memory.free(resolved_redirect);
+   }
+   assert(full_redirect != NULL);
+   int status;
+   cad_cgi_server_protocol_t *protocol = meta->server_protocol(meta);
+   if (!!strcmp(protocol->protocol, "HTTP") || (protocol->major == 1 && protocol->minor == 0)) {
+      // HTTP/1.0 and non-HTTP protocols
+      status = 302;
+   } else {
+      // HTTP/1.1 and more recent (TODO check HTTP/2.0 rfc)
+      status = 303;
+   }
+   log_debug(this->log, "response redirect: status %d -- %s", status, full_redirect);
+   response->set_status(response, status);
+   response_security_headers(response);
+   response->redirect(response, full_redirect, "");
+   body->put(body, "Redirect to %s\n", full_redirect);
+   this->ready = 1;
+   this->memory.free(full_redirect);
+   this->automaton->set_state(this->automaton, State_write_to_client, NULL);
 }
 
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
@@ -263,8 +335,8 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    cgi->set(cgi, "path_info", (void*)meta->path_info(meta));
    cgi->set(cgi, "script_name", (void*)meta->script_name(meta));
 
-   struct meta_data data = {this->log, meta, extra, this->memory, nested, cgi, this->config};
-   char *template_name = resolve_template_name(this, template, meta, extra);
+   struct meta_data data = {this->log, meta, extra, this->memory, nested, cgi, this->config, NULL};
+   char *template_name = resolve_string(this, template, meta, extra, NULL);
    assert(template_name != NULL);
    char *template_path = szprintf(this->memory, NULL, "%s/%s.tpl", this->templates_path, template_name);
    assert(template_path != NULL);

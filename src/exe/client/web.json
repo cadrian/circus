@@ -1,53 +1,29 @@
 {
-    "/login.do": {
-        "ok": {
-            "query": "login",
-            "params": [ "userid", "password" ],
-            "reply": "login",
-            "extra": [ "token", "permissions" ],
-            "template": "{{permissions}}_home",
-            "cookie": {
-                "write": "sessionid"
-            }
-        }
-    },
-    "/admin_home.do": {
-        "logout": {
-            "query": "logout",
+    "get": {
+        "/login": {
+            "template": "login"
+        },
+        "/admin_home": {
+            "query": "is_open",
             "params": [ "token" ],
-            "reply": "logout",
-            "template": "login",
+            "reply": "is_open",
+            "extra": [ "token" ],
+            "template": "admin_home",
             "cookie": {
                 "read": "sessionid"
             }
         },
-        "add_user": {
+        "/admin_user": {
             "query": "show_user",
-            "params": [ "token", "username", "email", "permissions" ],
+            "params": [ "token", "username" ],
             "reply": "user",
             "extra": [ "token", "password", "validity" ],
             "template": "admin_add",
             "cookie": {
                 "read": "sessionid"
             }
-        }
-    },
-    "/admin_add.do": {
-        "admin_add": {
-            "template": "admin_home"
-        }
-    },
-    "/user_home.do": {
-        "logout": {
-            "query": "logout",
-            "params": [ "token" ],
-            "reply": "logout",
-            "template": "login",
-            "cookie": {
-                "read": "sessionid"
-            }
         },
-        "list": {
+        "/user_home": {
             "query": "all_list",
             "params": [ "token" ],
             "reply": "list",
@@ -57,7 +33,7 @@
                 "read": "sessionid"
             }
         },
-        "pass": {
+        "/user_pass": {
             "query": "get_pass",
             "params": [ "token", "key" ],
             "reply": "pass",
@@ -67,29 +43,9 @@
                 "read": "sessionid"
             }
         },
-        "add_prompt": {
-            "query": "set_prompt_pass",
-            "params": [ "token", "key", "pass1", "pass2" ],
-            "reply": "pass",
-            "extra": [ "token", "key", "pass", "properties" ],
-            "template": "user_pass",
-            "cookie": {
-                "read": "sessionid"
-            }
-        },
-        "add_recipe": {
-            "query": "set_recipe_pass",
-            "params": [ "token", "key", "recipe" ],
-            "reply": "pass",
-            "extra": [ "token", "key", "pass", "properties" ],
-            "template": "user_pass",
-            "cookie": {
-                "read": "sessionid"
-            }
-        },
-        "password": {
-            "query": "chpwd_user",
-            "params": [ "token", "old", "pass1", "pass2" ],
+        "/user_chpwd": {
+            "query": "show_user",
+            "params": [ "token", "username" ],
             "reply": "user",
             "extra": [ "token", "password", "validity" ],
             "template": "user_chpwd",
@@ -98,9 +54,127 @@
             }
         }
     },
-    "/user_pass.do": {
-        "user_pass": {
-            "template": "user_home"
+    "post": {
+        "/login.do": {
+            "ok": {
+                "query": "login",
+                "params": [ "userid", "password" ],
+                "reply": "login",
+                "extra": [ "token", "permissions" ],
+                "redirect": "{{permissions}}_home?token={{token}}",
+                "cookie": {
+                    "write": "sessionid"
+                }
+            }
+        },
+        "/admin_home.do": {
+            "logout": {
+                "query": "logout",
+                "params": [ "token" ],
+                "reply": "logout",
+                "redirect": "login?token={{token}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "add_user": {
+                "query": "create_user",
+                "params": [ "token", "username", "email", "permissions" ],
+                "reply": "user",
+                "extra": [ "token", "password", "validity" ],
+                "redirect": "admin_user?token={{token}}&username={{form:username}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            }
+        },
+        "/admin_add.do": {
+            "admin_add": {
+                "TODO": "useless, change the template instead to GET the form",
+                "query": "is_open",
+                "params": [ "token" ],
+                "reply": "is_open",
+                "extra": [ "token" ],
+                "redirect": "admin_home?token={{token}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            }
+        },
+        "/user_home.do": {
+            "logout": {
+                "query": "logout",
+                "params": [ "token" ],
+                "reply": "logout",
+                "redirect": "login",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "list": {
+                "TODO": "maybe obsolete",
+                "query": "all_list",
+                "params": [ "token" ],
+                "reply": "list",
+                "extra": [ "token", "names" ],
+                "redirect": "user_home?token={{token}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "pass": {
+                "query": "get_pass",
+                "params": [ "token", "key" ],
+                "reply": "pass",
+                "extra": [ "token", "key", "pass", "properties" ],
+                "redirect": "user_pass?token={{token}}&key={{key}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "add_prompt": {
+                "query": "set_prompt_pass",
+                "params": [ "token", "key", "pass1", "pass2" ],
+                "reply": "pass",
+                "extra": [ "token", "key", "pass", "properties" ],
+                "redirect": "user_pass?token={{token}}&key={{key}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "add_recipe": {
+                "query": "set_recipe_pass",
+                "params": [ "token", "key", "recipe" ],
+                "reply": "pass",
+                "extra": [ "token", "key", "pass", "properties" ],
+                "redirect": "user_pass?token={{token}}&key={{key}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            },
+            "password": {
+                "query": "chpwd_user",
+                "params": [ "token", "old", "pass1", "pass2" ],
+                "reply": "user",
+                "extra": [ "token", "username", "password", "validity" ],
+                "redirect": "user_chpwd?token={{token}}&username={{username}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            }
+        },
+        "/user_pass.do": {
+            "user_pass": {
+                "TODO": "useless, change the template instead to GET the form",
+                "query": "is_open",
+                "params": [ "token" ],
+                "reply": "is_open",
+                "extra": [ "token" ],
+                "redirect": "user_home?token={{token}}",
+                "cookie": {
+                    "read": "sessionid"
+                }
+            }
         }
     }
 }

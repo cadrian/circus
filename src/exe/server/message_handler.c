@@ -49,6 +49,14 @@ typedef struct {
    circus_session_t *session;
    int running;
    circus_message_t *reply;
+
+   // The two fields below manage the latest POST-Redirect-GET when creating
+   // a new user, because the random password must be displayed.
+   // Risk mitigation: only for the random password; its validity is short,
+   // the user is asked to change it ASAP; and only one is kept (the username
+   // is also checked).
+   char *last_username;
+   char *last_password;
 } impl_mh_t;
 
 static void visit_query_change_master(circus_message_visitor_query_t *visitor, circus_message_query_change_master_t *visited) {
@@ -60,13 +68,30 @@ static void visit_query_change_master(circus_message_visitor_query_t *visitor, c
 static void visit_query_close(circus_message_visitor_query_t *visitor, circus_message_query_close_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    // TODO
+
+   this->memory.free(this->last_username);
+   this->memory.free(this->last_password);
+
    (void)visited; (void)this;
 }
 
 static void visit_query_is_open(circus_message_visitor_query_t *visitor, circus_message_query_is_open_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   int is_open;
+   if (data == NULL) {
+      log_warning(this->log, "Is_open: unknown session or invalid token");
+      is_open = 0;
+      token = "";
+   } else {
+      token = data->set_token(data);
+      is_open = 1;
+   }
+
+   circus_message_reply_is_open_t *reply = new_circus_message_reply_is_open(this->memory, is_open ? "" : "not open", token, is_open);
+   this->reply = I(reply);
 }
 
 typedef struct fill_key_name_s {
@@ -302,11 +327,76 @@ static uint64_t absolute_validity(uint64_t validity_d) {
    return (uint64_t)t;
 }
 
+static char *strvalidity(cad_memory_t memory, const char *validity_format, uint64_t valid) {
+   struct tm tm = { 0, };
+   time_t v = (time_t)valid;
+   localtime_r(&v, &tm);
+   size_t n = 64;
+   char *result = memory.malloc(n);
+   int again = 1;
+   do {
+      assert(result != NULL);
+      size_t m = strftime(result, n, validity_format, &tm);
+      if (m == 0) {
+         n *= 2;
+         result = memory.realloc(result, n);
+      } else {
+         again = 0;
+      }
+   } while (again);
+   return result;
+}
+
 static void visit_query_show_user(circus_message_visitor_query_t *visitor, circus_message_query_show_user_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *sessionid = visited->sessionid(visited);
    const char *token = visited->token(visited);
    int ok = 0;
+   const char *username = NULL;
+   char *password = NULL;
+   char *validity = NULL;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "User query REFUSED, unknown session or invalid token");
+      token = "";
+   } else {
+      circus_user_t *user = data->user(data);
+      username = visited->username(visited);
+      circus_user_t *show_user = this->vault->get(this->vault, username, NULL);
+      if (!user->is_admin(user) && user != show_user) {
+         log_error(this->log, "User query REFUSED, user %s not admin", user->name(user));
+      } else if (show_user == NULL) {
+         log_error(this->log, "Unknown user: %s", username);
+      } else {
+         validity = strvalidity(this->memory, this->validity_format, show_user->validity(show_user));
+         if (this->last_username != NULL && !strcmp(username, this->last_username)) {
+            password = this->last_password;
+            ok = 1;
+         } else {
+            this->memory.free(this->last_username);
+            this->memory.free(this->last_password);
+            this->last_username = NULL;
+            this->last_password = NULL;
+         }
+      }
+      token = data->set_token(data);
+   }
+
+   circus_message_reply_user_t *userr = new_circus_message_reply_user(this->memory, ok ? "" : "refused", token,
+                                                                      username == NULL ? "" : username,
+                                                                      password == NULL ? "" : password,
+                                                                      validity == NULL ? "" : validity);
+   this->memory.free(validity);
+   this->reply = I(userr);
+}
+
+static void visit_query_create_user(circus_message_visitor_query_t *visitor, circus_message_query_create_user_t *visited) {
+   impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   int ok = 0;
+   const char *username = NULL;
    char *password = NULL;
    char *validity = NULL;
 
@@ -319,7 +409,7 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
       if (!user->is_admin(user)) {
          log_error(this->log, "User query REFUSED, user %s not admin", user->name(user));
       } else {
-         const char *username = visited->username(visited);
+         username = visited->username(visited);
          const char *email = visited->email(visited);
          const char *permissions = visited->permissions(visited);
          if (strcmp(permissions, "user") != 0) {
@@ -358,23 +448,12 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
                }
                if (ok) {
                   assert(new_user->validity(new_user) == (time_t)valid);
-                  struct tm tm = { 0, };
-                  time_t v = (time_t)valid;
-                  localtime_r(&v, &tm);
-                  size_t n = 64;
-                  validity = this->memory.malloc(n);
-                  int again = 1;
-                  do {
-                     assert(validity != NULL);
-                     size_t m = strftime(validity, n, this->validity_format, &tm);
-                     if (m == 0) {
-                        n *= 2;
-                        validity = this->memory.realloc(validity, n);
-                     } else {
-                        again = 0;
-                     }
-                  } while (again);
+                  validity = strvalidity(this->memory, this->validity_format, valid);
                   log_info(this->log, "Temporary password for %s is valid until %s", username, validity);
+                  this->memory.free(this->last_username);
+                  this->last_username = szprintf(this->memory, NULL, "%s", username);
+                  this->memory.free(this->last_password);
+                  this->last_password = password;
                }
             }
          }
@@ -383,8 +462,9 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
    }
 
    circus_message_reply_user_t *userr = new_circus_message_reply_user(this->memory, ok ? "" : "refused", token,
-                                                                      password == NULL ? "" : password, validity == NULL ? "" : validity);
-   this->memory.free(password);
+                                                                      username == NULL ? "" : username,
+                                                                      password == NULL ? "" : password,
+                                                                      validity == NULL ? "" : validity);
    this->memory.free(validity);
    this->reply = I(userr);
 }
@@ -394,6 +474,7 @@ static void visit_query_chpwd_user(circus_message_visitor_query_t *visitor, circ
    const char *sessionid = visited->sessionid(visited);
    const char *token = visited->token(visited);
    int ok = 0;
+   const char *username = NULL;
    const char *oldpass = visited->old(visited);
    const char *pass1 = visited->pass1(visited);
    const char *pass2 = visited->pass2(visited);
@@ -414,12 +495,14 @@ static void visit_query_chpwd_user(circus_message_visitor_query_t *visitor, circ
       } else if (user->is_admin(user)) {
          log_error(this->log, "User query REFUSED, user %s is admin", user->name(user));
       } else {
+         username = user->name(user);
          ok = user->set_password(user, pass1, 0);
          log_info(this->log, "User %s set new password", user->name(user));
       }
    }
 
    circus_message_reply_user_t *userr = new_circus_message_reply_user(this->memory, ok ? "" : "refused", token,
+                                                                      username == NULL ? "" : username,
                                                                       ok ? pass1 : "", "");
    this->reply = I(userr);
 }
@@ -448,6 +531,7 @@ static circus_message_visitor_query_t visitor_fn = {
    (circus_message_visitor_query_tags_fn)visit_query_tags,
    (circus_message_visitor_query_unset_fn)visit_query_unset,
    (circus_message_visitor_query_chpwd_user_fn)visit_query_chpwd_user,
+   (circus_message_visitor_query_create_user_fn)visit_query_create_user,
    (circus_message_visitor_query_show_user_fn)visit_query_show_user,
    (circus_message_visitor_query_version_fn)visit_query_version,
 };
@@ -595,6 +679,9 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
          log_warning(log, "Invalid temporary_password_validity: %s", tmppwd_validity);
       }
    }
+
+   result->last_username = NULL;
+   result->last_password = NULL;
 
    assert(result->session != NULL);
 

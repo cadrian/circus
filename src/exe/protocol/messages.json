@@ -147,6 +147,11 @@
         "query_show": {
             "sessionid": "STRING",
             "token": "STRING",
+            "username": "STRING"
+        },
+        "query_create": {
+            "sessionid": "STRING",
+            "token": "STRING",
             "username": "STRING",
             "email": "STRING",
             "permissions": "STRING"
@@ -160,6 +165,7 @@
         },
         "reply": {
             "token": "STRING",
+            "username": "STRING",
             "password": "STRING",
             "validity": "STRING"
         }

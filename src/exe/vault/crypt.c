@@ -322,3 +322,24 @@ void __wrap_gcry_randomize(unsigned char *buffer, size_t length, enum gcry_rando
 void __wrap_gcry_create_nonce(unsigned char *buffer, size_t length) {
    __wrap_gcry_randomize(buffer, length, 0);
 }
+
+void __wrap_gcry_randomize_rnd(unsigned char *buffer, size_t length, enum gcry_random_level UNUSED(level)) {
+   static int fd = 0;
+   if (fd == 0) {
+      open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+   }
+   if (fd != -1) {
+      size_t n = 0;
+      while (n < length) {
+         ssize_t s = read(fd, buffer + n, length - n);
+         if (s <= 0) {
+            break;
+         }
+         n += (size_t)s;
+      }
+   }
+}
+
+void __wrap_gcry_create_nonce_rnd(unsigned char *buffer, size_t length) {
+   __wrap_gcry_randomize_rnd(buffer, length, 0);
+}

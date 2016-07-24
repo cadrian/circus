@@ -53,24 +53,65 @@ function init_file() {
 }
 
 function for_all() {
+    local method;
+    local url;
+    local action;
+
     for fn in "$@"; do
         do_$fn
     done
-    jq 'keys' | while read url; do
+
+    method=get
+    echo METHOD: "$method"
+    jq '.["'$method'"] | keys' | while read url; do
         echo URL: "$url"
         for fn in "$@"; do
-            url_$fn "$url"
+            url_$fn "$method" "$url"
         done
-        jq '.["'$url'"] | keys' | while read action; do
+
+        action=""
+
+        local query=$(jq '.["'$method'"]["'$url'"]["query"]')
+        local reply=$(jq '.["'$method'"]["'$url'"]["reply"]')
+        local params=$(jq '.["'$method'"]["'$url'"]["params"]')
+        local extra=$(jq '.["'$method'"]["'$url'"]["extra"]')
+        local cookie_read=$(jq '.["'$method'"]["'$url'"]["cookie"]["read"]')
+        local cookie_write=$(jq '.["'$method'"]["'$url'"]["cookie"]["write"]')
+        local template=$(jq '.["'$method'"]["'$url'"]["template"]')
+
+        echo "query: $query"
+        echo "reply: $reply"
+        echo "params: $params"
+        echo "extra: $extra"
+        echo "cookie: read ${cookie_read} - write ${cookie_write}"
+        echo "template: $template"
+
+        query_$fn "$method" "$action" "$query" "$params" "$cookie_read" ""
+        reply_$fn "$method" "$action" "$reply" "$extra" "$cookie_read" "$cookie_write" "$template" ""
+
+        for fn in "$@"; do
+            lru_$fn "$method" "$url"
+        done
+    done
+
+    method=post
+    echo METHOD: "$method"
+    jq '.["'$method'"] | keys' | while read url; do
+        echo URL: "$url"
+        for fn in "$@"; do
+            url_$fn "$method" "$url"
+        done
+        jq '.["'$method'"]["'$url'"] | keys' | while read action; do
             echo ACTION: "$action"
 
-            local query=$(jq '.["'$url'"]["'$action'"]["query"]')
-            local reply=$(jq '.["'$url'"]["'$action'"]["reply"]')
-            local params=$(jq '.["'$url'"]["'$action'"]["params"]')
-            local extra=$(jq '.["'$url'"]["'$action'"]["extra"]')
-            local cookie_read=$(jq '.["'$url'"]["'$action'"]["cookie"]["read"]')
-            local cookie_write=$(jq '.["'$url'"]["'$action'"]["cookie"]["write"]')
-            local template=$(jq '.["'$url'"]["'$action'"]["template"]')
+            local query=$(jq '.["'$method'"]["'$url'"]["'$action'"]["query"]')
+            local reply=$(jq '.["'$method'"]["'$url'"]["'$action'"]["reply"]')
+            local params=$(jq '.["'$method'"]["'$url'"]["'$action'"]["params"]')
+            local extra=$(jq '.["'$method'"]["'$url'"]["'$action'"]["extra"]')
+            local cookie_read=$(jq '.["'$method'"]["'$url'"]["'$action'"]["cookie"]["read"]')
+            local cookie_write=$(jq '.["'$method'"]["'$url'"]["'$action'"]["cookie"]["write"]')
+            local template=$(jq '.["'$method'"]["'$url'"]["'$action'"]["template"]')
+            local redirect=$(jq '.["'$method'"]["'$url'"]["'$action'"]["redirect"]')
 
             echo "query: $query"
             echo "reply: $reply"
@@ -79,13 +120,14 @@ function for_all() {
             echo "cookie: read ${cookie_read} - write ${cookie_write}"
             echo "template: $template"
 
-            query_$fn "$action" "$query" "$params" "$cookie_read"
-            reply_$fn "$action" "$reply" "$extra" "$cookie_read" "$cookie_write" "$template"
+            query_$fn "$method" "$action" "$query" "$params" "$cookie_read" "$redirect"
+            reply_$fn "$method" "$action" "$reply" "$extra" "$cookie_read" "$cookie_write" "$template" "$redirect"
         done
         for fn in "$@"; do
-            lru_$fn "$url"
+            lru_$fn "$method" "$url"
         done
     done
+
     for fn in "$@"; do
         od_$fn
     done
@@ -100,6 +142,8 @@ function do_webh() {
         echo '#ifndef __CIRCUS_WEB_H'
         echo '#define __CIRCUS_WEB_H'
         echo '#include "../client_impl.h"'
+        echo 'void get_read(impl_cgi_t *this, cad_cgi_response_t *response);'
+        echo 'void get_write(impl_cgi_t *this, cad_cgi_response_t *response);'
         echo 'void post_read(impl_cgi_t *this, cad_cgi_response_t *response);'
         echo 'void post_write(impl_cgi_t *this, cad_cgi_response_t *response);'
     } >> $file
@@ -113,27 +157,33 @@ function od_webh() {
 }
 
 function url_webh() {
-    local url=$1
+    local method="$1"
+    local url="$2"
 }
 
 function lru_webh() {
-    local url=$1
+    local method="$1"
+    local url="$2"
 }
 
 function query_webh() {
-    local action="$1"
-    local query="$2"
+    local method="$1"
+    local action="$2"
+    local query="$3"
     local params="$4"
-    local cookie_read="$4"
+    local cookie_read="$5"
+    local redirect="$6"
 }
 
 function reply_webh() {
-    local action="$1"
-    local reply="$2"
-    local extra="$3"
-    local cookie_read="$4"
-    local cookie_write="$5"
-    local template="$6"
+    local method="$1"
+    local action="$2"
+    local reply="$3"
+    local extra="$4"
+    local cookie_read="$5"
+    local cookie_write="$6"
+    local template="$7"
+    local redirect="$8"
 }
 
 # ----------------------------------------------------------------
@@ -148,6 +198,39 @@ function do_webc() {
         echo '#include <circus_message_impl.h>'
         echo '#include "web.h"'
         echo
+        echo 'void get_read(impl_cgi_t *this, cad_cgi_response_t *response) {'
+        echo '   assert(!this->ready);'
+        echo '   circus_message_t *message = NULL;'
+        echo '   cad_cgi_meta_t *meta = response->meta_variables(response);'
+        echo '   const char *path = meta->path_info(meta);'
+        echo '   cad_hash_t *form = meta->query_string(meta);'
+        echo '   log_debug(this->log, "GET path: %s", path);'
+        echo '#include "get_read.c"'
+        echo '   if (!this->ready) {'
+        echo '      if (message == NULL) {'
+        echo '         set_response_string(this, response, 401, "Invalid path");'
+        echo '      } else {'
+        echo '         this->automaton->set_state(this->automaton, State_write_to_server, message);'
+        echo '      }'
+        echo '   }'
+        echo '}'
+        echo
+        echo 'void get_write(impl_cgi_t *this, cad_cgi_response_t *response) {'
+        echo '   circus_message_t *message = this->automaton->message(this->automaton);'
+        echo '   if (!this->ready) {'
+        echo '      const char *error = message == NULL ? "no message" : message->error(message);'
+        echo '      if (strlen(error) == 0) {'
+        echo '         cad_cgi_meta_t *meta = response->meta_variables(response);'
+        echo '         const char *path = meta->path_info(meta);'
+        echo '         log_debug(this->log, "GET path: %s - message type: %s - command: %s", path, message->type(message), message->command(message));'
+        echo '#include "get_write.c"'
+        echo '      } else {'
+        echo '         log_error(this->log, "error: %s", error);'
+        echo '         set_response_string(this, response, 403, "Access denied");'
+        echo '      }'
+        echo '   }'
+        echo '}'
+        echo
         echo 'void post_read(impl_cgi_t *this, cad_cgi_response_t *response) {'
         echo '   assert(!this->ready);'
         echo '   circus_message_t *message = NULL;'
@@ -156,7 +239,7 @@ function do_webc() {
         echo '   cad_hash_t *form = meta->input_as_form(meta);'
         echo '   assert(form != NULL);'
         echo '   const char *action = form->get(form, "action");'
-        echo '   log_debug(this->log, "path: %s - action: %s", path, action);'
+        echo '   log_debug(this->log, "POST path: %s - action: %s", path, action);'
         echo '#include "post_read.c"'
         echo '   if (!this->ready) {'
         echo '      if (message == NULL) {'
@@ -176,7 +259,7 @@ function do_webc() {
         echo '      if (strlen(error) == 0) {'
         echo '         cad_cgi_meta_t *meta = response->meta_variables(response);'
         echo '         const char *path = meta->path_info(meta);'
-        echo '         log_debug(this->log, "path: %s - message type: %s - command: %s", path, message->type(message), message->command(message));'
+        echo '         log_debug(this->log, "POST path: %s - message type: %s - command: %s", path, message->type(message), message->command(message));'
         echo '#include "post_write.c"'
         echo '      } else {'
         echo '         log_error(this->log, "error: %s", error);'
@@ -188,6 +271,18 @@ function do_webc() {
 }
 
 function od_webc() {
+    local read_file=$(init_file get_read.c)
+    {
+        echo '{'
+        echo '   set_response_string(this, response, 404, "Not found");'
+        echo '}'
+    } >> $read_file
+    local write_file=$(init_file get_write.c)
+    {
+        echo '{'
+        echo '   set_response_string(this, response, 404, "Not found");'
+        echo '}'
+    } >> $write_file
     local read_file=$(init_file post_read.c)
     {
         echo '{'
@@ -203,13 +298,14 @@ function od_webc() {
 }
 
 function url_webc() {
-    local url=$1
-    local read_file=$(init_file post_read.c)
+    local method="$1"
+    local url="$2"
+    local read_file=$(init_file ${method}_read.c)
     {
         echo 'if (!strcmp(path, "'"$url"'")) {'
         echo -n '   '
     } >> $read_file
-    local write_file=$(init_file post_write.c)
+    local write_file=$(init_file ${method}_write.c)
     {
         echo 'if (!strcmp(path, "'"$url"'")) {'
         echo -n "   "
@@ -218,16 +314,19 @@ function url_webc() {
 
 lru_webc_count=0
 function lru_webc() {
-    local url=$1
-    local read_file=$(init_file post_read.c)
+    local method="$1"
+    local url="$2"
+    local read_file=$(init_file ${method}_read.c)
     lru_webc_count=$(($lru_webc_count + 1))
     {
-        echo '{'
-        echo '      set_response_string(this, response, 401, "Invalid action");'
-        echo '   }'
+        if [ $method == post ]; then
+            echo '{'
+            echo '      set_response_string(this, response, 401, "Invalid action");'
+            echo '   }'
+        fi
         echo -n '} else '
     } >> $read_file
-    local write_file=$(init_file post_write.c)
+    local write_file=$(init_file ${method}_write.c)
     {
         echo '{'
         echo "      char *invalid_response$lru_webc_count = szprintf(this->memory, NULL, \"Invalid reply from server (type: %s; command: %s; path: %s)\", message->type(message), message->command(message), path);"
@@ -239,17 +338,30 @@ function lru_webc() {
 }
 
 function query_webc() {
-    local action="$1"
-    local query="$2"
-    local params="$3"
-    local cookie_read="$4"
-    local read_file=$(init_file post_read.c)
+    local method="$1"
+    local action="$2"
+    local query="$3"
+    local params="$4"
+    local cookie_read="$5"
+    local redirect="$6"
+    local read_file=$(init_file ${method}_read.c)
     {
-        echo 'if (!strcmp(action, "'"$action"'")) {'
+        if [ $method == post ]; then
+            echo 'if (!strcmp(action, "'"$action"'")) {'
+        fi
         if [[ "$query" == "null" ]]; then # TODO ouch, hard-coded token! (must be in the template)
             echo "      cad_hash_t *${action}_extra = cad_new_hash(this->memory, cad_hash_strings);"
-            echo "      ${action}_extra->set(${action}_extra, \"token\", form->get(form, \"token\"));"
-            echo "      set_response_template(this, response, 200, \"$template\", ${action}_extra);"
+            echo "      if (form != NULL) {"
+            echo "         ${action}_extra->set(${action}_extra, \"token\", form->get(form, \"token\"));"
+            echo "      }"
+            case $method in
+                get)
+                    echo "      set_response_template(this, response, 200, \"$template\", ${action}_extra);"
+                    ;;
+                post)
+                    echo "      set_response_redirect(this, response, \"$redirect\", ${action}_extra);"
+                    ;;
+            esac
         else
             for param in $params; do
                 echo "      const char *${query}_$param = form->get(form, \"$param\");"
@@ -275,18 +387,22 @@ function query_webc() {
                 echo "      }"
             fi
         fi
-        echo -n '   } else '
+        if [ $method == post ]; then
+            echo -n '   } else '
+        fi
     } >> $read_file
 }
 
 function reply_webc() {
-    local action="$1"
-    local reply="$2"
-    local extra="$3"
-    local cookie_read="$4"
-    local cookie_write="$5"
-    local template="$6"
-    local write_file=$(init_file post_write.c)
+    local method="$1"
+    local action="$2"
+    local reply="$3"
+    local extra="$4"
+    local cookie_read="$5"
+    local cookie_write="$6"
+    local template="$7"
+    local redirect="$8"
+    local write_file=$(init_file ${method}_write.c)
     {
         if [[ "$reply" == "null" ]]; then
             echo "if (1) {"
@@ -313,7 +429,14 @@ function reply_webc() {
                     esac
                 done
             fi
-            echo "      set_response_template(this, response, 200, \"$template\", ${reply}_extra);"
+            case $method in
+                get)
+                    echo "      set_response_template(this, response, 200, \"$template\", ${reply}_extra);"
+                    ;;
+                post)
+                    echo "      set_response_redirect(this, response, \"$redirect\", ${reply}_extra);"
+                    ;;
+            esac
             echo "      ${reply}_extra->free(${reply}_extra);"
             if [[ "$extra" != "null" ]]; then
                 if [ "$cookie_write" != null ]; then
@@ -364,25 +487,31 @@ function od_() {
 }
 
 function url_() {
-    local url=$1
+    local method="$1"
+    local url="$2"
 }
 
 function lru_() {
-    local url=$1
+    local method="$1"
+    local url="$2"
 }
 
 function query_() {
-    local action="$1"
-    local query="$2"
-    local params="$3"
-    local cookie_read="$4"
+    local method="$1"
+    local action="$2"
+    local query="$3"
+    local params="$4"
+    local cookie_read="$5"
+    local redirect="$6"
 }
 
 function reply_() {
-    local action="$1"
-    local reply="$2"
-    local extra="$3"
-    local cookie_read="$4"
-    local cookie_write="$5"
-    local template="$6"
+    local method="$1"
+    local action="$2"
+    local reply="$3"
+    local extra="$4"
+    local cookie_read="$5"
+    local cookie_write="$6"
+    local template="$7"
+    local redirect="$8"
 }

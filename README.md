@@ -14,13 +14,14 @@ It is meant as the successor of the venerable
 
 # Dependencies
 
-* The build system: https://github.com/apenwarr/redo
-* The basic data structures: https://github.com/cadrian/libcad
-* JSON: https://github.com/cadrian/yacjp
-* Encryption routines: libgcrypt
-* Communication protocol: zmq
-* Vault database: sqlite
-* C closures (for tests): http://www.haible.de/bruno/packages-ffcall.html
+* The build system: [redo](https://github.com/apenwarr/redo)
+* The basic data structures: [libcad](https://github.com/cadrian/libcad)
+* JSON: [YacJP](https://github.com/cadrian/yacjp)
+* Encryption routines: [libgcrypt](https://www.gnu.org/software/libgcrypt/)
+* Communication protocol: [zmq](http://zeromq.org/)
+* Asynchronous event handling: [libuv](https://github.com/libuv/libuv)
+* Vault database: [sqlite](https://www.sqlite.org/)
+* C closures (for tests): [ffcall](http://www.haible.de/bruno/packages-ffcall.html)
 
 # Design
 

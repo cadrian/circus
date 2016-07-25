@@ -6,13 +6,34 @@ No, I will not remove the red nose.
 
 # What is it?
 
-Circus is –well, will be– a credentials manager.
+Circus is a multi-user credentials manager.
 
-It is meant as the successor of the venerable
-[pwd](https://github.com/cadrian/pwd/) but using standard technologies
-(C and mainstream libraries).
+## Features
 
-# Dependencies
+* Web interface
+* Multiple users and administrators
+* Users features:
+  * list stored passwords
+  * add or update passwords
+* Administrators features:
+  * can only add users and reset their master password
+  * **cannot** decrypt user passwords
+* User passwords are encrypted and can only be decrypted by the user using their master key
+* Strong security:
+  * the server OS-protected memory when dealing with passwords in clear
+  * the CGI client is actually meant to be short-lived (no "FastCGI" nonsense)
+
+## Future work
+
+* User password criteria for user-friendly password list management (tags...)
+* User e-mailing (for temporary master password resetting)
+* Mutual authentication over SSL
+* PKI (delivering and storing private keys and certificates)
+* Language clarification: master password, password, key, credential…
+
+# Design
+
+## Dependencies
 
 * The build system: [redo](https://github.com/apenwarr/redo)
 * The basic data structures: [libcad](https://github.com/cadrian/libcad)
@@ -22,8 +43,6 @@ It is meant as the successor of the venerable
 * Asynchronous event handling: [libuv](https://github.com/libuv/libuv)
 * Vault database: [sqlite](https://www.sqlite.org/)
 * C closures (for tests): [ffcall](http://www.haible.de/bruno/packages-ffcall.html)
-
-# Design
 
 ## High-level
 
@@ -82,42 +101,47 @@ transit through it all!
 
 ## Vault
 
-At the beginning, I expected the vault to be implemented as a simple
-encrypted JSON file (same as pwd). Instead:
-
 * The server file contains the vault; it will be an sqlite database.
-
 * The server will provide a mechanism to extract all the passwords of
   a given user.
 
-# Differences with pwd
+## Future technical work
 
-But that does not allow multi-user. I want multi-user to allow the
-server to start independently from any client, e.g. from a sysv init
-or systemd. That simplifies the client code and general
-management.
+### Known issues
 
-UNIX philosophy: let the right tool do its job. Daemon maintenance is
-not a goal of circus.
+* XDG is not an object.
+* Missing lots of tests.
 
-## Known issues
+### TODO list
 
-XDG is not an object.
+* Debian packaging
+* Using `sqlite_open_v2`, define a new vfs layer that uses the uv loop
+  instead of sleeping; and maybe more operations such as encryption,
+  secure malloc…
+* Implement key tags. The database table exists, but is not used yet.
+* Encrypt and sign the messages between the client and server (even
+  if they are on the same machine!)
 
-Missing lots of tests.
-
-## TODO
-
-Using `sqlite_open_v2`, define a new vfs layer that uses the uv loop
-instead of sleeping; and maybe more operations such as encryption,
-secure malloc…
-
-Implement key tags. The database table exists, but is not used yet.
-
-# Usage
+# Usage notes
 
 ## Warning!!
 
 PII logging ("Personally-Identifiable Information") may reveal
 sensitive information. Its level is lower than DEBUG, on purpose. Use
 with care!
+
+# History
+
+Circus is the successor of the venerable
+[pwd](https://github.com/cadrian/pwd/) but using standard technologies
+(C and mainstream libraries).
+
+## Differences with pwd
+
+Circus is multi-user. this allows the
+server to start independently from any client, e.g. from a sysv init
+or systemd. That simplifies the client code and general
+management.
+
+UNIX philosophy: let the right tool do its job. Daemon maintenance is
+not a goal of Circus.

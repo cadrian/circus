@@ -166,7 +166,7 @@ static void run_server_install(void) {
    stdlib_memory.free(vault_path);
    pid_t pid_install = fork();
    if (pid_install == 0) {
-      execl("../exe/main/server.dbg.exe", "server.dbg.exe", "--install", "test", "pass", NULL);
+      execl("../../exe/main/server.dbg.exe", "server.exe", "--install", "test", "pass", NULL);
       printf("execl: %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
@@ -185,7 +185,7 @@ static void run_server_install(void) {
 }
 
 static void run_server(void) {
-   execl("../exe/main/server.dbg.exe", "server.dbg.exe", NULL);
+   execl("../../exe/main/server.dbg.exe", "server.exe", NULL);
    printf("execl: %s\n", strerror(errno));
    exit(EXIT_BUG_ERROR);
 }

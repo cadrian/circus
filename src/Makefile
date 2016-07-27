@@ -18,16 +18,25 @@
 
 # ----------------------------------------------------------------
 
+# With the help of http://scottmcpeak.com/autodepend/autodepend.html
+
+ROOTSRC=$(shell pwd)
+
+CFLAGS ?= -g
+LDFLAGS ?=
+
+# ----------------------------------------------------------------
+
 .PHONY: all test compile clean
 
 all: test
-	$(MAKE) -C src $@
 
 test: compile
-	$(MAKE) -C src $@
+	$(MAKE) -C tst $@
 
 compile:
-	$(MAKE) -C src $@
+	$(MAKE) -C exe $@
 
 clean:
-	$(MAKE) -C src $@
+	$(MAKE) -C exe $@
+	$(MAKE) -C tst $@

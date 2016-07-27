@@ -35,7 +35,6 @@ Circus is a multi-user credentials manager.
 
 ## Dependencies
 
-* The build system: [redo](https://github.com/apenwarr/redo)
 * The basic data structures: [libcad](https://github.com/cadrian/libcad)
 * JSON: [YacJP](https://github.com/cadrian/yacjp)
 * Encryption routines: [libgcrypt](https://www.gnu.org/software/libgcrypt/)

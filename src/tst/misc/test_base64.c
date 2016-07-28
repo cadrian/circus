@@ -16,10 +16,17 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
-#include <cad_shared.h>
+#include <stdio.h>
+#include <string.h>
 
-#include <circus.h>
+#include <circus_base64.h>
 
-size_t b64_size(size_t len);
-char *base64(cad_memory_t memory, const char *raw, size_t len);
-char *unbase64(cad_memory_t memory, const char *b64);
+int main() {
+   char *test = "This is a base64 test.";
+   printf("%s\n", test);
+   char *encoded = base64(stdlib_memory, test, strlen(test) + 1); // + 1 to encode the whole string with its terminator
+   printf("%s\n", encoded);
+   char *decoded = unbase64(stdlib_memory, encoded);
+   printf("%s\n", decoded);
+   assert(!strcmp(decoded, test));
+}

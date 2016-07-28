@@ -23,17 +23,17 @@
 
 // base64 implementation based on http://www.opensource.apple.com/source/QuickTimeStreamingServer/QuickTimeStreamingServer-452/CommonUtilitiesLib/base64.c
 
-size_t b64_size(int len) {
+size_t b64_size(size_t len) {
    return ((len + 2) / 3 * 4);
 }
 
-char *base64(cad_memory_t memory, const char *raw, int len) {
+char *base64(cad_memory_t memory, const char *raw, size_t len) {
    static char *ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    static char PAD = '=';
    int n = b64_size(len) + 1;
    char *result = memory.malloc(n);
    if (result != NULL) {
-      int i;
+      size_t i;
       char *p = result;
       for (i = 0; i < len - 2; i += 3) {
          *p++ = ALPHABET[(raw[i] >> 2) & 0x3F];

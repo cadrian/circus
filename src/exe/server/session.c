@@ -54,7 +54,7 @@ static const char *rotate_tokens(data_t *this) {
       char *stale_token = *((char**)this->tokens->del(this->tokens, this->tokens->count(this->tokens)- 1));
       this->memory.free(stale_token);
    }
-   char *new_token = szrandom(this->memory, this->session->token_length);
+   char *new_token = szrandom64(this->memory, this->session->token_length);
    this->tokens->insert(this->tokens, 0, &new_token);
    return new_token;
 }
@@ -87,7 +87,7 @@ static data_t *new_data(cad_memory_t memory, circus_user_t *user, session_impl_t
    assert(result != NULL);
    result->fn = data_fn;
    result->memory = memory;
-   result->sessionid = szrandom(memory, session->sessionid_length);
+   result->sessionid = szrandom64(memory, session->sessionid_length);
    result->tokens = cad_new_array(memory, sizeof(char*));
    result->user = user;
    result->session = session;

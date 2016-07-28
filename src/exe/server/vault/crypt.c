@@ -19,6 +19,7 @@
 #include <gcrypt.h>
 #include <string.h>
 
+#include <circus_base32.h>
 #include <circus_base64.h>
 #include <circus_crypt.h>
 
@@ -221,22 +222,30 @@ unsigned int irandom(unsigned int max) {
    return result;
 }
 
-static char *szrandom_level(cad_memory_t memory, size_t len, enum gcry_random_level level) {
+static char *szrandom_level(cad_memory_t memory, size_t len, enum gcry_random_level level, char *(*encode)(cad_memory_t, const char*, size_t)) {
    assert(len > 0);
    char *raw = memory.malloc(len + 1);
    if (raw == NULL) return NULL;
    gcry_randomize(raw, len, level);
-   char *result = base64(memory, raw, len);
+   char *result = encode(memory, raw, len);
    memory.free(raw);
    return result;
 }
 
-char *szrandom(cad_memory_t memory, size_t len) {
-   return szrandom_level(memory, len, GCRY_STRONG_RANDOM);
+char *szrandom32(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_STRONG_RANDOM, base32);
 }
 
-char *szrandom_strong(cad_memory_t memory, size_t len) {
-   return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM);
+char *szrandom32_strong(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM, base32);
+}
+
+char *szrandom64(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_STRONG_RANDOM, base64);
+}
+
+char *szrandom64_strong(cad_memory_t memory, size_t len) {
+   return szrandom_level(memory, len, GCRY_VERY_STRONG_RANDOM, base64);
 }
 
 int init_crypt(circus_log_t *log) {

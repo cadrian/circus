@@ -9,11 +9,11 @@ Sending query...
 >>>> {"email":"noob@clueless.lol","sessionid":"QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky8=","type":"query_create_user","username":"noob","permissions":"user","token":"QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky8="}
 Query sent.
 Waiting for reply...
-<<<< {"token":"UFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky9BQkNERUZHSElKS0xNTk8=","type":"reply_user","password":"QUJDREVGR0hJSktMTU5P","username":"noob","validity":"2016/02/21 13:57:16","error":""}
+<<<< {"token":"UFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky9BQkNERUZHSElKS0xNTk8=","type":"reply_user","password":"efbrgtnfe3dwo1kkjpgr4u1x","username":"noob","validity":"2016/02/21 13:57:16","error":""}
 Reply received.
-noob's password is QUJDREVGR0hJSktMTU5P
+noob's password is efbrgtnfe3dwo1kkjpgr4u1x
 Sending query...
->>>> {"userid":"noob","type":"query_login","password":"QUJDREVGR0hJSktMTU5P"}
+>>>> {"userid":"noob","type":"query_login","password":"efbrgtnfe3dwo1kkjpgr4u1x"}
 Query sent.
 Waiting for reply...
 <<<< {"sessionid":"UFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky9BQkNERUZHSElKS0xNTk8=","type":"reply_login","permissions":"user","error":"","token":"UFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODkrL0FCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5Ky9BQkNERUZHSElKS0xNTk8="}

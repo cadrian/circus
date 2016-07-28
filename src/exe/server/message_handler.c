@@ -415,7 +415,7 @@ static void visit_query_create_user(circus_message_visitor_query_t *visitor, cir
          if (strcmp(permissions, "user") != 0) {
             log_error(this->log, "User permissions must be \"user\" for now.");
          } else {
-            password = szrandom(this->memory, this->tmppwd_len);
+            password = szrandom32(this->memory, this->tmppwd_len);
             if (password == NULL) {
                log_error(this->log, "User error: could not allocate random password.");
             } else {

@@ -18,6 +18,8 @@
 
 ROOTSRC=$(shell dirname $$(pwd))
 
+# ----------------------------------------------------------------
+
 SRC=$(shell find . -name gen -prune -o -name \*.c -print)
 S_SRC=$(shell find . \( -name gen -o -name main -o -name client \) -prune -o -name \*.c -print)
 C_SRC=$(shell find . \( -name gen -o -name main -o -name server \) -prune -o -name \*.c -print)
@@ -27,6 +29,8 @@ S_OBJ=$(S_SRC:.c=.o)
 C_OBJ=$(C_SRC:.c=.o)
 
 DEP=$(OBJ:.o=.d)
+
+LD_FLAGS_DBG ?= -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now
 
 # ----------------------------------------------------------------
 
@@ -75,11 +79,9 @@ main/client.exe: protocol/messages client/web main/client_cgi.o $(C_OBJ)
 main/server.dbg.exe: main/server.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt \
-		-Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now \
-		$(LD_FLAGS) -o $@ main/server.o $(S_OBJ)
+		$(LD_FLAGS_DBG) $(LD_FLAGS) -o $@ main/server.o $(S_OBJ)
 
 main/client.dbg.exe: main/client.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
 		-lcad -lyacjp -luv -lzmq \
-		-Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now \
-		$(LD_FLAGS) -o $@ main/client_cgi.o $(C_OBJ)
+		$(LD_FLAGS_DBG) $(LD_FLAGS) -o $@ main/client_cgi.o $(C_OBJ)

@@ -32,10 +32,12 @@ char *new_symmetric_key(cad_memory_t memory, circus_log_t *log);
 char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const char *key);
 char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, const char *key);
 
-/* NOTE!!! szrandom() and co produce longer buffers than len because they are base64-encoded */
+/* NOTE!!! szrandom() and co produce longer buffers than len because they are base32/64-encoded */
 
-char *szrandom(cad_memory_t memory, size_t len);
-char *szrandom_strong(cad_memory_t memory, size_t len);
+char *szrandom32(cad_memory_t memory, size_t len);
+char *szrandom32_strong(cad_memory_t memory, size_t len);
+char *szrandom64(cad_memory_t memory, size_t len);
+char *szrandom64_strong(cad_memory_t memory, size_t len);
 unsigned int irandom(unsigned int max);
 
 /* init */

@@ -18,7 +18,6 @@
 
 #include <string.h>
 
-#include <circus_base64.h>
 #include <circus_crypt.h>
 #include <circus_log.h>
 #include <circus_vault.h>

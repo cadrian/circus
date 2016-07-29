@@ -23,7 +23,7 @@ case x"$1" in
             # mlock/munlock: we are not root
             # gcry_*: we need valgrind (libgcrypt generates instructions not recognized by Valgrind)
             export STRIP_EXE=false
-            exec make test
+            exec make manual_test
         ) || exit 1
         ;;
 esac
@@ -31,8 +31,8 @@ esac
 echo "Test base is $base"
 
 echo "Setting up..."
-exe=".exe"
-. $TSTDIR/_test_client_cgi_setup.sh
+exe=".rnd.exe"
+. $TSTDIR/client/_test_client_cgi_setup.sh
 
 cp -a ../../templates/* $CONF/templates/
 cp -a ../../static/* $CONF/static/

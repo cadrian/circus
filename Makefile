@@ -18,12 +18,15 @@
 
 # ----------------------------------------------------------------
 
-.PHONY: all test compile clean
+.PHONY: all test manual_test compile clean
 
 all: test
 	$(MAKE) -C src $@
 
 test: compile
+	$(MAKE) -C src $@
+
+manual_test: test
 	$(MAKE) -C src $@
 
 compile:

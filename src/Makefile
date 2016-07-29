@@ -22,17 +22,17 @@
 
 ROOTSRC=$(shell pwd)
 
-CFLAGS ?= -g
-LDFLAGS ?=
-
 # ----------------------------------------------------------------
 
-.PHONY: all test compile clean
+.PHONY: all test compile manual_test clean
 
 all: test
 
 test: compile
 	$(MAKE) -C tst $@
+
+manual_test: test
+	$(MAKE) -C exe $@
 
 compile:
 	$(MAKE) -C exe $@

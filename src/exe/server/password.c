@@ -217,22 +217,20 @@ static void parse_ingredient(cad_memory_t memory, buffer_t *buffer) {
 static void parse_mix(cad_memory_t memory, circus_log_t *log, buffer_t *buffer, pass_generator_t *generator) {
    unsigned int min_quantity, max_quantity;
    parse_quantity(buffer);
-   if (!buffer->error) {
-      if (buffer->index < buffer->size) {
-         min_quantity = buffer->last_quantity;
-         skip_blanks(buffer);
-         if (!buffer->error && buffer->index < buffer->size) {
-            if (buffer->string[buffer->index] == '-') {
-               buffer->index++;
-               skip_blanks(buffer);
-               parse_quantity(buffer);
-               max_quantity = buffer->last_quantity;
-               if (max_quantity < min_quantity) {
-                  buffer->error = "Invalid quantity range: min > max";
-               }
-            } else {
-               max_quantity = min_quantity;
+   if (!buffer->error && buffer->index < buffer->size) {
+      min_quantity = buffer->last_quantity;
+      skip_blanks(buffer);
+      if (!buffer->error && buffer->index < buffer->size) {
+         if (buffer->string[buffer->index] == '-') {
+            buffer->index++;
+            skip_blanks(buffer);
+            parse_quantity(buffer);
+            max_quantity = buffer->last_quantity;
+            if (max_quantity < min_quantity) {
+               buffer->error = "Invalid quantity range: min > max";
             }
+         } else {
+            max_quantity = min_quantity;
          }
          if (!buffer->error && buffer->index < buffer->size) {
             parse_ingredient(memory, buffer);
@@ -245,6 +243,8 @@ static void parse_mix(cad_memory_t memory, circus_log_t *log, buffer_t *buffer, 
       } else {
          buffer->error = "Expecting ingredient specification";
       }
+   } else {
+      buffer->error = "Expecting ingredient specification";
    }
 }
 

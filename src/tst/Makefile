@@ -30,7 +30,7 @@ U_SRC=$(shell find . -name _test\*.c)
 U_OBJ=$(U_SRC:.c=.o)
 U_DEP=$(U_OBJ:.o=.d)
 
-LD_FLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now
+LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now
 
 # ----------------------------------------------------------------
 
@@ -72,7 +72,7 @@ clean:
 %.exe: %.o $(U_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt -lcallback \
-		$(LD_FLAGS_DBG) \
+		$(LDFLAGS_DBG) \
 		-o $@ $*.o $(U_OBJ) $(ROOTSRC)/exe/circus.o \
 		$(shell $(ROOTSRC)/dep.sh $(ROOTSRC) $*.o $(U_OBJ))
 

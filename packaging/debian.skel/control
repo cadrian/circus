@@ -1,0 +1,9 @@
+Source: circus
+Priority: extra
+Maintainer: Cyril ADRIAN <cyril.adrian@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), %libdevel:libffcall*-dev%
+Standards-Version: 3.9.8
+Section: libs
+Homepage: http://www.github.com/cadrian/circus
+Vcs-Git: git://github.com/cadrian/circus.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/circus.git;a=summary

@@ -18,7 +18,7 @@
 
 # ----------------------------------------------------------------
 
-.PHONY: all test manual_test compile clean
+.PHONY: all test manual_test compile clean debian
 
 all: test
 	$(MAKE) -C src $@
@@ -34,3 +34,7 @@ compile:
 
 clean:
 	$(MAKE) -C src $@
+	rm -rf packaging/target
+
+debian:
+	packaging/build_package.sh

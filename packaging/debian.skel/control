@@ -7,3 +7,24 @@ Section: libs
 Homepage: http://www.github.com/cadrian/circus
 Vcs-Git: git://github.com/cadrian/circus.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/circus.git;a=summary
+
+Package: circus-server
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, %libs:libcad*%, %libs:libyacjp*%, %libs:libzmq*%, %libs:libgcrypt*%, %libs:libuv*%, %libs:libsqlite*%
+Description: Circus is a Ringmaster, keeping Credentials and User Secrets
+ Circus is a multi-user credentials manager. It ensures that your vault
+ is only in one place: the one you chose.
+ .
+ This package contains the Circus server.
+
+Package: circus-client-cgi
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, %libs:libcad*%, %libs:libyacjp*%, %libs:libzmq*%, %libs:libuv*%, circus-server (= #VERSION#)
+Recommends: httpd-cgi
+Description: Circus is a Ringmaster, keeping Credentials and User Secrets
+ Circus is a multi-user credentials manager. It ensures that your vault
+ is only in one place: the one you chose.
+ .
+ This package contains the Circus CGI client.

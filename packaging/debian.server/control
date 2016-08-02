@@ -1,9 +1,0 @@
-Package: circus-server
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, %libs:libcad*%, %libs:libyacjp*%, %libs:libzmq*%, %libs:libgcrypt*%, %libs:libuv*%, %libs:libsqlite*%
-Description: Circus is a Ringmaster, keeping Credentials and User Secrets
- Circus is a multi-user credentials manager. It ensures that your vault
- is only in one place: the one you chose.
- .
- This package contains the Circus server.

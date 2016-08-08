@@ -1,13 +1,13 @@
 Template: circus/server/admin/username
 Type: string
 Default: admin
-Description: Administrator user name:
+_Description: Administrator user name:
   The user name of the administrator that is automatically
   created at the package installation.
 
 Template: circus/server/admin/password
 Type: password
-Description: Administrator password:
+_Description: Administrator password:
   The password of the administrator that is automatically
   created at the package installation.
   .

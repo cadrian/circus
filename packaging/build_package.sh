@@ -8,7 +8,7 @@ PACKAGING=$ROOTDIR/packaging
 date=$(date -R)
 snap=$(date -u +'~%Y%m%d%H%M%S')
 echo Date is "$date"
-if head -n 1 $PACKAGING/debian.skel/changelog | fgrep -q '#SNAPSHOT#'; then
+if head -n 1 $PACKAGING/debian/changelog | fgrep -q '#SNAPSHOT#'; then
     echo Changelog version is SNAPSHOT: "$snap"
 else
     echo Changelog version is $(head -n 1 $tgt/changelog | awk -F'[()]' '{print $$2}')
@@ -20,7 +20,7 @@ rm -rf $TARGET
 mkdir -p $tgt
 
 echo Copying skeleton
-cp -a $ROOTDIR/packaging/debian.skel/* $tgt/
+cp -a $ROOTDIR/packaging/debian/* $tgt/
 
 echo Copying source
 cp -a $ROOTDIR/{src,static,templates,packaging/conf} $TARGET/

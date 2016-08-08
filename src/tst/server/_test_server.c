@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <poll.h>
 #include <unistd.h>
 #include <zmq.h>
 
@@ -30,6 +31,39 @@
 #define EXIT_BUG_ERROR 9
 #define EXIT_TEST_FAILED 1
 #define EXIT_SUCCESS 0
+
+/* wait implementation inspired from http://stackoverflow.com/questions/8976004/using-waitpid-or-sigaction/8976461#8976461 */
+
+typedef struct process_info {
+   pid_t pid[2];
+   struct pollfd fd[2];
+   int running[2];
+   int status[2];
+   char *name[2];
+} process_info_t;
+
+static process_info_t process_info;
+
+static int wait_for_processes() {
+   int count = 0;
+   while(1) {
+      int p = poll(process_info.fd, 2, 30000);
+      if (p > 0) {
+         for (int i = 0; i < 2; i++) {
+            /* Has the pipe closed? */
+            if (process_info.running[i] && (process_info.fd[i].revents & POLLHUP) != 0) {
+               waitpid(process_info.pid[i], &process_info.status[i], 0);
+               process_info.running[i] = 0;
+               count++;
+            }
+         }
+      }
+      if (count == 2) {
+         return EXIT_SUCCESS;
+      }
+   }
+   return EXIT_TEST_FAILED;
+}
 
 static void send(circus_message_t *message, void *zmq_sock) {
    /* serialize the message to JSON */
@@ -144,9 +178,6 @@ database_fn db_count(int *counter) {
    return result;
 }
 
-static pid_t pid_server;
-static pid_t pid_client;
-
 static void run_server_install(void) {
    const char *h = xdg_data_home();
    if (h == NULL) {
@@ -213,71 +244,59 @@ int test(int argc, char **argv, int (*fn)(void)) {
 
    run_server_install();
 
-   pid_server = fork();
-   if (pid_server < 0) {
+   int server_pipe[2];
+   pipe(server_pipe);
+   process_info.name[0] = "server";
+   process_info.pid[0] = fork();
+   if (process_info.pid[0] < 0) {
       printf("fork (server): %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
-   if (pid_server == 0) {
+   if (process_info.pid[0] == 0) {
       /* I am the child */
+      close(server_pipe[0]);
       run_server();
    }
+   close(server_pipe[1]);
+   process_info.running[0] = 1;
+   process_info.fd[0].fd = server_pipe[0];
 
-   pid_client = fork();
-   if (pid_client < 0) {
+   int client_pipe[2];
+   pipe(client_pipe);
+   process_info.name[1] = "client";
+   process_info.pid[1] = fork();
+   if (process_info.pid[1] < 0) {
       printf("fork (client): %s\n", strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
-   if (pid_client == 0) {
+   if (process_info.pid[1] == 0) {
+      /* I am the child */
+      close(client_pipe[0]);
       run_client(fn);
    }
+   close(client_pipe[1]);
+   process_info.running[1] = 1;
+   process_info.fd[1].fd = client_pipe[0];
 
-   int status, st;
-   pid_t p;
+   int res = wait_for_processes();
 
-   int res = EXIT_SUCCESS;
-
-   sleep(8);
-   p = waitpid(pid_client, &status, WNOHANG);
-   if (p == 0) {
-      printf("waitpid: pid_client did not finish\n");
-      res = EXIT_TEST_FAILED;
-      kill(pid_client, 15);
-   } else if (p != pid_client) {
-      printf("waitpid: pid_client %d != %d\n", pid_client, p);
-      res = EXIT_BUG_ERROR;
-   } else if (WIFSIGNALED(status)) {
-      printf("waitpid: pid_client was killed by signal %d\n", WTERMSIG(status));
-      res = EXIT_TEST_FAILED;
-   } else {
-      st = WEXITSTATUS(status);
-      if (st != 0) {
-         printf("waitpid: pid_client exited with status %d\n", st);
+   int i;
+   for (i = 0; i < 2; i++) {
+      if (process_info.running[i]) {
+         printf("waitpid: %s did not finish\n", process_info.name[i]);
+         res = EXIT_TEST_FAILED;
+         kill(process_info.pid[i], 15);
+      } else if (WIFSIGNALED(process_info.status[i])) {
+         printf("waitpid: %s was killed by signal %d\n", process_info.name[i], WTERMSIG(process_info.status[i]));
          res = EXIT_TEST_FAILED;
       } else {
-         printf("pid_client: OK\n");
-      }
-   }
-
-   sleep(8);
-   p = waitpid(pid_server, &status, WNOHANG);
-   if (p == 0) {
-      printf("waitpid: pid_server did not finish\n");
-      res = EXIT_TEST_FAILED;
-      kill(pid_server, 15);
-   } else if (p != pid_server) {
-      printf("waitpid: pid_server %d != %d\n", pid_server, p);
-      res = EXIT_BUG_ERROR;
-   } else if (WIFSIGNALED(status)) {
-      printf("waitpid: pid_server was killed by signal %d\n", WTERMSIG(status));
-      res = EXIT_TEST_FAILED;
-   } else {
-      st = WEXITSTATUS(status);
-      if (st != 0) {
-         printf("waitpid: pid_server exited with status %d\n", st);
-         res = EXIT_TEST_FAILED;
-      } else {
-         printf("pid_server: OK\n");
+         int st = WEXITSTATUS(process_info.status[1]);
+         if (st != 0) {
+            printf("waitpid: %s exited with status %d\n", process_info.name[i], st);
+            res = EXIT_TEST_FAILED;
+         } else {
+            printf("%s: OK\n", process_info.name[i]);
+         }
       }
    }
 

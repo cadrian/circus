@@ -215,71 +215,36 @@ static void run_server_install(void) {
    }
 }
 
-static void run_server(void) {
+static int server_fn(void) {
    execl("../../exe/main/server.dbg.exe", "server.exe", NULL);
    printf("execl: %s\n", strerror(errno));
-   exit(EXIT_BUG_ERROR);
+   return EXIT_BUG_ERROR;
 }
 
-static void run_client(int (*fn)(void)) {
+static void run(int (*fn)(void)) {
    exit(fn());
 }
 
-int test(int argc, char **argv, int (*fn)(void)) {
-   if (argc > 1) {
-      /* --server or --client are useful to debug independant pieces of a server test */
-      if (!strcmp("--server", argv[1])) {
-         run_server();
-         return 0;
-      }
-      if (!strcmp("--client", argv[1])) {
-         run_client(fn);
-         return 0;
-      }
-      printf("Invalid argument: %s\n", argv[1]);
-      return 1;
-   }
-
-   /* nominal test run */
-
-   run_server_install();
-
-   int server_pipe[2];
-   pipe(server_pipe);
-   process_info.name[0] = "server";
-   process_info.pid[0] = fork();
-   if (process_info.pid[0] < 0) {
-      printf("fork (server): %s\n", strerror(errno));
+static void start(char *name, int process_info_index, int (*fn)(void)) {
+   int process_pipe[2];
+   pipe(process_pipe);
+   process_info.name[process_info_index] = name;
+   process_info.pid[process_info_index] = fork();
+   if (process_info.pid[process_info_index] < 0) {
+      printf("fork (%s): %s\n", name, strerror(errno));
       exit(EXIT_BUG_ERROR);
    }
-   if (process_info.pid[0] == 0) {
+   if (process_info.pid[process_info_index] == 0) {
       /* I am the child */
-      close(server_pipe[0]);
-      run_server();
+      close(process_pipe[0]);
+      run(fn);
    }
-   close(server_pipe[1]);
-   process_info.running[0] = 1;
-   process_info.fd[0].fd = server_pipe[0];
+   close(process_pipe[1]);
+   process_info.running[process_info_index] = 1;
+   process_info.fd[process_info_index].fd = process_pipe[0];
+}
 
-   int client_pipe[2];
-   pipe(client_pipe);
-   process_info.name[1] = "client";
-   process_info.pid[1] = fork();
-   if (process_info.pid[1] < 0) {
-      printf("fork (client): %s\n", strerror(errno));
-      exit(EXIT_BUG_ERROR);
-   }
-   if (process_info.pid[1] == 0) {
-      /* I am the child */
-      close(client_pipe[0]);
-      run_client(fn);
-   }
-   close(client_pipe[1]);
-   process_info.running[1] = 1;
-   process_info.fd[1].fd = client_pipe[0];
-
-   int res = wait_for_processes();
-
+static int check_processes(int res) {
    int i;
    for (i = 0; i < 2; i++) {
       if (process_info.running[i]) {
@@ -299,8 +264,33 @@ int test(int argc, char **argv, int (*fn)(void)) {
          }
       }
    }
-
    return res;
+}
+
+int test(int argc, char **argv, int (*client_fn)(void)) {
+   if (argc > 1) {
+      /* --server or --client are useful to debug independant pieces of a server test */
+      if (!strcmp("--server", argv[1])) {
+         run(server_fn);
+         return 0;
+      }
+      if (!strcmp("--client", argv[1])) {
+         run(client_fn);
+         return 0;
+      }
+      printf("Invalid argument: %s\n", argv[1]);
+      return 1;
+   }
+
+   /* nominal test run */
+
+   run_server_install();
+
+   start("server", 0, server_fn);
+   start("client", 1, client_fn);
+
+   int res = wait_for_processes();
+   return check_processes(res);
 }
 
 void *check_reply(circus_message_t *reply, const char *type, const char *command, const char *error) {

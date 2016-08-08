@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/cadrian/circus.png?branch=master)](https://travis-ci.org/cadrian/circus)
+
 **Circus** — *Circus is a Ringmaster, keeping Credentials and User Secrets*
 
 OK, the acronym is a bit contrived. Sorry.

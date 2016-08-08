@@ -1,0 +1,65 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the circus package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: circus\n"
+"Report-Msgid-Bugs-To: circus@packages.debian.org\n"
+"POT-Creation-Date: 2016-08-08 11:11+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: string
+#. Description
+#: ../circus-server.templates:1001
+msgid "Administrator user name:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../circus-server.templates:1001
+msgid ""
+" The user name of the administrator that is automatically\n"
+" created at the package installation."
+msgstr ""
+
+#. Type: password
+#. Description
+#: ../circus-server.templates:2001
+msgid "Administrator password:"
+msgstr ""
+
+#. Type: password
+#. Description
+#: ../circus-server.templates:2001
+msgid ""
+" The password of the administrator that is automatically\n"
+" created at the package installation.\n"
+" .\n"
+" The password is not kept in the debian configuration\n"
+" database."
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../circus-client-cgi.templates:1001
+msgid "Web path of Circus:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../circus-client-cgi.templates:1001
+msgid ""
+" The web root path of the Circus CGI and resources.\n"
+" .\n"
+" Note: the CGI script is circus.cgi; static resources\n"
+" are configured to be served via the static/ subpath."
+msgstr ""

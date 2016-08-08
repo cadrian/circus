@@ -18,10 +18,10 @@ set -e
 
 case "$1" in
     configure|reconfigure)
-        if [ -f /etc/circus/vault ]; then
+        if [ -f /var/local/circus/vault ]; then
             :
         else
-            mkdir -p /etc/circus /var/log/circus
+            mkdir -p /etc/circus /var/local/circus /var/log/circus
             db_get circus/server/admin/username
             username="$RET"
             db_get circus/server/admin/password

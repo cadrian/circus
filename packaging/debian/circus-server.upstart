@@ -1,0 +1,10 @@
+# circus-server - Run the Circus server
+
+description "Run the Circus server."
+
+start on (runlevel [2345] and virtual-filesystems)
+stop on runlevel [016]
+
+respawn
+
+exec /usr/lib/circus/server.exe

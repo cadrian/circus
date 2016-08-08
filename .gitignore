@@ -3,7 +3,6 @@ target
 *.o
 *.bak
 *.exe
-debian
 .redo
 *.dep0
 *.dep1

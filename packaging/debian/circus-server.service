@@ -1,0 +1,8 @@
+[Unit]
+Description=Circus daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/circus/server.exe
+Restart=on-failure

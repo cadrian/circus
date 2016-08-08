@@ -169,8 +169,8 @@ static void clean_sessionid(void *UNUSED(hash), int UNUSED(index), const char *U
    // Avoid double free() by not doing it :-)
 }
 
-static void clean_user(void *UNUSED(hash), int UNUSED(index), const circus_user_t *UNUSED(key), data_t *value, session_impl_t *UNUSED(this)) {
-   free_data(value);
+static void clean_user(void *UNUSED(hash), int UNUSED(index), const circus_user_t *UNUSED(key), data_t *UNUSED(value), session_impl_t *UNUSED(this)) {
+   // Avoid double free() by not doing it :-)
 }
 
 static void session_free(session_impl_t *this) {

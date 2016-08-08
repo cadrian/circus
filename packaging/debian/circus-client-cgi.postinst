@@ -31,8 +31,6 @@ server.modules += ( "mod_cgi" )
 alias.url = ( "$webpath/static" => "/etc/circus/static" )
 
 EOF
-
-            lighttpd-enable-mod 95-circus.conf
         fi
 
         if dpkg -s nginx-common fcgiwrap >/dev/null 2>&1; then

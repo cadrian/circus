@@ -1,0 +1,8 @@
+Template: circus/client-cgi/web/path
+Type: string
+Default: /circus
+Description: Web path of Circus:
+  The web root path of the Circus CGI and resources.
+  .
+  Note: the CGI script is circus.cgi; static resources
+  are configured to be served via the static/ subpath.

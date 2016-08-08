@@ -1,1 +1,4 @@
 usr/lib/circus/client_cgi.exe
+etc/circus/static/*
+etc/circus/templates/*
+etc/circus/cgi.conf

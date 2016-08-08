@@ -23,7 +23,7 @@ echo Copying skeleton
 cp -a $ROOTDIR/packaging/debian.skel/* $tgt/
 
 echo Copying source
-cp -a $ROOTDIR/src $TARGET/
+cp -a $ROOTDIR/{src,static,templates,packaging/conf} $TARGET/
 
 echo Computing version
 sed "s/#DATE#/${date}/;s/#SNAPSHOT#/${snap}/" -i $tgt/changelog
@@ -61,9 +61,12 @@ clean:
 
 install: compile
 \t#env | sort
-\tmkdir -p \$(DESTDIR)/usr/lib/circus
+\tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/circus
 \tcp -a src/exe/main/server.exe \$(DESTDIR)/usr/lib/circus/
 \tcp -a src/exe/main/client_cgi.exe \$(DESTDIR)/usr/lib/circus/
+\tcp -a static \$(DESTDIR)/etc/circus/
+\tcp -a templates \$(DESTDIR)/etc/circus/
+\tcp -a conf/* \$(DESTDIR)/etc/circus/
 EOF
 
 echo Building

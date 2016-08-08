@@ -1,0 +1,8 @@
+language: c
+compiler: gcc
+before_install:
+  - "sudo apt-get update -q"
+  - "sudo apt-get install -q libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev"
+script: make test
+cache:
+  apt: true

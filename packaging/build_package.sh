@@ -31,7 +31,7 @@ version=$(head -n 1 $tgt/changelog | awk -F'[()]' '{print $2}')
 echo Package version is "$version"
 
 echo Computing control dependencies
-arch=$(dpkg-architecture -q DEB_BUILD_ARCH)
+arch=$(dpkg-architecture -q DEB_HOST_ARCH)
 echo Architecture: $arch
 egrep -o '%[^%]+%' $tgt/control | sed 's/%//g' | fmt -1 | while IFS=: read section dep; do
     pkg=$(dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep*" |

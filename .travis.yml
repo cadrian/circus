@@ -5,9 +5,8 @@ compiler: gcc
 before_install:
   - echo 'deb http://archive.ubuntu.com/ubuntu/ wily main universe' | sudo tee /etc/apt/sources.list.d/wily.list
   - echo 'deb http://apt.cadrian.net/ unstable main' | sudo tee /etc/apt/sources.list.d/cadrian.list
-  - "sudo apt-get update -q"
-  - "sudo apt-get upgrade -q -y gcc"
-  - "sudo apt-get install -q -y --allow-unauthenticated libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev libcad-dev libyacjp-dev"
+  - "sudo apt-get -q update"
+  - "sudo apt-get -q -y --allow-unauthenticated install gcc libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev libcad-dev libyacjp-dev"
 script:
   - "make clean test; sudo dpkg -i packaging/target/circus-*.deb"
 cache:

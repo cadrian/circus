@@ -72,7 +72,8 @@ static void usage(const char *cmd, FILE *out) {
            "Calling with --install is usually done by installation procedures\n"
            "(package managers and so on).\n"
            "It checks that the database exists, is in the good version, and\n"
-           "creates the administrator user with the given name and password.\n",
+           "creates the administrator user with the given name and password.\n"
+           "Note: the password must not be empty.\n",
            cmd
    );
 }
@@ -138,7 +139,12 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
          break;
       case 4:
          if (0 == strcmp("--install", argv[1])) {
-            status = vault->install(vault, argv[2], argv[3]);
+            if (argv[3][0] == 0) {
+               usage(argv[0], stderr);
+               status = 1;
+            } else {
+               status = vault->install(vault, argv[2], argv[3]);
+            }
          } else {
             usage(argv[0], stderr);
             status = 1;

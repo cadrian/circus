@@ -27,6 +27,8 @@
 #include "vault_impl.h"
 
 static void get_symmetric_key(user_impl_t *user, const char *password) {
+   assert(password != NULL && password[0] != 0);
+
    static const char *sql = "SELECT KEYSALT, HASHKEY FROM USERS WHERE USERID=?";
    circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
    int ok;
@@ -84,6 +86,8 @@ static void get_symmetric_key(user_impl_t *user, const char *password) {
 }
 
 int set_symmetric_key(user_impl_t *user, const char *password) {
+   assert(password != NULL && password[0] != 0);
+
    int result = 0;
    static const char *sql = "UPDATE USERS SET KEYSALT=?, HASHKEY=? WHERE USERID=?";
    circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
@@ -208,7 +212,7 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
       log_error(this->log, "Could not find user %s", username);
    } else {
       log_pii(this->log, "User %s has userid %"PRId64, username, result->userid);
-      if (password != NULL) {
+      if (password != NULL && password[0] != 0) {
          log_debug(this->log, "Checking user password");
          result = check_user_password(result, password);
       }
@@ -227,6 +231,7 @@ static user_impl_t *vault_get(vault_impl_t *this, const char *username, const ch
 }
 
 static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const char *password, uint64_t validity, int permissions) {
+   assert(password != NULL && password[0] != 0);
    log_info(this->log, "Creating new user %s", username);
 
    user_impl_t *result = NULL;
@@ -304,11 +309,14 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
 }
 
 static user_impl_t *vault_new(vault_impl_t *this, const char *username, const char *password, uint64_t validity) {
+   assert(password != NULL && password[0] != 0);
    assert(vault_get_(this, username, password, 0) == NULL);
    return vault_new_(this, username, password, validity, PERMISSION_USER);
 }
 
 static int vault_install(vault_impl_t *this, const char *admin_username, const char *admin_password) {
+   assert(admin_password != NULL && admin_password[0] != 0);
+
    int status = 0;
    int ok;
 

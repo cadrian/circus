@@ -138,7 +138,7 @@ static void visit_query_login(circus_message_visitor_query_t *visitor, circus_me
    log_info(this->log, "Login: user %s", userid);
    circus_user_t *user = this->vault->get(this->vault, userid, password);
    circus_message_reply_login_t *reply = NULL;
-   if (user == NULL) {
+   if (user == NULL || password == NULL || password[0] == 0) {
       reply = new_circus_message_reply_login(this->memory, "Invalid credentials", "", "", "");
    } else {
       circus_session_data_t *data = this->session->set(this->session, user);

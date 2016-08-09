@@ -61,13 +61,13 @@ EOF
         fi
     ) >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew
-        cat $lognew >&2
+        cat $logerr >&2
         exit 1
     }
 elif [ -f ${exe%.exe}.sh ]; then
     ${exe%.exe}.sh >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew
-        cat $lognew >&2
+        cat $logerr >&2
         exit 1
     }
 fi

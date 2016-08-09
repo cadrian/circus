@@ -47,17 +47,17 @@ EOF
 
         if [ -f ${exe%.exe}.sh ]; then
             chmod u+x ${exe%.exe}.sh
-            exec ./${exe%.exe}.sh $exe
+            exec ./${exe%.exe}.sh ./$exe
         else
             # DETAILED VALGRIND REPORTS:
             #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
-            #     --xml=yes --xml-file=${exe%.exe}.log.valgrind.xml --log-file=${exe%.exe}.log.valgrind $exe
+            #     --xml=yes --xml-file=${exe%.exe}.log.valgrind.xml --log-file=${exe%.exe}.log.valgrind ./$exe
             #
             # CONCISE VALGRIND REPORTS:
-            #exec valgrind --trace-children=yes --log-file=${exe%.exe}.log.valgrind $exe
+            #exec valgrind --trace-children=yes --log-file=${exe%.exe}.log.valgrind ./$exe
             #
             # RAW EXECUTION: (fastest)
-            exec $exe
+            exec ./$exe
             #
         fi
     ) >$lognew 2>$logerr || {

@@ -36,7 +36,7 @@
 
 typedef struct process_info {
    pid_t pid[2];
-   struct pollfd fd[2];
+   struct pollfd poll[2];
    int running[2];
    int status[2];
    char *name[2];
@@ -44,25 +44,28 @@ typedef struct process_info {
 
 static process_info_t process_info;
 
-static int wait_for_processes() {
+static int wait_for_processes(void) {
    int count = 0;
-   while(1) {
-      int p = poll(process_info.fd, 2, 30000);
-      if (p > 0) {
-         for (int i = 0; i < 2; i++) {
-            /* Has the pipe closed? */
-            if (process_info.running[i] && (process_info.fd[i].revents & POLLHUP) != 0) {
-               waitpid(process_info.pid[i], &process_info.status[i], 0);
-               process_info.running[i] = 0;
-               count++;
-            }
+   while (count < 2) {
+      int p = poll(process_info.poll, 2, 30000);
+      fprintf(stderr, "**** poll status=%d | stopped: %d | %s: %s | %s: %s\n",
+              p, count,
+              process_info.name[0], process_info.running[0] ? "running" : "stopped",
+              process_info.name[1], process_info.running[1] ? "running" : "stopped");
+      if (p == 0) {
+         return EXIT_TEST_FAILED;
+      }
+      for (int i = 0; i < 2; i++) {
+         /* Has the pipe closed? */
+         if ((process_info.running[i]) && (process_info.poll[i].revents & (POLLHUP | POLLERR))) {
+            waitpid(process_info.pid[i], &process_info.status[i], 0);
+            process_info.running[i] = 0;
+            process_info.poll[i].fd = -1;
+            count++;
          }
       }
-      if (count == 2) {
-         return EXIT_SUCCESS;
-      }
    }
-   return EXIT_TEST_FAILED;
+   return EXIT_SUCCESS;
 }
 
 static void send(circus_message_t *message, void *zmq_sock) {
@@ -241,7 +244,7 @@ static void start(char *name, int process_info_index, int (*fn)(void)) {
    }
    close(process_pipe[1]);
    process_info.running[process_info_index] = 1;
-   process_info.fd[process_info_index].fd = process_pipe[0];
+   process_info.poll[process_info_index].fd = process_pipe[0];
 }
 
 static int check_processes(int res) {

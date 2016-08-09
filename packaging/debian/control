@@ -1,7 +1,7 @@
 Source: circus
 Priority: extra
 Maintainer: Cyril ADRIAN <cyril.adrian@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), po-debconf, %libdevel:libffcall*-dev%
+Build-Depends: debhelper (>= 8.0.0), po-debconf, %libdevel:libffcall*-dev%, %shells:bash%
 Standards-Version: 3.9.8
 Section: libs
 Homepage: http://www.github.com/cadrian/circus

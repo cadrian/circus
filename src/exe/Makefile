@@ -67,10 +67,10 @@ clean:
 	@rm -f $*.d.tmp
 
 protocol/messages: protocol/messages.sh protocol/messages.json
-	(cd protocol && messages.sh) > $@
+	(cd protocol && bash messages.sh) > $@
 
 client/web: client/web.sh client/web.json protocol/messages.json
-	(cd client && web.sh) > $@
+	(cd client && bash web.sh) > $@
 
 main/server.exe: protocol/messages main/server.o $(S_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \

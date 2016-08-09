@@ -35,7 +35,8 @@ arch=$(dpkg-architecture | awk -F= '$1 == "DEB_BUILD_ARCH" { print $2 }')
 echo Architecture: $arch
 egrep -o '%[^%]+%' $tgt/control | sed 's/%//g' | fmt -1 | while IFS=: read section dep; do
     pkg=$(dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep*" |
-                 awk -F: '$1 == "'$section'" && $4 == "'$arch'" {printf("%s (>= %s)\n", $2, $3)}')
+                 awk -F: '$1 == "'$section'" && $4 == "'$arch'" {printf("%s (>= %s)\n", $2, $3)}' |
+                 tail -n 1)
     if [ -z "$pkg" ]; then
         echo "$dep not found!" >&2
         dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep" >&2

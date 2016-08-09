@@ -166,7 +166,9 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
 }
 
 static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const char *password, int with_symmkey) {
-   log_info(this->log, "Getting user %s%s%s", username, with_symmkey ? " with their symmetric key" : "", password == NULL ? "" : ", and checking password");
+   log_info(this->log, "Getting user %s%s%s", username,
+            with_symmkey ? " with their symmetric key" : "",
+            password == NULL ? (with_symmkey ? " BUT MISSING PASSWORD" : "") : ", and checking password");
 
    user_impl_t *result = this->users->get(this->users, username);
    if (result == NULL) {
@@ -201,11 +203,14 @@ static user_impl_t *vault_get_(vault_impl_t *this, const char *username, const c
       if (result != NULL) {
          log_debug(this->log, "Updating users cache");
          this->users->set(this->users, username, result);
-         if (with_symmkey) {
+         if (with_symmkey && password != NULL && password[0] != 0) {
             log_debug(this->log, "Getting user symmetric key");
             get_symmetric_key(result, password);
          }
       }
+   } else if (with_symmkey && result->symmkey == NULL && password != NULL && password[0] != 0) {
+      log_debug(this->log, "Getting user symmetric key");
+      get_symmetric_key(result, password);
    }
 
    if (result == NULL) {
@@ -392,7 +397,6 @@ static circus_vault_t vault_fn = {
    (circus_vault_free_fn)vault_free,
 };
 
-
 circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_config_t *config, database_factory_fn db_factory) {
    vault_impl_t *result = NULL;
    char *path;
@@ -413,6 +417,7 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    } else {
       path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
    }
+   log_info(log, "Vault path is %s", path);
    result->database = db_factory(memory, log, path);
    memory.free(path);
 

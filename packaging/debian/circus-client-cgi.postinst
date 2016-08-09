@@ -28,7 +28,7 @@ server.modules += ( "mod_cgi" )
     cgi.assign = ( ".cgi" => "$(which sh)" )
 }
 
-alias.url = ( "$webpath/static" => "/etc/circus/static" )
+alias.url = ( "$webpath/static" => "/etc/xdg/circus/static" )
 
 EOF
         fi
@@ -89,7 +89,7 @@ server {
         }
 
         location $webpath/static/ {
-                root /etc/circus/static;
+                root /etc/xdg/circus/static;
         }
 }
 EOF
@@ -97,7 +97,7 @@ EOF
 
         # TODO: apache
 
-        sed -i "s/%webpath%/$webpath/g" /etc/circus/cgi.conf
+        sed -i "s|%webpath%|$webpath|g" /etc/xdg/circus/cgi.conf
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

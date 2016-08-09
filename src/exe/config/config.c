@@ -57,7 +57,7 @@ static read_t read_xdg_file_from_config_dirs(cad_memory_t memory, const char *fi
          *next = '\0';
          next++;
       }
-      result.path = szprintf(memory, NULL, "%s/%s", cur, filename);
+      result.path = szprintf(memory, NULL, "%s/circus/%s", cur, filename);
       result.file = fopen(result.path, "r");
    }
    if (result.file == NULL) {

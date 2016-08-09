@@ -35,50 +35,50 @@
 #define PERMISSION_USER    1
 #define PERMISSION_ADMIN   2
 
-#define META_SCHEMA                                        \
-   "CREATE TABLE IF NOT EXISTS META ("                     \
-   "  KEY           TEXT PRIMARY KEY,"                     \
-   "  VALUE         TEXT NOT NULL"                         \
+#define META_SCHEMA                                          \
+   "CREATE TABLE IF NOT EXISTS META (\n"                     \
+   "  KEY           TEXT PRIMARY KEY,\n"                     \
+   "  VALUE         TEXT NOT NULL\n"                         \
    ");"
 
-#define USERS_SCHEMA                                       \
-   "CREATE TABLE IF NOT EXISTS USERS ("                    \
-   "  USERID        INTEGER PRIMARY KEY AUTOINCREMENT,"    \
-   "  USERNAME      TEXT NOT NULL,"                        \
-   "  EMAIL         TEXT,"                                 \
-   "  PERMISSIONS   INTEGER NOT NULL,"                     \
-   "  PWDSALT       TEXT NOT NULL,"                        \
-   "  HASHPWD       TEXT NOT NULL,"                        \
-   "  PWDVALID      INTEGER,"                              \
-   "  KEYSALT       TEXT NOT NULL,"                        \
-   "  HASHKEY       TEST NOT NULL"                         \
-   ");"                                                    \
-   "CREATE UNIQUE INDEX IF NOT EXISTS USERS_IX ON USERS (" \
-   "  USERNAME"                                            \
+#define USERS_SCHEMA                                         \
+   "CREATE TABLE IF NOT EXISTS USERS (\n"                    \
+   "  USERID        INTEGER PRIMARY KEY AUTOINCREMENT,\n"    \
+   "  USERNAME      TEXT NOT NULL,\n"                        \
+   "  EMAIL         TEXT,\n"                                 \
+   "  PERMISSIONS   INTEGER NOT NULL,\n"                     \
+   "  PWDSALT       TEXT NOT NULL,\n"                        \
+   "  HASHPWD       TEXT NOT NULL,\n"                        \
+   "  PWDVALID      INTEGER,\n"                              \
+   "  KEYSALT       TEXT NOT NULL,\n"                        \
+   "  HASHKEY       TEST NOT NULL\n"                         \
+   ");\n"                                                    \
+   "CREATE UNIQUE INDEX IF NOT EXISTS USERS_IX ON USERS (\n" \
+   "  USERNAME\n"                                            \
    ");"
 
-#define KEYS_SCHEMA                                        \
-   "CREATE TABLE IF NOT EXISTS KEYS ("                     \
-   "  KEYID         INTEGER PRIMARY KEY AUTOINCREMENT,"    \
-   "  USERID        INTEGER NOT NULL, "                    \
-   "  KEYNAME       TEXT NOT NULL,"                        \
-   "  SALT          TEXT NOT NULL,"                        \
-   "  VALUE         TEXT NOT NULL"                         \
-   ");"                                                    \
-   "CREATE UNIQUE INDEX IF NOT EXISTS KEYS_IX ON KEYS ("   \
-   "  USERID,"                                             \
-   "  KEYNAME"                                             \
+#define KEYS_SCHEMA                                          \
+   "CREATE TABLE IF NOT EXISTS KEYS (\n"                     \
+   "  KEYID         INTEGER PRIMARY KEY AUTOINCREMENT,\n"    \
+   "  USERID        INTEGER NOT NULL,\n"                     \
+   "  KEYNAME       TEXT NOT NULL,\n"                        \
+   "  SALT          TEXT NOT NULL,\n"                        \
+   "  VALUE         TEXT NOT NULL\n"                         \
+   ");\n"                                                    \
+   "CREATE UNIQUE INDEX IF NOT EXISTS KEYS_IX ON KEYS (\n"   \
+   "  USERID,\n"                                             \
+   "  KEYNAME\n"                                             \
    ");"
 
-#define TAGS_SCHEMA                                        \
-   "CREATE TABLE IF NOT EXISTS TAGS ("                     \
-   "  TAGID         INTEGER PRIMARY KEY AUTOINCREMENT,"    \
-   "  KEYID         INTEGER NOT NULL,"                     \
-   "  NAME          TEXT NOT NULL,"                        \
-   "  VALUE         TEXT NOT NULL"                         \
-   ");"                                                    \
-   "CREATE UNIQUE INDEX IF NOT EXISTS TAGS_IX ON TAGS ("   \
-   "  KEYID"                                               \
+#define TAGS_SCHEMA                                          \
+   "CREATE TABLE IF NOT EXISTS TAGS (\n"                     \
+   "  TAGID         INTEGER PRIMARY KEY AUTOINCREMENT,\n"    \
+   "  KEYID         INTEGER NOT NULL,\n"                     \
+   "  NAME          TEXT NOT NULL,\n"                        \
+   "  VALUE         TEXT NOT NULL\n"                         \
+   ");\n"                                                    \
+   "CREATE UNIQUE INDEX IF NOT EXISTS TAGS_IX ON TAGS (\n"   \
+   "  KEYID\n"                                               \
    ");"
 
 typedef struct {

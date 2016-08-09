@@ -62,12 +62,12 @@ clean:
 
 install: compile
 \t#env | sort
-\tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/circus
+\tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/xdg/circus
 \tcp -a src/exe/main/server.exe \$(DESTDIR)/usr/lib/circus/
 \tcp -a src/exe/main/client_cgi.exe \$(DESTDIR)/usr/lib/circus/
-\tcp -a static \$(DESTDIR)/etc/circus/
-\tcp -a templates \$(DESTDIR)/etc/circus/
-\tcp -a conf/* \$(DESTDIR)/etc/circus/
+\tcp -a static \$(DESTDIR)/etc/xdg/circus/
+\tcp -a templates \$(DESTDIR)/etc/xdg/circus/
+\tcp -a conf/* \$(DESTDIR)/etc/xdg/circus/
 EOF
 
 echo Building

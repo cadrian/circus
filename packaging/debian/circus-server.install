@@ -1,2 +1,2 @@
 usr/lib/circus/server.exe
-etc/circus/server.conf
+etc/xdg/circus/server.conf

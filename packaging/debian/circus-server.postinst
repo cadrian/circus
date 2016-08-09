@@ -21,7 +21,7 @@ case "$1" in
         if [ -f /var/local/circus/vault ]; then
             :
         else
-            mkdir -p /etc/circus /var/local/circus /var/log/circus
+            mkdir -p /etc/xdg/circus /var/local/circus /var/log/circus
             db_get circus/server/admin/username
             username="$RET"
             db_get circus/server/admin/password

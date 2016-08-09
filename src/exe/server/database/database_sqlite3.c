@@ -58,19 +58,26 @@ struct database_sqlite3_s {
    sqlite3 *db;
 };
 
-static void requery(database_query_sqlite3_t *q) {
-   int n = sqlite3_finalize(q->stmt);
-   if (n != SQLITE_OK) {
-      log_warning(q->log, "Error in finalize: %s", sqlite3_errstr(n));
-   } else {
-      n = sqlite3_prepare_v2(q->db, q->sql, -1, &q->stmt, NULL);
+static void ensure_stmt(database_query_sqlite3_t *q) {
+   assert(!q->running);
+   if (q->stmt == NULL) {
+      int n = sqlite3_prepare_v2(q->db, q->sql, -1, &q->stmt, NULL);
       if (n != SQLITE_OK) {
          q->stmt = NULL;
          log_error(q->log, "Error preparing statement: %s -- %s", q->sql, sqlite3_errstr(n));
-      } else {
-         q->running = 0;
       }
    }
+}
+
+static void requery(database_query_sqlite3_t *q) {
+   if (q->stmt != NULL) {
+      int n = sqlite3_finalize(q->stmt);
+      if (n != SQLITE_OK) {
+         log_warning(q->log, "Error in finalize: %s", sqlite3_errstr(n));
+      }
+   }
+   q->stmt = NULL;
+   q->running = 0;
 }
 
 static int fetch(database_resultset_sqlite3_t *rs) {
@@ -133,6 +140,7 @@ static circus_database_resultset_t database_resultset_sqlite3_fn = {
 
 static int database_query_set_int_sqlite3(database_query_sqlite3_t *this, int index, int64_t value) {
    assert(!this->running);
+   ensure_stmt(this);
    assert(index >= 0 && index < sqlite3_bind_parameter_count(this->stmt));
    int n = sqlite3_bind_int64(this->stmt, index + 1, (sqlite3_int64)value);
    if (n != SQLITE_OK) {
@@ -144,6 +152,7 @@ static int database_query_set_int_sqlite3(database_query_sqlite3_t *this, int in
 
 static int database_query_set_string_sqlite3(database_query_sqlite3_t *this, int index, const char *value) {
    assert(!this->running);
+   ensure_stmt(this);
    assert(index >= 0 && index < sqlite3_bind_parameter_count(this->stmt));
    int n = sqlite3_bind_text(this->stmt, index + 1, value, -1, SQLITE_TRANSIENT);
    if (n != SQLITE_OK) {
@@ -155,6 +164,7 @@ static int database_query_set_string_sqlite3(database_query_sqlite3_t *this, int
 
 static database_resultset_sqlite3_t *database_query_run_sqlite3(database_query_sqlite3_t *this) {
    assert(!this->running);
+   ensure_stmt(this);
    database_resultset_sqlite3_t *result = this->memory.malloc(sizeof(database_resultset_sqlite3_t));
    assert(result != NULL);
 
@@ -173,9 +183,10 @@ static database_resultset_sqlite3_t *database_query_run_sqlite3(database_query_s
 }
 
 static void database_query_free_sqlite3(database_query_sqlite3_t *this) {
-   int n = sqlite3_finalize(this->stmt);
+   requery(this);
+   int n = sqlite3_db_cacheflush(this->db);
    if (n != SQLITE_OK) {
-      log_warning(this->log, "Error in finalize: %s", sqlite3_errstr(n));
+      log_error(this->log, "Error flushing: %s -- %s", this->sql, sqlite3_errstr(n));
    }
    this->memory.free(this->sql);
    this->memory.free(this);
@@ -190,21 +201,15 @@ static circus_database_query_t database_query_sqlite3_fn = {
 
 static database_query_sqlite3_t *database_query_sqlite3(database_sqlite3_t *this, const char *sql) {
    database_query_sqlite3_t *result = NULL;
-   sqlite3_stmt *stmt;
-   int n = sqlite3_prepare_v2(this->db, sql, -1, &stmt, NULL);
-   if (n != SQLITE_OK) {
-      log_error(this->log, "Error preparing statement: %s -- %s", sql, sqlite3_errstr(n));
-   } else {
-      result = this->memory.malloc(sizeof(database_query_sqlite3_t));
-      assert(result != NULL);
-      result->fn = database_query_sqlite3_fn;
-      result->memory = this->memory;
-      result->log = this->log;
-      result->db = this->db;
-      result->sql = szprintf(this->memory, NULL, "%s", sql);
-      result->stmt = stmt;
-      result->running = 0;
-   }
+   result = this->memory.malloc(sizeof(database_query_sqlite3_t));
+   assert(result != NULL);
+   result->fn = database_query_sqlite3_fn;
+   result->memory = this->memory;
+   result->log = this->log;
+   result->db = this->db;
+   result->sql = szprintf(this->memory, NULL, "%s", sql);
+   result->stmt = NULL;
+   result->running = 0;
    return result;
 }
 

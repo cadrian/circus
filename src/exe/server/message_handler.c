@@ -330,7 +330,7 @@ static uint64_t absolute_validity(uint64_t validity_d) {
 static char *strvalidity(cad_memory_t memory, const char *validity_format, uint64_t valid) {
    struct tm tm = { 0, };
    time_t v = (time_t)valid;
-   localtime_r(&v, &tm);
+   gmtime_r(&v, &tm);
    size_t n = 64;
    char *result = memory.malloc(n);
    int again = 1;

@@ -39,7 +39,7 @@ static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG", "PII"};
 static int format_log(char *buf, const int buflen, const char *format, const struct timeval *tv, const char *tag, const char *module, const char *message) {
    int result = 0;
    int state = 0;
-   struct tm *tm = localtime(&(tv->tv_sec));
+   struct tm *tm = gmtime(&(tv->tv_sec));
    const char *f;
    for (f = format; *f; f++) {
       switch(state) {

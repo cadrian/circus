@@ -48,10 +48,6 @@ static int wait_for_processes(void) {
    int count = 0;
    while (count < 2) {
       int p = poll(process_info.poll, 2, 30000);
-      fprintf(stderr, "**** poll status=%d | stopped: %d | %s: %s | %s: %s\n",
-              p, count,
-              process_info.name[0], process_info.running[0] ? "running" : "stopped",
-              process_info.name[1], process_info.running[1] ? "running" : "stopped");
       if (p == 0) {
          return EXIT_TEST_FAILED;
       }
@@ -243,8 +239,8 @@ static void start(char *name, int process_info_index, int (*fn)(void)) {
       run(fn);
    }
    close(process_pipe[1]);
-   process_info.running[process_info_index] = 1;
    process_info.poll[process_info_index].fd = process_pipe[0];
+   process_info.running[process_info_index] = 1;
 }
 
 static int check_processes(int res) {

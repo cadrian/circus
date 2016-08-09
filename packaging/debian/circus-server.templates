@@ -7,6 +7,7 @@ _Description: Administrator user name:
 
 Template: circus/server/admin/password
 Type: password
+Default: password
 _Description: Administrator password:
   The password of the administrator that is automatically
   created at the package installation.

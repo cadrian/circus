@@ -46,7 +46,8 @@ EOF
         esac
 
         if [ -f ${exe%.exe}.sh ]; then
-            exec ${exe%.exe}.sh $exe
+            chmod u+x ${exe%.exe}.sh
+            exec ./${exe%.exe}.sh $exe
         else
             # DETAILED VALGRIND REPORTS:
             #exec valgrind --leak-check=full --trace-children=yes --read-var-info=yes --fair-sched=no --track-origins=yes --malloc-fill=0A --free-fill=DE \
@@ -65,7 +66,8 @@ EOF
         exit 1
     }
 elif [ -f ${exe%.exe}.sh ]; then
-    ${exe%.exe}.sh >$lognew 2>$logerr || {
+    chmod u+x ${exe%.exe}.sh
+    ./${exe%.exe}.sh >$lognew 2>$logerr || {
         echo "**** Exited with status $?" >>$lognew
         cat $logerr >&2
         exit 1

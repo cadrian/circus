@@ -82,7 +82,7 @@ static mem *circus_memalloc(size_t size) {
          fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
          circus_memfree(result);
          result = NULL;
-      } else {
+      } else if (size > 0) {
          memset(&(result->data), 0, size);
       }
    }

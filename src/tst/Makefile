@@ -71,10 +71,10 @@ clean:
 
 %.exe: %.o $(U_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt -lcallback \
-		$(LDFLAGS_DBG) \
 		-o $@ $*.o $(U_OBJ) $(ROOTSRC)/exe/circus.o \
-		$(shell $(ROOTSRC)/dep.sh $(ROOTSRC) $*.o $(U_OBJ))
+		$(shell $(ROOTSRC)/dep.sh $(ROOTSRC) $*.o $(U_OBJ)) \
+		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt -lcallback \
+		$(LDFLAGS_DBG)
 
 %.run: %.exe
 	./run_test.sh $*.exe $*.run || { rm -f $*.run; false; }

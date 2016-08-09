@@ -72,4 +72,5 @@ EOF
 
 echo Building
 cd $TARGET
+make clean
 debuild -us -uc -nc -F

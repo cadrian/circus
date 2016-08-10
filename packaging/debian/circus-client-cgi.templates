@@ -6,3 +6,19 @@ _Description: Web path of Circus:
   .
   Note: the CGI script is circus.cgi; static resources
   are configured to be served via the static/ subpath.
+
+Template: circus/client-cgi/web/server/name
+Type: string
+_Description: Server name of Circus:
+  The server name is the name of the web server that manages Circus.
+  .
+  Currently only for nginx.
+
+Template: circus/client-cgi/web/server/port
+Type: string
+Default: 443
+_Description: Server port of Circus:
+  The server port is the port the web server listens to. It is expected
+  to be an SSL port; defaults to 443.
+  .
+  Currently only for nginx.

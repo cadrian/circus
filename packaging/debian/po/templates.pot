@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: circus\n"
 "Report-Msgid-Bugs-To: circus@packages.debian.org\n"
-"POT-Creation-Date: 2016-08-08 11:11+0200\n"
+"POT-Creation-Date: 2016-08-10 09:35+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -62,4 +62,35 @@ msgid ""
 " .\n"
 " Note: the CGI script is circus.cgi; static resources\n"
 " are configured to be served via the static/ subpath."
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../circus-client-cgi.templates:2001
+msgid "Server name of Circus:"
+msgstr ""
+
+#. Type: string
+#. Description
+#: ../circus-client-cgi.templates:2001
+msgid ""
+" The server name is the name of the web server that manages Circus.\n"
+" .\n"
+" Currently only for nginx."
+msgstr ""
+
+#. Type: integer
+#. Description
+#: ../circus-client-cgi.templates:3001
+msgid "Server port of Circus:"
+msgstr ""
+
+#. Type: integer
+#. Description
+#: ../circus-client-cgi.templates:3001
+msgid ""
+" The server port is the port the web server listens to. It is expected\n"
+" to be an SSL port; defaults to 443.\n"
+" .\n"
+" Currently only for nginx."
 msgstr ""

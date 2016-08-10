@@ -34,15 +34,20 @@ EOF
         fi
 
         if dpkg -s nginx-common fcgiwrap >/dev/null 2>&1; then
+            db_get circus/client-cgi/web/server/name
+            server="$RET"
+            db_get circus/client-cgi/web/server/port
+            port="$RET"
+
             cat > /etc/nginx/sites-available/circus <<EOF
 server {
-        listen 443 ssl;
-        listen [::]:443 ssl ipv6only=on;
-        server_name home.cadrian.net;
+        listen $port ssl;
+        listen [::]:$port ssl ipv6only=on;
+        server_name $server;
         server_tokens off;
 
         ssl on;
-        ssl_certificate /etc/nginx/ssl/ssl-unified.crt;
+        ssl_certificate /etc/nginx/ssl/ssl.crt;
         ssl_certificate_key /etc/nginx/ssl/ssl.key;
         ssl_dhparam /etc/nginx/ssl/dhparam.pem;
 

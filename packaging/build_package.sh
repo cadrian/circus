@@ -23,7 +23,7 @@ echo Copying skeleton
 cp -a $ROOTDIR/packaging/debian/* $tgt/
 
 echo Copying source
-cp -a $ROOTDIR/{src,static,templates,packaging/conf} $TARGET/
+cp -a $ROOTDIR/{src,packaging/conf} $TARGET/
 
 echo Computing version
 sed "s/#DATE#/${date}/;s/#SNAPSHOT#/${snap}/" -i $tgt/changelog
@@ -65,8 +65,8 @@ install: compile
 \tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/xdg/circus
 \tcp -a src/exe/main/server.exe \$(DESTDIR)/usr/lib/circus/
 \tcp -a src/exe/main/client_cgi.exe \$(DESTDIR)/usr/lib/circus/
-\tcp -a static \$(DESTDIR)/etc/xdg/circus/
-\tcp -a templates \$(DESTDIR)/etc/xdg/circus/
+\tcp -a src/web/static \$(DESTDIR)/etc/xdg/circus/
+\tcp -a src/web/templates \$(DESTDIR)/etc/xdg/circus/
 \tcp -a conf/* \$(DESTDIR)/etc/xdg/circus/
 EOF
 

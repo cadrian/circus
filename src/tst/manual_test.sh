@@ -34,8 +34,8 @@ echo "Setting up..."
 exe=".rnd.exe"
 . $TSTDIR/client/_test_client_cgi_setup.sh
 
-cp -a ../../templates/* $CONF/templates/
-cp -a ../../static/* $CONF/static/
+cp -a ../web/templates/* $CONF/templates/
+cp -a ../web/static/* $CONF/static/
 
 teardown() {
     kill $lighttpd_pid 2>/dev/null

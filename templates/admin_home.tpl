@@ -45,6 +45,7 @@
           <tr>
             <td colspan="2">
               <button type="button" onclick="submit_action('add_user');">Create user</button>
+              |
               <button type="button" onclick="submit_action('logout');">Disconnect</button>
             </td>
           </tr>

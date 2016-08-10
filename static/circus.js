@@ -27,15 +27,45 @@ function tabulate(evt, tab) {
     target.className += " currenttab";
 }
 
+function prepare_clipboard() {
+    var xbd = new Clipboard('.clip');
+
+    xbd.on('success', function(e) {
+        console.info('Action:', e.action);
+        console.info('Text:', e.text);
+        console.info('Trigger:', e.trigger);
+
+        e.clearSelection();
+
+        document.getElementById("clip_message").innerHTML = "Copied.";
+    });
+
+    xbd.on('error', function(e) {
+        console.error('Action:', e.action);
+        console.error('Trigger:', e.trigger);
+
+        document.getElementById("clip_message").innerHTML = "<b>COPY FAILED!</b>";
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function(event) {
     var i, x;
 
     x = document.getElementsByClassName("tab");
-    x[0].style.display = "block";
-    for (i = 1; i < x.length; i++) {
-        x[i].style.display = "none";
+    if (x.length > 0) {
+        x[0].style.display = "block";
+        for (i = 1; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
     }
 
     x = document.getElementsByClassName("tablink");
-    x[0].className += " currenttab";
+    if (x.length > 0) {
+        x[0].className += " currenttab";
+    }
+
+    x = document.getElementsByClassName("clip");
+    if (x.length > 0) {
+        prepare_clipboard();
+    }
 });

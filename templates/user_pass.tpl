@@ -1,6 +1,8 @@
 <html>
   <head>
     <title>Circus</title>
+    <script src="{{config:static_path}}/clipboard.min.js"></script>
+    <script type="text/javascript" src="{{config:static_path}}/circus.js"></script>
     <link href="{{config:static_path}}/circus.css" rel="stylesheet" type="text/css">
   </head>
   <body>
@@ -27,8 +29,8 @@
               <b>Pass:</b>
             </td>
             <td>
-              {{pass}}
-            </td> <!-- TODO TO HIDE!!! -->
+              <div id="clip_message"><button class="clip" data-clipboard-text="{{pass}}" href="#" onclick="false;">Copy to clipboard</button></div>
+            </td>
           </tr>
           <tr>
             <td colspan="2">

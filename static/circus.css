@@ -55,6 +55,33 @@ h2 {
     background-color: #FBE4F2;
 }
 
+/**************** Button links ******************/
+
+/* http://stackoverflow.com/a/12642009/47461 */
+input[type="button"], input[type="button"]:focus, input[type="button"]:active, input[type="submit"], input[type="submit"]:focus, input[type="submit"]:active, button, button:focus, button:active {
+    /* Remove all decorations to look like normal text */
+    background: none;
+    border: none;
+    display: inline;
+    font: inherit;
+    margin: 0;
+    padding: 0;
+    outline: none;
+    outline-offset: 0;
+    box-shadow: none;
+    /* Additional styles to look like a link */
+    color: #CC0000;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Remove extra space inside buttons in Firefox */
+input[type="button"]::-moz-focus-inner, input[type="submit"]::-moz-focus-inner, button::-moz-focus-inner {
+    border: none;
+    padding: 0;
+}
+
 /**************** Pseudo classes ****************/
 
 a:link {

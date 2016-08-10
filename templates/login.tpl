@@ -30,7 +30,8 @@
           </tr>
           <tr>
             <td colspan="2">
-              <input type="submit" name="action" value="ok"/>
+              <input type="hidden" name="action" value="ok"/>
+              <input type="submit" name="submit" value="Get in"/>
             </td>
           </tr>
         </table>

@@ -30,7 +30,7 @@ U_SRC=$(shell find . -name _test\*.c)
 U_OBJ=$(U_SRC:.c=.o)
 U_DEP=$(U_OBJ:.o=.d)
 
-LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now
+LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now -Wl,--wrap=init
 
 # ----------------------------------------------------------------
 
@@ -62,6 +62,7 @@ clean:
 %.o: %.c
 	$(MAKE) -C ../exe test
 	gcc -std=gnu11 -Wall -Wextra -Werror -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers \
+		-fdata-sections -ffunction-sections \
 		-fsanitize=undefined -I$(ROOTSRC)/inc -c $(CFLAGS) $*.c -o $*.o
 	gcc -MM -fsanitize=undefined -I$(ROOTSRC)/inc -c $(CFLAGS) $*.c > $*.d
 	@mv -f $*.d $*.d.tmp
@@ -71,7 +72,7 @@ clean:
 
 %.exe: %.o $(U_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		-o $@ $*.o $(U_OBJ) $(ROOTSRC)/exe/circus.o \
+		-Wl,--gc-sections -o $@ $*.o $(U_OBJ) $(ROOTSRC)/exe/circus.o \
 		$(shell $(ROOTSRC)/dep.sh $(ROOTSRC) $*.o $(U_OBJ)) \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt -lcallback \
 		$(LDFLAGS_DBG)

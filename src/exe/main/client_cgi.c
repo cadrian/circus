@@ -31,6 +31,8 @@
 #include "../client/message_handler.h"
 #include "../client/cgi_handler.h"
 
+#include "../common/init.h"
+
 static circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {
@@ -138,6 +140,8 @@ static void run(circus_config_t *config) {
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {
+   init();
+
    circus_config_t *config = circus_config_read(stdlib_memory, "cgi.conf");
    int status = 0;
 

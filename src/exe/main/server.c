@@ -30,6 +30,7 @@
 #include <circus_vault.h>
 
 #include "../server/message_handler.h"
+#include "../common/init.h"
 
 static circus_log_t *LOG;
 
@@ -108,6 +109,8 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {
+   init();
+
    circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
    int status = 0;
 

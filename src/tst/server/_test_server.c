@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <cad_hash.h>
 #include <callback.h>
 #include <circus_message_impl.h>
 #include <circus_xdg.h>
@@ -266,7 +267,13 @@ static int check_processes(int res) {
    return res;
 }
 
+static int no_salt(void) {
+   return 0;
+}
+
 int test(int argc, char **argv, int (*client_fn)(void)) {
+   set_hash_salt(no_salt);
+
    if (argc > 1) {
       /* --server or --client are useful to debug independant pieces of a server test */
       if (!strcmp("--server", argv[1])) {

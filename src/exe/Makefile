@@ -31,7 +31,7 @@ C_OBJ=$(C_SRC:.c=.o)
 DEP=$(OBJ:.o=.d)
 
 LDFLAGS ?=
-LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now
+LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl,--wrap=gcry_create_nonce -Wl,--wrap=now -Wl,--wrap=init
 LDFLAGS_RND := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize_rnd -Wl,--wrap=gcry_create_nonce_rnd
 
 CFLAGS ?= -g -Os
@@ -59,6 +59,7 @@ clean:
 
 %.o: %.c protocol/messages client/web
 	gcc -std=gnu11 -Wall -Wextra -Werror -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers \
+		-fdata-sections -ffunction-sections \
 		-fsanitize=undefined -I$(ROOTSRC)/inc -c $(CFLAGS) $*.c -o $*.o
 	gcc -MM -fsanitize=undefined -I$(ROOTSRC)/inc -c $(CFLAGS) $*.c > $*.d
 	@mv -f $*.d $*.d.tmp
@@ -74,30 +75,30 @@ client/web: client/web.sh client/web.json protocol/messages.json
 
 main/server.exe: protocol/messages main/server.o $(S_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS) -o $@ main/server.o $(S_OBJ) \
+		$(CFLAGS) $(LDFLAGS) -Wl,--gc-sections -o $@ main/server.o $(S_OBJ) \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt
 
 main/client_cgi.exe: protocol/messages client/web main/client_cgi.o $(C_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS) -o $@ main/client_cgi.o $(C_OBJ) \
+		$(CFLAGS) $(LDFLAGS) -Wl,--gc-sections -o $@ main/client_cgi.o $(C_OBJ) \
 		-lcad -lyacjp -luv -lzmq
 
 main/server.dbg.exe: main/server.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS_DBG) $(LDFLAGS) -o $@ main/server.o $(S_OBJ) \
+		$(CFLAGS) $(LDFLAGS_DBG) $(LDFLAGS) -Wl,--gc-sections -o $@ main/server.o $(S_OBJ) \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt
 
 main/client_cgi.dbg.exe: main/client_cgi.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS_DBG) $(LDFLAGS) -o $@ main/client_cgi.o $(C_OBJ) \
+		$(CFLAGS) $(LDFLAGS_DBG) $(LDFLAGS) -Wl,--gc-sections -o $@ main/client_cgi.o $(C_OBJ) \
 		-lcad -lyacjp -luv -lzmq
 
 main/server.rnd.exe: main/server.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS_RND) $(LDFLAGS) -o $@ main/server.o $(S_OBJ) \
+		$(CFLAGS) $(LDFLAGS_RND) $(LDFLAGS) -Wl,--gc-sections -o $@ main/server.o $(S_OBJ) \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt
 
 main/client_cgi.rnd.exe: main/client_cgi.exe
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers -fsanitize=undefined \
-		$(CFLAGS) $(LDFLAGS_RND) $(LDFLAGS) -o $@ main/client_cgi.o $(C_OBJ) \
+		$(CFLAGS) $(LDFLAGS_RND) $(LDFLAGS) -Wl,--gc-sections -o $@ main/client_cgi.o $(C_OBJ) \
 		-lcad -lyacjp -luv -lzmq

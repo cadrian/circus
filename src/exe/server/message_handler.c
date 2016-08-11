@@ -714,7 +714,7 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    const char *tmppwd_validity = config->get(config, "user", "temporary_password_validity");
    if (tmppwd_validity != NULL) {
       errno = 0;
-      unsigned long int tpv = strtoul(tmppwd_validity, NULL, 10);
+      uint64_t tpv = (uint64_t)strtoul(tmppwd_validity, NULL, 10);
       if ((tpv != ULONG_MAX || errno != ERANGE) && errno != EINVAL && tpv <= UINT64_MAX) {
          result->tmppwd_validity = (uint64_t)tpv;
       } else {

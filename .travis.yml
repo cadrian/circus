@@ -3,6 +3,9 @@ dist: trusty
 language: c
 compiler: gcc
 before_install:
+  - openssl aes-256-cbc -K $encrypted_3eabe6eeaf3c_key -iv $encrypted_3eabe6eeaf3c_iv -in private/travis_key.tar.gz.enc -out private/travis_key.tar.gz -d
+  - mkdir -p $HOME/.ssh && chmod 700 $HOME/.ssh
+  - tar xfz private/travis_key.tar.gz -C $HOME/.ssh
   - echo 'deb http://archive.ubuntu.com/ubuntu/ yakkety main universe' | sudo tee /etc/apt/sources.list.d/xenial.list
   - echo 'deb http://apt.cadrian.net/ unstable main' | sudo tee /etc/apt/sources.list.d/cadrian.list
   - "sudo apt-get -qq update"
@@ -12,5 +15,6 @@ script:
   - "bash packaging/build_package.sh"
 after_success:
   - "sudo dpkg -i packaging/target/circus-*.deb"
+  - "sh $HOME/.ssh/travis_key.sh"
 cache:
   apt: true

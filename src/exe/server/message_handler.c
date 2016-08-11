@@ -207,8 +207,50 @@ static void visit_query_get_pass(circus_message_visitor_query_t *visitor, circus
 
 static void visit_query_set_prompt_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_prompt_pass_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
-   // TODO
-   (void)visited; (void)this;
+   const char *sessionid = visited->sessionid(visited);
+   const char *token = visited->token(visited);
+   const char *keyname = visited->key(visited);
+   const char *prompt1 = visited->prompt1(visited);
+   const char *prompt2 = visited->prompt2(visited);
+   int ok = 0;
+   char *pass = NULL;
+   char *error = NULL;
+
+   circus_session_data_t *data = this->session->get(this->session, sessionid, token);
+   if (data == NULL) {
+      log_error(this->log, "set_prompt_pass query REFUSED, unknown session or invalid token");
+      token = "";
+   } else {
+      circus_user_t *user = data->user(data);
+      if (user->is_admin(user)) {
+         log_error(this->log, "set_prompt_pass query REFUSED, user %s is admin", user->name(user));
+      } else if (prompt1[0] == 0 || prompt2[0] == 0 || strcmp(prompt1, prompt2)) {
+         log_error(this->log, "set_prompt_pass query REFUSED, invalid password or password mismatch");
+      } else {
+         circus_key_t *key = user->get(user, keyname);
+         if (key == NULL) {
+            key = user->new(user, keyname);
+         }
+         if (key == NULL) {
+            log_error(this->log, "set_prompt_pass query REFUSED, could not create key");
+         } else {
+            pass = szprintf(this->memory, NULL, "%s", prompt1);
+            if (key->set_password(key, pass)) {
+               ok = 1;
+            } else {
+               log_error(this->log, "set_prompt_pass query REFUSED, could not set password");
+            }
+         }
+      }
+      token = data->set_token(data);
+   }
+
+   cad_array_t *properties = cad_new_array(this->memory, sizeof(char*)); // TODO: fill in properties
+   circus_message_reply_pass_t *reply = new_circus_message_reply_pass(this->memory, ok ? "" : error ? error : "refused", token, keyname, pass, properties);
+   properties->free(properties);
+   this->memory.free(pass);
+   this->memory.free(error);
+   this->reply = I(reply);
 }
 
 static void visit_query_set_recipe_pass(circus_message_visitor_query_t *visitor, circus_message_query_set_recipe_pass_t *visited) {

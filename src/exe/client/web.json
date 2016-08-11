@@ -134,7 +134,7 @@
             },
             "add_prompt": {
                 "query": "set_prompt_pass",
-                "params": [ "token", "key", "pass1", "pass2" ],
+                "params": [ "token", "key", "prompt1", "prompt2" ],
                 "reply": "pass",
                 "extra": [ "token", "key", "pass", "properties" ],
                 "redirect": "user_pass?token={{token}}&key={{key}}",

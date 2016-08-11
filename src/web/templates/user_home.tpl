@@ -73,7 +73,7 @@
                 <b>Password:</b>
               </td>
               <td>
-                <input type="password" name="pass1"/>
+                <input type="password" name="prompt1"/>
               </td>
             </tr>
             <tr>
@@ -81,7 +81,7 @@
                 <b>Again:</b>
               </td>
               <td>
-                <input type="password" name="pass2"/>
+                <input type="password" name="prompt2"/>
               </td>
             </tr>
             <tr>

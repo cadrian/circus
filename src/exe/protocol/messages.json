@@ -76,8 +76,8 @@
             "sessionid": "STRING",
             "token": "STRING",
             "key": "STRING",
-            "pass1": "STRING",
-            "pass2": "STRING"
+            "prompt1": "STRING",
+            "prompt2": "STRING"
         },
         "reply": {
             "token": "STRING",

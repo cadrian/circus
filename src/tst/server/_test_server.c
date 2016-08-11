@@ -167,7 +167,7 @@ void database(const char *query, database_fn fn) {
    stdlib_memory.free(path);
 }
 
-static int db_count_(int *counter, sqlite3_stmt *UNUSED(stmt)) {
+static int db_count_(int *counter, va_alist UNUSED(args)) {
    *counter = *counter + 1;
    return 0;
 }

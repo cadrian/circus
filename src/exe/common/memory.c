@@ -60,15 +60,18 @@ __attribute__ (( noinline )) size_t max_bzero(size_t count) {
 }
 
 typedef struct {
-   size_t size;
+   union {
+      size_t ize;
+      void *alignment;
+   } s;
    char data[0];
 } mem;
 
 static void circus_memfree(mem *p) {
-   assert(p->size > 0);
-   max_bzero(p->size);
-   force_bzero(p->data, p->size);
-   munlock(p, sizeof(mem) + p->size);
+   assert(p->s.ize > 0);
+   max_bzero(p->s.ize);
+   force_bzero(p->data, p->s.ize);
+   munlock(p, sizeof(mem) + p->s.ize);
    free(p);
 }
 
@@ -76,7 +79,7 @@ static mem *circus_memalloc(size_t size) {
    size_t s = sizeof(mem) + size;
    mem *result = malloc(s);
    if (result != NULL) {
-      result->size = size;
+      result->s.ize = size;
       int n = mlock(result, s);
       if (n != 0) {
          fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
@@ -102,7 +105,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       return circus_malloc(size);
    }
    mem *p = container_of(ptr, mem, data);
-   if (size <= p->size) {
+   if (size <= p->s.ize) {
       return ptr;
    }
    mem *result = circus_memalloc(size);
@@ -110,7 +113,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       circus_memfree(p);
       return NULL;
    }
-   memcpy(&(result->data), &(p->data), p->size);
+   memcpy(&(result->data), &(p->data), p->s.ize);
    circus_memfree(p);
    return &(result->data);
 }

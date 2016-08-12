@@ -2,15 +2,25 @@ Template: circus/server/admin/username
 Type: string
 Default: admin
 _Description: Administrator user name:
-  The user name of the administrator that is automatically
-  created at the package installation.
+ The user name of the administrator that is automatically
+ created at the package installation.
 
 Template: circus/server/admin/password
 Type: password
 Default: password
 _Description: Administrator password:
-  The password of the administrator that is automatically
-  created at the package installation.
-  .
-  The password is not kept in the debian configuration
-  database.
+ The password of the administrator that is automatically
+ created at the package installation.
+ .
+ The password is not kept in the debian configuration
+ database.
+
+Template: circus/server/admin/password_repeat
+Type: password
+Default: password
+_Description: Administrator password (repeat):
+ The password of the administrator that is automatically
+ created at the package installation.
+ .
+ The password is not kept in the debian configuration
+ database.

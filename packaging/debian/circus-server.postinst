@@ -26,9 +26,17 @@ case "$1" in
             username="$RET"
             db_get circus/server/admin/password
             password="$RET"
+            db_get circus/server/admin/password_repeat
+            if [ "$RET" != "$password" ]; then
+                echo "passwords don't match. Refusing to install." >&2
+                db_unregister circus/server/admin/password || true
+                db_unregister circus/server/admin/password_repeat || true
+                exit 1
+            fi
             /usr/lib/circus/server.exe --install "$username" "$password"
         fi
         db_unregister circus/server/admin/password || true
+        db_unregister circus/server/admin/password_repeat || true
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

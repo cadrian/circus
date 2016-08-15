@@ -162,7 +162,13 @@ void send_message(circus_message_t *query, circus_message_t **reply) {
 }
 
 void database(const char *query, database_fn fn) {
-   char *path = szprintf(stdlib_memory, NULL, "%s/vault", xdg_data_home());
+   read_t read = read_xdg_file_from_dirs(stdlib_memory, "vault", xdg_data_dirs());
+   int n = fclose(read.file);
+   if (n != 0) {
+      printf("fclose %s failed: %s\n", read.path, strerror(errno));
+      exit(EXIT_BUG_ERROR);
+   }
+   char *path = read.path;
    query_database(path, query, fn);
    stdlib_memory.free(path);
 }
@@ -179,20 +185,23 @@ database_fn db_count(int *counter) {
 }
 
 static void run_server_install(void) {
-   const char *h = xdg_data_home();
-   if (h == NULL) {
-      printf("xdg_data_home is NULL\n");
-      exit(EXIT_BUG_ERROR);
-   }
-   char *vault_path = szprintf(stdlib_memory, NULL, "%s/vault", h);
+   read_t read = read_xdg_file_from_dirs(stdlib_memory, "vault", xdg_data_dirs());
+   char *vault_path = read.path;
    if (vault_path == NULL) {
       printf("vault_path is NULL\n");
       exit(EXIT_BUG_ERROR);
    }
-   int n = unlink(vault_path);
-   if (n != 0 && errno != ENOENT) {
-      printf("unlink %s failed: %s\n", vault_path, strerror(errno));
-      exit(EXIT_BUG_ERROR);
+   if (read.file != NULL) {
+      int n = fclose(read.file);
+      if (n != 0) {
+         printf("fclose %s failed: %s\n", vault_path, strerror(errno));
+         exit(EXIT_BUG_ERROR);
+      }
+      n = unlink(vault_path);
+      if (n != 0) {
+         printf("unlink %s failed: %s\n", vault_path, strerror(errno));
+         exit(EXIT_BUG_ERROR);
+      }
    }
    stdlib_memory.free(vault_path);
    pid_t pid_install = fork();

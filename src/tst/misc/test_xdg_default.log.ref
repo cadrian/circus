@@ -1,6 +1,3 @@
-data_dirs = /home/test/.local/share/circus:/usr/local/share/:/usr/share/
-config_dirs = /home/test/.config/circus:/usr/local/etc:/etc/xdg
-cache_home = /home/test/.cache/circus
+data_dirs = /home/test/.local/share/circus:/var/run/:/usr/share/:/usr/local/share/
+config_dirs = /home/test/.config/circus:/etc/xdg:/usr/local/etc
 runtime_dir = /tmp/circus-test
-data_home = /home/test/.local/share/circus
-config_home = /home/test/.config/circus

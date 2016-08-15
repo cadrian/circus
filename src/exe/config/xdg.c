@@ -17,105 +17,132 @@
 */
 
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <circus_xdg.h>
 
+static const char *xdg_data_home(void) {
+   static const char *result = NULL;
+   if (result == NULL) {
+      char *xdg = getenv("XDG_DATA_HOME");
+      int m = 0;
+      if (xdg == NULL || xdg[0] == 0) {
+         char *home = getenv("HOME");
+         if (home != NULL) {
+            xdg = szprintf(stdlib_memory, NULL, "%s/.local/share", home);
+            assert(xdg != NULL);
+            m = 1;
+         }
+      }
+      if (xdg != NULL) {
+         result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
+         if (m) {
+            free(xdg);
+         }
+      }
+   }
+   return result;
+}
+
+static const char *xdg_config_home(void) {
+   static const char *result = NULL;
+   if (result == NULL) {
+      char *xdg = getenv("XDG_CONFIG_HOME");
+      int m = 0;
+      if (xdg == NULL || xdg[0] == 0) {
+         char *home = getenv("HOME");
+         if (home != NULL) {
+            xdg = szprintf(stdlib_memory, NULL, "%s/.config", home);
+            m = 1;
+         }
+      }
+      if (xdg != NULL) {
+         result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
+         if (m) {
+            free(xdg);
+         }
+      }
+   }
+   return result;
+}
+
 const char *xdg_data_dirs(void) {
    static const char *result = NULL;
-   if (!result) {
+   if (result == NULL) {
       char *xdg = getenv("XDG_DATA_DIRS");
-      if (!xdg || !strlen(xdg)) {
-         xdg = "/usr/local/share/:/usr/share/";
+      if (xdg == NULL || xdg[0] == 0) {
+         xdg = "/var/run/:/usr/share/:/usr/local/share/";
       }
-      result = szprintf(stdlib_memory, NULL, "%s:%s", xdg_data_home(), xdg);
+      const char *xdh = xdg_data_home();
+      if (xdh == NULL) {
+         result = xdg;
+      } else {
+         result = szprintf(stdlib_memory, NULL, "%s:%s", xdh, xdg);
+      }
    }
    return result;
 }
 
 const char *xdg_config_dirs(void) {
    static const char *result = NULL;
-   if (!result) {
+   if (result == NULL) {
       char *xdg = getenv("XDG_CONFIG_DIRS");
-      if (!xdg || !strlen(xdg)) {
-         xdg = "/usr/local/etc:/etc/xdg";
+      if (xdg == NULL || xdg[0] == 0) {
+         xdg = "/etc/xdg:/usr/local/etc";
       }
-      result = szprintf(stdlib_memory, NULL, "%s:%s", xdg_config_home(), xdg);
-   }
-   return result;
-}
-
-const char *xdg_cache_home(void) {
-   static const char *result = NULL;
-   if (!result) {
-      char *xdg = getenv("XDG_CACHE_HOME");
-      if (!xdg || !strlen(xdg)) {
-         char *home = getenv("HOME");
-         assert(home != NULL);
-         xdg = szprintf(stdlib_memory, NULL, "%s/.cache/circus", home);
-         assert(xdg != NULL);
+      const char *xch = xdg_config_home();
+      if (xch == NULL) {
+         result = xdg;
+      } else {
+         result = szprintf(stdlib_memory, NULL, "%s:%s", xch, xdg);
       }
-      result = (const char *)xdg;
    }
    return result;
 }
 
 const char *xdg_runtime_dir(void) {
    static const char *result = NULL;
-   if (!result) {
+   if (result == NULL) {
       char *xdg = getenv("XDG_RUNTIME_DIR");
-      if (!xdg || !strlen(xdg)) {
+      if (xdg == NULL || xdg[0] == 0) {
          char *tmp = getenv("TMPDIR");
-         if (tmp) {
+         if (tmp != NULL) {
             xdg = szprintf(stdlib_memory, NULL, "%s/circus", tmp);
-            assert(xdg != NULL);
          } else {
             char *user = getenv("USER");
-            assert(user != NULL);
-            xdg = szprintf(stdlib_memory, NULL, "/tmp/circus-%s", user);
-            assert(xdg != NULL);
+            if (user != NULL) {
+               xdg = szprintf(stdlib_memory, NULL, "/tmp/circus-%s", user);
+            } else {
+               xdg = szprintf(stdlib_memory, NULL, "/tmp/circus-%d-runtime", getpid());
+            }
          }
       }
+      assert(xdg != NULL);
       result = (const char *)xdg;
    }
    return result;
 }
 
-const char *xdg_data_home(void) {
-   static const char *result = NULL;
-   if (!result) {
-      char *xdg = getenv("XDG_DATA_HOME");
-      int m = 0;
-      if (!xdg || !strlen(xdg)) {
-         char *home = getenv("HOME");
-         assert(home != NULL);
-         xdg = szprintf(stdlib_memory, NULL, "%s/.local/share", home);
-         assert(xdg != NULL);
-         m = 1;
+read_t read_xdg_file_from_dirs(cad_memory_t memory, const char *filename, const char *dirs) {
+   char *dirs0 = szprintf(memory, NULL, "%s", dirs);
+   char *cur = dirs0, *next = cur;
+   read_t result = { NULL, NULL, 0 };
+   while (result.file == NULL && next != NULL) {
+      memory.free(result.path);
+      cur = next;
+      next = strchr(cur, ':');
+      if (next != NULL) {
+         *next = '\0';
+         next++;
       }
-      result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
-      if (m) {
-         free(xdg);
-      }
+      result.path = szprintf(memory, NULL, "%s/%s", cur, filename);
+      result.file = fopen(result.path, "r");
    }
-   return result;
-}
-
-const char *xdg_config_home(void) {
-   static const char *result = NULL;
-   if (!result) {
-      char *xdg = getenv("XDG_CONFIG_HOME");
-      int m = 0;
-      if (!xdg || !strlen(xdg)) {
-         char *home = getenv("HOME");
-         assert(home != NULL);
-         xdg = szprintf(stdlib_memory, NULL, "%s/.config", home);
-         assert(xdg != NULL);
-         m = 1;
-      }
-      result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
-      if (m) {
-         free(xdg);
-      }
+   if (result.file == NULL) {
+      memory.free(result.path);
+      result.path = szprintf(memory, NULL, "%s/%s", dirs0, filename); // the first directory is returned as default
    }
+   memory.free(dirs0);
    return result;
 }

@@ -126,7 +126,12 @@ circus_client_cgi_handler_t *circus_cgi_handler(cad_memory_t memory, circus_log_
    const char *tp = config->get(config, "cgi", "templates_path");
    char *templates_path;
    if (tp == NULL) {
-      templates_path = szprintf(memory, NULL, "%s/templates", xdg_config_home());
+      read_t read = read_xdg_file_from_dirs(memory, "templates", xdg_config_dirs());
+      templates_path = read.path;
+      if (read.file != NULL) {
+         int n = fclose(read.file);
+         assert(n == 0);
+      }
    } else {
       templates_path = szprintf(memory, NULL, "%s", tp);
    }

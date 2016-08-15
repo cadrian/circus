@@ -23,9 +23,14 @@
 
 const char *xdg_data_dirs(void);
 const char *xdg_config_dirs(void);
-const char *xdg_cache_home(void);
 const char *xdg_runtime_dir(void);
-const char *xdg_data_home(void);
-const char *xdg_config_home(void);
+
+typedef struct {
+   FILE *file;
+   char *path;
+   int local;
+} read_t;
+
+read_t read_xdg_file_from_dirs(cad_memory_t memory, const char *filename, const char *dirs);
 
 #endif /* __CIRCUS_XDG_H */

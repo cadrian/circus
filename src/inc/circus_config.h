@@ -30,8 +30,6 @@ typedef void (*circus_config_free_fn)(circus_config_t *this);
 
 struct circus_config_s {
    circus_config_get_fn get;
-   circus_config_set_fn set;
-   circus_config_write_fn write;
    circus_config_free_fn free;
 };
 

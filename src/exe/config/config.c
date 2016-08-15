@@ -37,47 +37,6 @@ typedef struct {
    int local;
 } config_impl;
 
-typedef struct {
-   FILE *file;
-   char *path;
-   int local;
-} read_t;
-
-static read_t read_xdg_file_from_config_dirs(cad_memory_t memory, const char *filename) {
-   int n = strlen(xdg_config_dirs()) + 1;
-   char *config_dirs = memory.malloc(n);
-   char *cur = config_dirs, *next=cur;
-   read_t result = { NULL, NULL, 0 };
-   snprintf(config_dirs, n, "%s", xdg_config_dirs());
-   while (result.file == NULL && next != NULL) {
-      memory.free(result.path);
-      cur = next;
-      next = strchr(cur, ':');
-      if (next != NULL) {
-         *next = '\0';
-         next++;
-      }
-      result.path = szprintf(memory, NULL, "%s/circus/%s", cur, filename);
-      result.file = fopen(result.path, "r");
-   }
-   if (result.file == NULL) {
-      memory.free(result.path);
-   }
-   memory.free(config_dirs);
-   return result;
-}
-
-static read_t read_xdg_file_dirs(cad_memory_t memory, const char *filename) {
-   read_t result = { NULL, NULL, 1 };
-   result.path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
-   result.file = fopen(result.path, "r");
-   if (result.file == NULL) {
-      memory.free(result.path);
-      result = read_xdg_file_from_config_dirs(memory, filename);
-   }
-   return result;
-}
-
 static const char *config_get(config_impl *this, const char *section, const char *key) {
    json_string_t *entry = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
    const char *result = NULL;
@@ -96,72 +55,6 @@ static const char *config_get(config_impl *this, const char *section, const char
    return result;
 }
 
-static void config_set(config_impl *this, const char *section, const char *key, const char *value) {
-   json_string_t *string = (json_string_t*)json_lookup((json_value_t*)this->data, section, key, JSON_STOP);
-   json_object_t *section_object = (json_object_t*)json_lookup((json_value_t*)this->data, section, JSON_STOP);
-   if (string == NULL) {
-      if (section_object == NULL) {
-         section_object = json_new_object(this->memory);
-         this->data->set(this->data, section, (json_value_t*)section_object);
-      }
-   } else {
-      string->free(string);
-      assert(section_object != NULL);
-   }
-   string = json_new_string(this->memory);
-   section_object->set(section_object, key, (json_value_t*)string);
-   string->add_string(string, "%s", value);
-   this->dirty = 1;
-}
-
-static void config_backup(config_impl *this) {
-   int n = strlen(this->filename) + 2;
-   char *backup_filename = this->memory.malloc(n);
-   snprintf(backup_filename, n, "%s~", this->filename);
-   n = rename(this->filename, backup_filename);
-   if (n < 0) {
-      if (errno != ENOENT) {
-         perror("rename backup config file");
-         exit(1);
-      }
-   }
-   this->memory.free(backup_filename);
-}
-
-static void config_write(config_impl *this) {
-   FILE *file;
-   char *path;
-   cad_output_stream_t *stream;
-   json_visitor_t *writer;
-   int n;
-
-   if (this->dirty) {
-      config_backup(this);
-
-      path = szprintf(this->memory, NULL, "%s/%s", xdg_data_home(), this->filename);
-      file = fopen(path, "w");
-      if (file == NULL) {
-         fprintf(stderr, "Could not write config file: %s\n", path);
-         perror("fopen write config file");
-         exit(1);
-      }
-      stream = new_cad_output_stream_from_file(file, this->memory);
-      writer = json_write_to(stream, this->memory, json_extend_spaces);
-
-      this->data->accept(this->data, writer);
-      stream->flush(stream);
-
-      writer->free(writer);
-      stream->free(stream);
-      n = fclose(file);
-      assert(n == 0);
-      this->memory.free(path);
-
-      this->dirty = 0;
-      this->local = 1;
-   }
-}
-
 static void config_free(config_impl *this) {
    this->data->accept(this->data, json_kill());
    this->memory.free(this);
@@ -169,8 +62,6 @@ static void config_free(config_impl *this) {
 
 static circus_config_t impl_fn = {
    (circus_config_get_fn)config_get,
-   (circus_config_set_fn)config_set,
-   (circus_config_write_fn)config_write,
    (circus_config_free_fn)config_free,
 };
 
@@ -259,8 +150,9 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    result->filename = (char*)(result + 1);
    strncpy(result->filename, filename, n);
 
-   read = read_xdg_file_dirs(memory, filename);
+   read = read_xdg_file_from_dirs(memory, filename, xdg_data_dirs());
    if (read.file == NULL) {
+      memory.free(read.path);
       data = (json_value_t*)json_new_object(memory);
       result->dirty = 1;
       result->local = 0;

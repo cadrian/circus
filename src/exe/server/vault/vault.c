@@ -415,7 +415,12 @@ circus_vault_t *circus_vault(cad_memory_t memory, circus_log_t *log, circus_conf
    if (filename[0] == '/') {
       path = szprintf(memory, NULL, "%s", filename);
    } else {
-      path = szprintf(memory, NULL, "%s/%s", xdg_data_home(), filename);
+      read_t read = read_xdg_file_from_dirs(memory, filename, xdg_data_dirs());
+      path = read.path;
+      if (read.file != NULL) {
+         int n = fclose(read.file);
+         assert(n == 0);
+      }
    }
    log_info(log, "Vault path is %s", path);
    result->database = db_factory(memory, log, path);

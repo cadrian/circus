@@ -19,6 +19,9 @@ tgt=$TARGET/debian
 rm -rf $TARGET
 mkdir -p $tgt
 
+echo Updating PO
+(cd $PACKAGING; debconf-updatepo)
+
 echo Copying skeleton
 cp -a $ROOTDIR/packaging/debian/* $tgt/
 
@@ -34,11 +37,11 @@ echo Computing control dependencies
 arch=$(dpkg-architecture | awk -F= '$1 == "DEB_BUILD_ARCH" { print $2 }')
 echo Architecture: $arch
 egrep -o '%[^%]+%' $tgt/control | sed 's/%//g' | fmt -1 | while IFS=: read section dep; do
-    pkg=$(dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep*" |
-                 awk -F: '$1 == "'$section'" && $4 == "'$arch'" {printf("%s (>= %s)\n", $2, $3)}' |
+    pkg=$(dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep" |
+                 awk -F: '$1 == "'$section'" && ($4 == "'$arch'" || $4 == "all") {split($3,ver,"-");printf("%s (>= %s)\n", $2, ver[1])}' |
                  tail -n 1)
     if [ -z "$pkg" ]; then
-        echo "$dep not found!" >&2
+        echo "$dep not found in section $section!" >&2
         dpkg-query -f '${Section}:${Package}:${Version}:${Architecture}\n' -W "$dep" >&2
         exit 1
     fi
@@ -68,6 +71,7 @@ install: compile
 \tcp -a src/web/static \$(DESTDIR)/etc/xdg/circus/
 \tcp -a src/web/templates \$(DESTDIR)/etc/xdg/circus/
 \tcp -a conf/* \$(DESTDIR)/etc/xdg/circus/
+\tyui-compressor -o \$(DESTDIR)/etc/xdg/circus/static/clipboard.min.js /usr/share/javascript/clipboard/clipboard.js
 EOF
 
 echo Building

@@ -6,7 +6,9 @@ before_install:
   - openssl aes-256-cbc -K $encrypted_3eabe6eeaf3c_key -iv $encrypted_3eabe6eeaf3c_iv -in private/travis_key.tar.gz.enc -out private/travis_key.tar.gz -d
   - mkdir -p $HOME/.ssh && chmod 700 $HOME/.ssh
   - tar xfz private/travis_key.tar.gz -C $HOME/.ssh
-  - echo 'deb http://archive.ubuntu.com/ubuntu/ yakkety main universe' | sudo tee /etc/apt/sources.list.d/xenial.list
+  - echo 'deb http://archive.ubuntu.com/ubuntu/ yakkety main restricted universe multiverse' | sudo tee /etc/apt/sources.list.d/yakkety.list
+  - echo 'deb http://security.ubuntu.com/ubuntu/ yakkety-security main restricted universe multiverse' | sudo tee -a /etc/apt/sources.list.d/yakkety.list
+  - echo 'deb http://archive.ubuntu.com/ubuntu/ yakkety-backports main restricted universe multiverse' | sudo tee -a /etc/apt/sources.list.d/yakkety.list
   - echo 'deb http://apt.cadrian.net/ unstable main' | sudo tee /etc/apt/sources.list.d/cadrian.list
   - "sudo apt-get -qq update"
   - "sudo apt-get -qq -y --allow-unauthenticated install devscripts debhelper po-debconf gcc libc6 libc6-dev libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev libcad-dev libyacjp-dev libffcall1-dev"

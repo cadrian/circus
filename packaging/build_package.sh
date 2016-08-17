@@ -65,11 +65,12 @@ clean:
 
 install: compile
 \t#env | sort
-\tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/xdg/circus
+\tmkdir -p \$(DESTDIR)/usr/lib/circus \$(DESTDIR)/etc/xdg/circus/static/img \$(DESTDIR)/etc/xdg/circus/templates
 \tcp -a src/exe/main/server.exe \$(DESTDIR)/usr/lib/circus/
 \tcp -a src/exe/main/client_cgi.exe \$(DESTDIR)/usr/lib/circus/
-\tcp -a src/web/static \$(DESTDIR)/etc/xdg/circus/
-\tcp -a src/web/templates \$(DESTDIR)/etc/xdg/circus/
+\tcp -a src/web/static/circus.* \$(DESTDIR)/etc/xdg/circus/static/
+\tcp -a src/web/static/img/*.png \$(DESTDIR)/etc/xdg/circus/static/img/
+\tcp -a src/web/templates/*.tpl \$(DESTDIR)/etc/xdg/circus/templates/
 \tcp -a conf/* \$(DESTDIR)/etc/xdg/circus/
 \tyui-compressor -o \$(DESTDIR)/etc/xdg/circus/static/clipboard.min.js /usr/share/javascript/clipboard/clipboard.js
 EOF

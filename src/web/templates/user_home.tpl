@@ -9,7 +9,7 @@
       <input type="hidden" name="token" value="{{token}}"/>
       <input type="hidden" name="action"/>
       <div id="navigation">
-        <ul>
+        <ul class="menu">
           <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-list')">Your passwords</a></li>
           <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-form')">Define a password</a></li>
           <li><a class="tablink" href="#" onclick="tabulate(event, 'credentials')">Your account</a></li>
@@ -22,7 +22,7 @@
           <h2>Your passwords</h2>
           {{#names.count}}
               <p>You have {{item}} passwords:</p>
-              <ul>
+              <ul class="key">
               {{#names}}
               <li><a href="#" onclick="get_pass('{{item}}')">{{item}}</a></li>
               {{/names}}

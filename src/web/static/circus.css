@@ -1,10 +1,14 @@
-@import url("https://fonts.googleapis.com/css?family=Tangerine|Mr+Bedford|EB+Garamond");
+@import url("https://fonts.googleapis.com/css?family=Tangerine|Mr+Bedfort|EB+Garamond");
 
 /* Generic Selectors */
 
 body {
     color: #333333;
     background-color: #F9F9F9;
+    background-image: url("img/logo.png");
+    background-repeat: no-repeat;
+    background-position: 500px 20px;
+    background-attachment: fixed;
     font-family: 'EB Garamond', serif;
     font-size: 18px;
 }
@@ -13,14 +17,20 @@ p {
     width: 80%;
 }
 
-li {
+ul.menu li {
     list-style-type: none;
     line-height: 150%;
-    list-style-image: url(red_nose_small.png);
+    list-style-image: url("img/rednose.png");
+}
+
+ul.key li {
+    list-style-type: none;
+    line-height: 150%;
+    list-style-image: url("img/key.png");
 }
 
 h1 {
-    font-family: 'Mr Bedford', serif;
+    font-family: 'Mr Bedfort', serif;
     font-size: 48px;
     font-weight: bold;
     text-shadow: 4px 4px 4px #aaa;
@@ -114,13 +124,19 @@ a:hover {
     text-decoration: underline;
 }
 
-li a:hover {
+ul.menu li a:hover {
     display: block;
     color: rgb(96, 0, 255);
     font-weight: bold;
     border-right-width: 3px;
     border-right-style: solid;
     border-right-color: #C6EC8C;
+}
+
+ul.key li a:hover {
+    display: block;
+    color: rgb(96, 0, 255);
+    font-weight: bold;
 }
 
 a:active {

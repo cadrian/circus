@@ -18,26 +18,15 @@
 
 # ----------------------------------------------------------------
 
-# With the help of http://scottmcpeak.com/autodepend/autodepend.html
+.PHONY: compile
 
-ROOTSRC=$(shell pwd)
+compile: static/img/key.png static/img/logo.png static/img/rednose.png
 
-# ----------------------------------------------------------------
+static/img/key.png: static/img/key.svg
+	inkscape -D -h 18 --export-png=$@ $<
 
-.PHONY: all test compile manual_test clean
+static/img/logo.png: static/img/logo.svg
+	inkscape -D --export-png=$@ $<
 
-all: test
-
-test: compile
-	$(MAKE) -C tst $@
-
-manual_test: test
-	$(MAKE) -C exe $@
-
-compile:
-	$(MAKE) -C exe $@
-	$(MAKE) -C web $@
-
-clean:
-	$(MAKE) -C exe $@
-	$(MAKE) -C tst $@
+static/img/rednose.png: static/img/rednose.svg
+	inkscape -D -h 18 --export-png=$@ $<

@@ -9,7 +9,7 @@ before_install:
   - echo 'deb http://archive.ubuntu.com/ubuntu/ yakkety main universe' | sudo tee /etc/apt/sources.list.d/yakkety.list
   - echo 'deb http://apt.cadrian.net/ unstable main' | sudo tee /etc/apt/sources.list.d/cadrian.list
   - "sudo apt-get -qq update"
-  - "sudo apt-get -qq -y --allow-unauthenticated install devscripts debhelper po-debconf gcc libc6 libc6-dev libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev libcad-dev libyacjp-dev libffcall1-dev yui-compressor libjs-clipboard"
+  - "sudo apt-get -qq -y --allow-unauthenticated install devscripts debhelper po-debconf gcc libc6 libc6-dev libzmq3-dev libuv1-dev libgcrypt20-dev libsqlite3-dev libcad-dev libyacjp-dev libffcall1-dev yui-compressor libjs-clipboard inkscape"
 script:
   - "make clean test"
   - "bash packaging/build_package.sh"

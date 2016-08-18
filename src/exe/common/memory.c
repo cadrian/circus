@@ -17,6 +17,7 @@
 */
 
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -60,18 +61,15 @@ __attribute__ (( noinline )) size_t max_bzero(size_t count) {
 }
 
 typedef struct {
-   union {
-      size_t ize;
-      void *alignment;
-   } s;
+   uintptr_t size; // in fact size_t but data must be aligned
    char data[0];
 } mem;
 
 static void circus_memfree(mem *p) {
-   assert(p->s.ize > 0);
-   max_bzero(p->s.ize);
-   force_bzero(p->data, p->s.ize);
-   munlock(p, sizeof(mem) + p->s.ize);
+   assert((size_t)p->size > 0);
+   max_bzero((size_t)p->size);
+   force_bzero(p->data, (size_t)p->size);
+   munlock(p, sizeof(mem) + (size_t)p->size);
    free(p);
 }
 
@@ -79,7 +77,7 @@ static mem *circus_memalloc(size_t size) {
    size_t s = sizeof(mem) + size;
    mem *result = malloc(s);
    if (result != NULL) {
-      result->s.ize = size;
+      result->size = (uintptr_t)size;
       int n = mlock(result, s);
       if (n != 0) {
          fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
@@ -105,7 +103,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       return circus_malloc(size);
    }
    mem *p = container_of(ptr, mem, data);
-   if (size <= p->s.ize) {
+   if (size <= (size_t)p->size) {
       return ptr;
    }
    mem *result = circus_memalloc(size);
@@ -113,7 +111,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       circus_memfree(p);
       return NULL;
    }
-   memcpy(&(result->data), &(p->data), p->s.ize);
+   memcpy(&(result->data), &(p->data), (size_t)p->size);
    circus_memfree(p);
    return &(result->data);
 }

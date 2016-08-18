@@ -24,12 +24,12 @@
 typedef struct circus_config_s circus_config_t;
 
 typedef const char * (*circus_config_get_fn)(circus_config_t *this, const char *section, const char *key);
-typedef void (*circus_config_set_fn)(circus_config_t *this, const char* section, const char *key, const char *value);
-typedef void (*circus_config_write_fn)(circus_config_t *this);
+typedef const char * (*circus_config_path_fn)(circus_config_t *this);
 typedef void (*circus_config_free_fn)(circus_config_t *this);
 
 struct circus_config_s {
    circus_config_get_fn get;
+   circus_config_path_fn path;
    circus_config_free_fn free;
 };
 

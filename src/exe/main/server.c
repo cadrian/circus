@@ -122,6 +122,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       exit(1);
    }
    log_info(LOG, "Server starting.");
+   log_info(LOG, "Configuration file is %s", config->path(config));
 
    if (!init_crypt(LOG)) {
       status = 1;

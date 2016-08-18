@@ -153,6 +153,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       exit(1);
    }
    log_info(LOG, "Client starting.");
+   log_info(LOG, "Configuration file is %s", config->path(config));
 
    if (argc != 1) {
       usage(argv[0], stderr);

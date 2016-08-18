@@ -32,9 +32,7 @@ typedef struct {
    circus_config_t fn;
    cad_memory_t memory;
    json_object_t *data;
-   int dirty;
-   char *filename;
-   int local;
+   char *path;
 } config_impl;
 
 static const char *config_get(config_impl *this, const char *section, const char *key) {
@@ -55,13 +53,19 @@ static const char *config_get(config_impl *this, const char *section, const char
    return result;
 }
 
+static const char *config_path(config_impl *this) {
+   return this->path;
+}
+
 static void config_free(config_impl *this) {
    this->data->accept(this->data, json_kill());
+   this->memory.free(this->path);
    this->memory.free(this);
 }
 
 static circus_config_t impl_fn = {
    (circus_config_get_fn)config_get,
+   (circus_config_path_fn)config_path,
    (circus_config_free_fn)config_free,
 };
 
@@ -136,28 +140,26 @@ static json_visitor_t config_read_checker_fn = {
 };
 
 circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
-   int n = strlen(filename) + 1;
    config_impl *result;
    read_t read;
    cad_input_stream_t *raw, *stream;
    json_value_t *data;
+   char *fn = szprintf(memory, NULL, "circus/%s", filename);
+   int n;
 
-   result = memory.malloc(sizeof(config_impl) + n);
+   result = memory.malloc(sizeof(config_impl));
    assert(result != NULL);
 
    result->fn = impl_fn;
    result->memory = memory;
-   result->filename = (char*)(result + 1);
-   strncpy(result->filename, filename, n);
 
-   read = read_xdg_file_from_dirs(memory, filename, xdg_data_dirs());
+   read = read_xdg_file_from_dirs(memory, fn, xdg_config_dirs());
+   memory.free(fn);
    if (read.file == NULL) {
       memory.free(read.path);
       data = (json_value_t*)json_new_object(memory);
-      result->dirty = 1;
-      result->local = 0;
+      result->path = NULL;
    } else {
-      result->local = read.local;
       raw = new_cad_input_stream_from_file(read.file, memory);
       assert(raw != NULL);
       stream = new_json_utf8_stream(raw, memory);
@@ -177,7 +179,7 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
       n = fclose(read.file);
       assert(n == 0);
 
-      memory.free(read.path);
+      result->path = read.path;
    }
    result->data = (json_object_t *)data;
 

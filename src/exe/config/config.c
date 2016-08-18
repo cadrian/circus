@@ -144,7 +144,6 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    read_t read;
    cad_input_stream_t *raw, *stream;
    json_value_t *data;
-   char *fn = szprintf(memory, NULL, "circus/%s", filename);
    int n;
 
    result = memory.malloc(sizeof(config_impl));
@@ -153,8 +152,7 @@ circus_config_t *circus_config_read(cad_memory_t memory, const char *filename) {
    result->fn = impl_fn;
    result->memory = memory;
 
-   read = read_xdg_file_from_dirs(memory, fn, xdg_config_dirs());
-   memory.free(fn);
+   read = read_xdg_file_from_dirs(memory, filename, xdg_config_dirs());
    if (read.file == NULL) {
       memory.free(read.path);
       data = (json_value_t*)json_new_object(memory);

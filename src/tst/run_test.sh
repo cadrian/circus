@@ -29,9 +29,9 @@ if [ -f ${exe%.exe}.c ]; then
 
         case $exe in
             test_server*)
-                export XDG_DATA_HOME=$(pwd)/${exe%.exe}-conf.d
-                mkdir -p $XDG_DATA_HOME/circus
-                cat > $XDG_DATA_HOME/circus/server.conf <<EOF
+                export XDG_CONFIG_HOME=$(pwd)/${exe%.exe}-conf.d
+                mkdir -p $XDG_CONFIG_HOME/circus
+                cat > $XDG_CONFIG_HOME/circus/server.conf <<EOF
 {
     "vault": {
         "filename": "vault"

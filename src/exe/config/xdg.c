@@ -72,7 +72,7 @@ const char *xdg_data_dirs(void) {
    if (result == NULL) {
       char *xdg = getenv("XDG_DATA_DIRS");
       if (xdg == NULL || xdg[0] == 0) {
-         xdg = "/var/run/:/usr/share/:/usr/local/share/";
+         xdg = "/var/run/circus/:/usr/share/circus/:/usr/local/share/circus/";
       }
       const char *xdh = xdg_data_home();
       if (xdh == NULL) {
@@ -89,7 +89,7 @@ const char *xdg_config_dirs(void) {
    if (result == NULL) {
       char *xdg = getenv("XDG_CONFIG_DIRS");
       if (xdg == NULL || xdg[0] == 0) {
-         xdg = "/etc/xdg:/usr/local/etc";
+         xdg = "/etc/xdg/circus:/usr/local/etc/circus";
       }
       const char *xch = xdg_config_home();
       if (xch == NULL) {

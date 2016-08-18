@@ -23,7 +23,7 @@ case "$1" in
         exit 1
     fi
     log_daemon_msg "Starting Circus server" "circus-server"
-    start-stop-daemon --start --exec $EXE
+    start-stop-daemon --start --background --exec $EXE
     log_end_msg 0
     ;;
   restart|force-reload|reload)

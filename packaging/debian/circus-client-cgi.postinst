@@ -20,6 +20,8 @@ case "$1" in
         db_get circus/client-cgi/web/path
         webpath="$RET"
 
+        ln -s /usr/lib/circus/client_cgi.exe /etc/xdg/circus/web/circus.cgi
+
         if dpkg -s lighttpd >/dev/null 2>&1; then
             cat > /etc/lighttpd/conf-available/95-circus.conf <<EOF
 server.modules += ( "mod_cgi" )
@@ -58,35 +60,36 @@ server {
         ssl_prefer_server_ciphers on;
 
         error_log  /var/log/nginx/error.log  notice;
+        root /etc/xdg/circus/web;
 
         location $webpath/circus.cgi {
                 fastcgi_pass unix:/var/run/fcgiwrap.socket;
 
-                fastcgi_param  QUERY_STRING       $query_string;
-                fastcgi_param  REQUEST_METHOD     $request_method;
-                fastcgi_param  CONTENT_TYPE       $content_type;
-                fastcgi_param  CONTENT_LENGTH     $content_length;
+                fastcgi_param  QUERY_STRING       \$query_string;
+                fastcgi_param  REQUEST_METHOD     \$request_method;
+                fastcgi_param  CONTENT_TYPE       \$content_type;
+                fastcgi_param  CONTENT_LENGTH     \$content_length;
                 fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
 
-                fastcgi_param  SCRIPT_FILENAME    $document_root$script;
-                fastcgi_param  SCRIPT_NAME        $script;
-                fastcgi_param  PATH_INFO          $path_info;
-                fastcgi_param  PATH_TRANSLATED    $document_root$fastcgi_path_info;
-                fastcgi_param  REQUEST_URI        $request_uri;
-                fastcgi_param  DOCUMENT_URI       $document_uri;
-                fastcgi_param  DOCUMENT_ROOT      $document_root;
+                fastcgi_param  SCRIPT_FILENAME    \$document_root\$script;
+                fastcgi_param  SCRIPT_NAME        \$script;
+                fastcgi_param  PATH_INFO          \$path_info;
+                fastcgi_param  PATH_TRANSLATED    \$document_root\$fastcgi_path_info;
+                fastcgi_param  REQUEST_URI        \$request_uri;
+                fastcgi_param  DOCUMENT_URI       \$document_uri;
+                fastcgi_param  DOCUMENT_ROOT      \$document_root;
 
-                fastcgi_param  SERVER_ADDR        $server_addr;
-                fastcgi_param  SERVER_NAME        $server_name;
-                fastcgi_param  SERVER_PORT        $server_port;
-                fastcgi_param  SERVER_PROTOCOL    $server_protocol;
-                fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+                fastcgi_param  SERVER_ADDR        \$server_addr;
+                fastcgi_param  SERVER_NAME        \$server_name;
+                fastcgi_param  SERVER_PORT        \$server_port;
+                fastcgi_param  SERVER_PROTOCOL    \$server_protocol;
+                fastcgi_param  SERVER_SOFTWARE    nginx/\$nginx_version;
 
-                fastcgi_param  REMOTE_ADDR        $remote_addr;
-                fastcgi_param  REMOTE_PORT        $remote_port;
-                fastcgi_param  REMOTE_USER        $remote_user;
+                fastcgi_param  REMOTE_ADDR        \$remote_addr;
+                fastcgi_param  REMOTE_PORT        \$remote_port;
+                fastcgi_param  REMOTE_USER        \$remote_user;
 
-                fastcgi_param  HTTPS              $https;
+                fastcgi_param  HTTPS              \$https;
 
                 fastcgi_pass_header               Cookie;
 

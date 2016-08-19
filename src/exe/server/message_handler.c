@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <json.h>
 #include <limits.h>
+#include <signal.h>
 #include <string.h>
 #include <time.h>
 #include <uv.h>
@@ -322,6 +323,12 @@ static void visit_query_unset_property(circus_message_visitor_query_t *visitor, 
    (void)visited; (void)this;
 }
 
+static void stop_server(impl_mh_t *this, const char *reason) {
+   log_warning(this->log, "Stopping: %s", reason);
+   this->running = 0;
+   uv_stop(uv_default_loop());
+}
+
 static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_message_query_stop_t *visited) {
    impl_mh_t *this = container_of(visitor, impl_mh_t, vfn);
    const char *reason = visited->reason(visited);
@@ -338,9 +345,7 @@ static void visit_query_stop(circus_message_visitor_query_t *visitor, circus_mes
       if (!user->is_admin(user)) {
          log_error(this->log, "Stop query REFUSED, user %s not admin", user->name(user));
       } else {
-         log_warning(this->log, "Stopping: %s", reason);
-         this->running = 0;
-         uv_stop(uv_default_loop());
+         stop_server(this, reason);
          ok = 1;
       }
       token = data->set_token(data);
@@ -677,6 +682,50 @@ static circus_server_message_handler_t impl_mh_fn = {
    (circus_server_message_handler_free_fn) impl_free,
 };
 
+static impl_mh_t *signal_mh = NULL;
+static void stop_signal(int signum) {
+   const char *reason;
+   switch(signum) {
+   case SIGINT:
+      reason = "Received SIGINT";
+      break;
+   case SIGQUIT:
+      reason = "Received SIGQUIT";
+      break;
+   case SIGTERM:
+      reason = "Received SIGTERM";
+      break;
+   default:
+      reason = "Received unexpected signal";
+   }
+   stop_server(signal_mh, reason);
+}
+
+static void install_signals(impl_mh_t *mh) {
+   if (signal_mh != NULL) {
+      log_warning(mh->log, "Cannot install signal for more than one instance of message_handler: skipped.");
+   } else {
+      struct sigaction action;
+      action.sa_handler = stop_signal;
+      sigemptyset(&action.sa_mask);
+      action.sa_flags = SA_RESTART;
+
+      signal_mh = mh;
+      int n_int = sigaction(SIGINT, &action, NULL);
+      if (n_int == -1) {
+         log_warning(mh->log, "Could not install signal handler for SIGINT: %s", strerror(errno));
+      }
+      int n_quit = sigaction(SIGQUIT, &action, NULL);
+      if (n_quit == -1) {
+         log_warning(mh->log, "Could not install signal handler for SIGQUIT: %s", strerror(errno));
+      }
+      int n_term = sigaction(SIGTERM, &action, NULL);
+      if (n_term == -1) {
+         log_warning(mh->log, "Could not install signal handler for SIGTERM: %s", strerror(errno));
+      }
+   }
+}
+
 circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_vault_t *vault, circus_config_t *config) {
    impl_mh_t *result;
 
@@ -726,6 +775,8 @@ circus_server_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->last_password = NULL;
 
    assert(result->session != NULL);
+
+   install_signals(result);
 
    return I(result);
 }

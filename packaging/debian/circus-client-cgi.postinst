@@ -21,6 +21,8 @@ case "$1" in
         webpath="$RET"
 
         ln -s /usr/lib/circus/client_cgi.exe /etc/xdg/circus/web/circus.cgi
+        mkdir -p /etc/xdg/circus/web/$(dirname $webpath)
+        ln -s /etc/xdg/circus/web /etc/xdg/circus/web/$webpath
 
         if dpkg -s lighttpd >/dev/null 2>&1; then
             cat > /etc/lighttpd/conf-available/95-circus.conf <<EOF
@@ -61,8 +63,11 @@ server {
 
         error_log  /var/log/nginx/error.log  notice;
         root /etc/xdg/circus/web;
+        index index.html;
 
         location $webpath/circus.cgi {
+                autoindex on;
+
                 fastcgi_pass unix:/var/run/fcgiwrap.socket;
 
                 fastcgi_param  QUERY_STRING       \$query_string;
@@ -71,8 +76,8 @@ server {
                 fastcgi_param  CONTENT_LENGTH     \$content_length;
                 fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
 
-                fastcgi_param  SCRIPT_FILENAME    \$document_root\$script;
-                fastcgi_param  SCRIPT_NAME        \$script;
+                fastcgi_param  SCRIPT_FILENAME    \$document_root\$fastcgi_script_name;
+                fastcgi_param  SCRIPT_NAME        \$fastcgi_script_name;
                 fastcgi_param  PATH_INFO          \$path_info;
                 fastcgi_param  PATH_TRANSLATED    \$document_root\$fastcgi_path_info;
                 fastcgi_param  REQUEST_URI        \$request_uri;

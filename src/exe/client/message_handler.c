@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <signal.h>
 #include <string.h>
 
 #include <circus_log.h>
@@ -242,6 +243,17 @@ static circus_client_message_handler_t impl_mh_fn = {
    (circus_client_message_handler_free_fn) impl_free,
 };
 
+static void install_signals(void) {
+      struct sigaction action;
+      action.sa_handler = SIG_IGN;
+      sigemptyset(&action.sa_mask);
+      action.sa_flags = 0;
+      int n_pipe = sigaction(SIGPIPE, &action, NULL);
+      if (n_pipe == -1) {
+         log_warning(mh->log, "Could not install signal handler for SIGPIPE: %s", strerror(errno));
+      }
+}
+
 circus_client_message_handler_t *circus_message_handler(cad_memory_t memory, circus_log_t *log, circus_config_t *UNUSED(config)) {
    impl_mh_t *result = memory.malloc(sizeof(impl_mh_t));
    assert(result != NULL);
@@ -252,6 +264,8 @@ circus_client_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->log = log;
    result->channel = NULL;
    result->automaton = NULL;
+
+   install_signals();
 
    return I(result);
 }

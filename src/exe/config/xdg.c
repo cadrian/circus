@@ -36,7 +36,7 @@ static const char *xdg_data_home(void) {
          }
       }
       if (xdg != NULL) {
-         result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
+         result = (const char *)szprintf(stdlib_memory, NULL, "%s", xdg);
          if (m) {
             free(xdg);
          }
@@ -58,7 +58,7 @@ static const char *xdg_config_home(void) {
          }
       }
       if (xdg != NULL) {
-         result = (const char *)szprintf(stdlib_memory, NULL, "%s/circus", xdg);
+         result = (const char *)szprintf(stdlib_memory, NULL, "%s", xdg);
          if (m) {
             free(xdg);
          }
@@ -72,7 +72,7 @@ const char *xdg_data_dirs(void) {
    if (result == NULL) {
       char *xdg = getenv("XDG_DATA_DIRS");
       if (xdg == NULL || xdg[0] == 0) {
-         xdg = "/var/run/circus/:/usr/share/circus/:/usr/local/share/circus/";
+         xdg = "/var/run/:/usr/share/:/usr/local/share/";
       }
       const char *xdh = xdg_data_home();
       if (xdh == NULL) {
@@ -89,7 +89,7 @@ const char *xdg_config_dirs(void) {
    if (result == NULL) {
       char *xdg = getenv("XDG_CONFIG_DIRS");
       if (xdg == NULL || xdg[0] == 0) {
-         xdg = "/etc/xdg/circus:/usr/local/etc/circus";
+         xdg = "/etc/xdg:/usr/local/etc";
       }
       const char *xch = xdg_config_home();
       if (xch == NULL) {
@@ -136,12 +136,12 @@ read_t read_xdg_file_from_dirs(cad_memory_t memory, const char *filename, const 
          *next = '\0';
          next++;
       }
-      result.path = szprintf(memory, NULL, "%s/%s", cur, filename);
+      result.path = szprintf(memory, NULL, "%s/circus/%s", cur, filename);
       result.file = fopen(result.path, "r");
    }
    if (result.file == NULL) {
       memory.free(result.path);
-      result.path = szprintf(memory, NULL, "%s/%s", dirs0, filename); // the first directory is returned as default
+      result.path = szprintf(memory, NULL, "%s/circus/%s", dirs0, filename); // the first directory is returned as default
    }
    memory.free(dirs0);
    return result;

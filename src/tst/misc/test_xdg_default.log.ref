@@ -1,3 +1,3 @@
-data_dirs = /home/test/.local/share/circus:/var/run/circus/:/usr/share/circus/:/usr/local/share/circus/
-config_dirs = /home/test/.config/circus:/etc/xdg/circus:/usr/local/etc/circus
+data_dirs = /home/test/.local/share:/var/run/:/usr/share/:/usr/local/share/
+config_dirs = /home/test/.config:/etc/xdg:/usr/local/etc
 runtime_dir = /tmp/circus-test

@@ -1,3 +1,3 @@
-data_dirs = /xdg/data/home/circus:/xdg/data/dirs
-config_dirs = /xdg/config/home/circus:/xdg/config/dirs
+data_dirs = /xdg/data/home:/xdg/data/dirs
+config_dirs = /xdg/config/home:/xdg/config/dirs
 runtime_dir = /xdg/runtime/dir

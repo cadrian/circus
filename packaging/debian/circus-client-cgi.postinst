@@ -26,6 +26,10 @@ case "$1" in
         rm -f /etc/xdg/circus/web/$webpath
         ln -sf /etc/xdg/circus/web /etc/xdg/circus/web/$webpath
 
+        mkdir -p /var/log/circus/cgi
+        chmod 755 /var/log/circus/cgi
+        chown www-data:www-data /var/log/circus/cgi
+
         if dpkg -s lighttpd >/dev/null 2>&1; then
             cat > /etc/lighttpd/conf-available/95-circus.conf <<EOF
 server.modules += ( "mod_cgi" )

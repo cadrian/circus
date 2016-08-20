@@ -2,3 +2,4 @@ usr/lib/circus/client_cgi.exe
 etc/xdg/circus/static/*
 etc/xdg/circus/templates/*
 etc/xdg/circus/cgi.conf
+etc/xdg/circus/web/*

@@ -38,6 +38,7 @@ static void set_log(circus_config_t *config) {
    const char *log_szfilename;
    const char *log_szlevel;
    log_level_t log_level = LOG_INFO;
+   cad_memory_t memory = stdlib_memory;
 
    log_szlevel = config->get(config, "log", "level");
    if (log_szlevel != NULL) {
@@ -51,6 +52,7 @@ static void set_log(circus_config_t *config) {
          log_level = LOG_DEBUG;
       } else if (!strcmp(log_szlevel, "pii")) {
          log_level = LOG_PII;
+         memory = MEMORY;
       } else {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
@@ -58,9 +60,9 @@ static void set_log(circus_config_t *config) {
 
    log_szfilename = config->get(config, "log", "filename");
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, STDERR_FILENO);
+      LOG = circus_new_log_file_descriptor(memory, log_level, STDERR_FILENO);
    } else {
-      LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
+      LOG = circus_new_log_file(memory, log_szfilename, log_level);
    }
 }
 

@@ -71,9 +71,7 @@ server {
         root /etc/xdg/circus/web;
         index index.html;
 
-        location $webpath/circus.cgi {
-                autoindex on;
-
+        location ~ ^$webpath/circus.cgi(/.*)?\$ {
                 fastcgi_pass unix:/var/run/fcgiwrap.socket;
 
                 fastcgi_param  QUERY_STRING       \$query_string;

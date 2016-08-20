@@ -28,8 +28,9 @@ case "$1" in
     log_end_msg 0
     ;;
   restart|force-reload|reload)
-        # nothing to do
-    :
+    $0 stop
+    sleep 1
+    $0 start
     ;;
   stop)
     if init_is_upstart 2>/dev/null && status circus-server 2>/dev/null | grep -q start

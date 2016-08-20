@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <errno.h>
 #include <signal.h>
 #include <string.h>
 
@@ -243,7 +244,7 @@ static circus_client_message_handler_t impl_mh_fn = {
    (circus_client_message_handler_free_fn) impl_free,
 };
 
-static void install_signals(void) {
+static void install_signals(impl_mh_t *mh) {
       struct sigaction action;
       action.sa_handler = SIG_IGN;
       sigemptyset(&action.sa_mask);
@@ -265,7 +266,7 @@ circus_client_message_handler_t *circus_message_handler(cad_memory_t memory, cir
    result->channel = NULL;
    result->automaton = NULL;
 
-   install_signals();
+   install_signals(result);
 
    return I(result);
 }

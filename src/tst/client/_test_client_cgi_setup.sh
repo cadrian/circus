@@ -92,10 +92,10 @@ tee $base\$ext.in |
     tee $base\$ext.out
 EOF
 
-mkdir -p $RUN/circus $CONF/templates $CONF/static
+mkdir -p $CONF/circus $CONF/templates $CONF/static
 rm -f $LOG/client.log $LOG/server.log
 
-cat > $RUN/circus/cgi.conf <<EOF
+cat > $CONF/circus/cgi.conf <<EOF
 {
     "cgi": {
         "templates_path": "$CONF/templates",
@@ -111,7 +111,7 @@ cat > $RUN/circus/cgi.conf <<EOF
 }
 EOF
 
-cat > $RUN/circus/server.conf <<EOF
+cat > $CONF/circus/server.conf <<EOF
 {
     "vault": {
         "filename": "$base.vault"

@@ -79,8 +79,8 @@ static void pad(char *buf, int len) {
 #define min(a, b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
 #define get_octet(b) (((b) * 5) / 8)
 #define get_offset(b) (8 - 5 - (5 * (b)) % 8)
-#define shift_right(b, o) ((o) > 0 ? (b) >> (o) : (b) << -(o))
-#define shift_left(b, o) shift_right((b), -(o))
+#define shift_right(b, o) ((o) > 0 ? ((unsigned int)(b)) >> (o) : ((unsigned int)(b)) << -(o))
+#define shift_left(b, o) shift_right(((unsigned int)(b)), -(o))
 
 static void encode_sequence(const char *plain, int len, char *coded) {
    assert(len >= 0 && len <= 5);

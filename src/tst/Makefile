@@ -41,18 +41,18 @@ test: $(T_EXE) $(T_RUN)
 clean:
 	$(shell while read pattern; do find . -name "$$pattern" -exec rm -rf {} +; done < .gitignore)
 	rm -rf manual_test
-	find . -name \*-conf.d -exec rm -rf {} +
-	find . -name \*.[od] -exec rm -f {} +
-	find . -name \*.exe -exec rm -f {} +
-	find . -name \*.[od] -exec rm -f {} +
-	find . -name \*.exe -exec rm -f {} +
-	find . -name \*.log.new -exec rm -f {} +
-	find . -name \*.log.err -exec rm -f {} +
-	find . -name \*.log.valgrind\* -exec rm -f {} +
-	find . -name \*.log -exec rm -f {} +
-	find . -name \*.db -exec rm -f {} +
-	find . -name \*.d0 -exec rm -f {} +
-	find . -name \*.d1 -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*-conf.d -exec rm -rf {} +
+	find . -name manual_tests -prune -o -name \*.[od] -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.exe -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.[od] -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.exe -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.log.new -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.log.err -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.log.valgrind\* -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.log -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.db -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.d0 -exec rm -f {} +
+	find . -name manual_tests -prune -o -name \*.d1 -exec rm -f {} +
 
 # ----------------------------------------------------------------
 

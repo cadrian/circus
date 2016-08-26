@@ -146,6 +146,6 @@ server_pid=$!
 ) &
 lighttpd_pid=$!
 
-sleep 2
+sleep 1
 
 ps -p $server_pid,$lighttpd_pid -F > $base.ps

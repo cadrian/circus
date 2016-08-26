@@ -1,8 +1,9 @@
-kill $lighttpd_pid 2>/dev/null
+kill $nginx_pid 2>/dev/null
 kill $server_pid 2>/dev/null
+kill $fcgiwrap_pid 2>/dev/null
 
-#echo "Waiting for $lighttpd_pid $server_pid"
-#wait $lighttpd_pid $server_pid
+#echo "Waiting for $nginx_pid $fcgiwrap_pid $server_pid"
+#wait $nginx_pid $fcgiwrap_pid $server_pid
 
 ${KEEPDIR-false} || {
     {
@@ -41,3 +42,5 @@ ${KEEPDIR-false} || {
 
     rm -rf $DIR
 }
+
+rm -rf $fcgiwrap_socket_dir

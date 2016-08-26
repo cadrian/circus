@@ -18,9 +18,11 @@
 
 base=$(dirname $(readlink -f $0))/$(basename $0 .sh)
 
-. $(dirname $(readlink -f $0))/_test_client_cgi_setup_lighttpd.sh
+for flavour in lighttpd nginx; do
 
-cat >$CONF/templates/login.tpl <<EOF
+    . $(dirname $(readlink -f $0))/_test_client_cgi_setup_$flavour.sh
+
+    cat >$CONF/templates/login.tpl <<EOF
 <html>
     <head>
         <title>LOGIN</title>
@@ -38,7 +40,7 @@ cat >$CONF/templates/login.tpl <<EOF
 </html>
 EOF
 
-cat > $CONF/templates/admin_home.tpl <<EOF
+    cat > $CONF/templates/admin_home.tpl <<EOF
 <html>
     <head>
         <title>Home</title>
@@ -50,8 +52,10 @@ cat > $CONF/templates/admin_home.tpl <<EOF
 </html>
 EOF
 
-RUN=$base.run
-curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -D $base.01.hdr -o $base.01.res
-curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi/login.do' -d userid=admin -d password=password -d action=ok -D $base.02.hdr -o $base.02.res
+    RUN=$base.run
+    curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -D $base.01.hdr -o $base.01.res
+    curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi/login.do' -d userid=admin -d password=password -d action=ok -D $base.02.hdr -o $base.02.res
 
-. $(dirname $(readlink -f $0))/_test_client_cgi_teardown_lighttpd.sh
+    . $(dirname $(readlink -f $0))/_test_client_cgi_teardown_$flavour.sh
+
+done

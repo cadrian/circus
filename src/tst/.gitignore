@@ -13,6 +13,5 @@
 *.ps
 *.server_*
 *.cookies
-manual_test
 *.vault
 *.db

@@ -5,9 +5,9 @@
 
 TSTDIR=$(cd $(dirname $(readlink -f $0)); pwd)
 cd $TSTDIR
-ROOT=$(cd $TSTDIR/..; pwd)
+ROOT=$(cd $TSTDIR/../..; pwd)
 
-TESTDIR=$TSTDIR/manual_test/$(date +'%Y%m%d-%H%M%S')
+TESTDIR=$TSTDIR/run/lighttpd/$(date +'%Y%m%d-%H%M%S')
 base=$TESTDIR/test
 mkdir -p $TESTDIR
 
@@ -17,7 +17,7 @@ case x"$1" in
         ;;
     *)
         (
-            cd ../..
+            cd $ROOT
             export CFLAGS="-DDEBUG -g"
             export LD_FLAGS_DBG="-Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize_rnd -Wl,--wrap=gcry_create_nonce_rnd"
             # mlock/munlock: we are not root
@@ -32,12 +32,13 @@ echo "Test base is $base"
 
 echo "Setting up..."
 exe=".rnd.exe"
-. $TSTDIR/client/_test_client_cgi_setup.sh
+. $ROOT/tst/client/_test_client_cgi_setup_lighttpd.sh
 
-cp -a ../web/templates/* $CONF/templates/
-cp -a ../web/static/* $CONF/static/
+cp -a $ROOT/web/templates/* $CONF/templates/
+cp -a $ROOT/web/static/* $CONF/static/
 
 teardown() {
+    echo
     kill $lighttpd_pid 2>/dev/null
     kill $server_pid 2>/dev/null
     exit

@@ -18,7 +18,7 @@
 
 base=$(dirname $(readlink -f $0))/$(basename $0 .sh)
 
-. $(dirname $(readlink -f $0))/_test_client_cgi_setup.sh
+. $(dirname $(readlink -f $0))/_test_client_cgi_setup_lighttpd.sh
 
 cat >$CONF/templates/login.tpl <<EOF
 <html>
@@ -54,4 +54,4 @@ RUN=$base.run
 curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi' -D $base.01.hdr -o $base.01.res
 curl -c $base.cookies -m10 'http://test:pwd@localhost:8888/test_cgi.cgi/login.do' -d userid=admin -d password=password -d action=ok -D $base.02.hdr -o $base.02.res
 
-. $(dirname $(readlink -f $0))/_test_client_cgi_teardown.sh
+. $(dirname $(readlink -f $0))/_test_client_cgi_teardown_lighttpd.sh

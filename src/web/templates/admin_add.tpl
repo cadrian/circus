@@ -10,14 +10,14 @@
       <div id="navigation">
       </div>
       <div id="centerDoc">
-        <h1>Circus: administrator</h1>
+        <h1>Circus: Ring-Master</h1>
         <h2>New user created</h2>
         <p>The user was successfully created: {{form:username}}</p>
         <p>Please send them their temporary credentials:</p>
         <table>
           <tr>
             <td>
-              <b>Password:</b>
+              <b>Ticket:</b>
             </td>
             <td>
               {{password}}

@@ -11,7 +11,7 @@
       <div id="navigation">
       </div>
       <div id="centerDoc">
-        <h1>Circus: administrator</h1>
+        <h1>Circus: Ring-Master</h1>
         <h2>Add a user</h2>
         <p>Please enter the id of a user to create or update.</p>
         <table>
@@ -37,8 +37,8 @@
             </td>
             <td>
               <select name="permissions">
-                <!-- option value="admin">Administrator</option -->
-                <option value="user" select="true">User</option>
+                <!-- option value="admin">Ring-Master</option -->
+                <option value="user" select="true">Clown</option>
               </select>
             </td>
           </tr>

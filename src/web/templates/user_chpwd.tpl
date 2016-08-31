@@ -10,13 +10,13 @@
       <div id="navigation">
       </div>
       <div id="centerDoc">
-        <h1>Circus: user</h1>
+        <h1>Circus: Clown</h1>
         <h2>Your account</h2>
-        <p>The password has been changed.</p>
+        <p>The Ticket has been updated.</p>
         <table>
           <tr>
             <td>
-              <b>Password validity:</b>
+              <b>Ticket validity:</b>
             </td>
             <td>
               {{validity}}

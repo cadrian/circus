@@ -20,8 +20,13 @@
 
 .PHONY: all test manual_test compile clean debian
 
-all: test
+all: test doc
 	$(MAKE) -C src $@
+
+doc: README.html
+
+README.html: README.md
+	markdown_py -o html5 -e UTF-8 -x tables -f README.html < README.md
 
 test: compile
 	$(MAKE) -C src $@

@@ -16,12 +16,12 @@
         </ul>
       </div>
       <div id="centerDoc">
-        <h1>Circus: user</h1>
+        <h1>Circus: Clown</h1>
 
         <div id="passwords-list" class="tab">
-          <h2>Your passwords</h2>
+          <h2>Your Jokers</h2>
           {{#names.count}}
-              <p>You have {{item}} passwords:</p>
+              <p>You have {{item}} Jokers:</p>
               <ul class="key">
               {{#names}}
               <li><a href="#" onclick="get_pass('{{item}}')">{{item}}</a></li>
@@ -29,17 +29,17 @@
               </ul>
           {{/names.count}}
           {{^names}}
-              The passwords list is not yet loaded.<br/>
-              <button type="button" onclick="submit_action('list')">Click to load the passwords list</button><br/>
+              The Jokers list is not yet loaded.<br/>
+              <button type="button" onclick="submit_action('list')">Click to load the Jokers list</button><br/>
           {{/names}}
         </div>
 
         <div id="passwords-form" class="tab">
-          <h2>Define a password</h2>
+          <h2>Define a Joker</h2>
           <table>
             <tr>
               <td>
-                <b>Name:</b>
+                <b>Joker name:</b>
               </td>
               <td>
                 <input type="text" name="key"/>
@@ -47,7 +47,7 @@
             </tr>
             <tr>
               <td colspan="2">
-                &mdash;<i>Either generate using a recipe</i>&mdash;
+                &mdash;<i>Either generate the Joker using a recipe</i>&mdash;
               </td>
             </tr>
             <tr>
@@ -65,12 +65,12 @@
             </tr>
             <tr>
               <td colspan="2">
-                &mdash;<i>Or enter the new password</i>&mdash;
+                &mdash;<i>Or directly enter the new Joker value (twice)</i>&mdash;
               </td>
             </tr>
             <tr>
               <td>
-                <b>Password:</b>
+                <b>Value:</b>
               </td>
               <td>
                 <input type="password" name="prompt1"/>
@@ -97,7 +97,7 @@
           <table>
             <tr>
               <td>
-                <b>Current password:</b>
+                <b>Current Ticket:</b>
               </td>
               <td>
                 <input type="password" name="old"/>
@@ -105,7 +105,7 @@
             </tr>
             <tr>
               <td>
-                <b>New password:</b>
+                <b>New Ticket:</b>
               </td>
               <td>
                 <input type="password" name="pass1"/>

@@ -9,8 +9,8 @@
       </div>
       <div id="centerDoc">
         <h1>Welcome to Circus</h1>
-        <h2>Credentials</h2>
-        <p>Please log in.</p>
+        <h2>Enter the Marquee</h2>
+        <p>To enter the Marquee, please enter your name and show your Ticket.</p>
         <table>
           <tr>
             <td>
@@ -22,7 +22,7 @@
           </tr>
           <tr>
             <td>
-              <b>Password:</b>
+              <b>Ticket:</b>
             </td>
             <td>
               <input type="password" name="password"/>

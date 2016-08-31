@@ -12,13 +12,13 @@
       <div id="navigation">
       </div>
       <div id="centerDoc">
-        <h1>Circus: user</h1>
-        <h2>Your password</h2>
-        <p>The password is loaded.</p>
+        <h1>Circus: Clown</h1>
+        <h2>Your Joker</h2>
+        <p>The Joker is loaded.</p>
         <table>
           <tr>
             <td>
-              <b>Key:</b>
+              <b>Joker name:</b>
             </td>
             <td>
               {{key}}
@@ -26,7 +26,7 @@
           </tr>
           <tr>
             <td>
-              <b>Pass:</b>
+              <b>Value:</b>
             </td>
             <td>
               <div id="clip_message"><button class="clip" data-clipboard-text="{{pass}}" href="#" onclick="false;">Copy to clipboard</button></div>

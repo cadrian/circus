@@ -31,6 +31,7 @@ exe=".rnd.exe"
 
 cp -a $ROOT/web/templates/* $CONF/templates/
 cp -a $ROOT/web/static/* $CONF/static/
+yui-compressor -o $CONF/static/clipboard.min.js /usr/share/javascript/clipboard/clipboard.js
 
 teardown() {
     echo

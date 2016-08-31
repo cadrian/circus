@@ -50,8 +50,9 @@ typedef struct {
 } data_t;
 
 static const char *rotate_tokens(data_t *this) {
-   while (this->tokens->count(this->tokens) >= this->session->token_retention) {
-      char *stale_token = *((char**)this->tokens->del(this->tokens, this->tokens->count(this->tokens)- 1));
+   unsigned int n = this->tokens->count(this->tokens);
+   while (n -->= this->session->token_retention) {
+      char *stale_token = *((char**)this->tokens->del(this->tokens, n));
       this->memory.free(stale_token);
    }
    char *new_token = szrandom64(this->memory, this->session->token_length);
@@ -100,8 +101,9 @@ static data_t *new_data(cad_memory_t memory, circus_user_t *user, session_impl_t
 }
 
 static void free_data(data_t *data) {
-   while (data->tokens->count(data->tokens) > 0) {
-      char *del_token = *((char**)data->tokens->del(data->tokens, 0));
+   unsigned int n = data->tokens->count(data->tokens);
+   while (n --> 0) {
+      char *del_token = *((char**)data->tokens->del(data->tokens, n));
       data->memory.free(del_token);
    }
    data->memory.free(data->sessionid);
@@ -141,7 +143,8 @@ static circus_session_data_t *session_get(session_impl_t *this, const char *sess
    data_t *data = this->per_sessionid->get(this->per_sessionid, sessionid);
    if (data != NULL) {
       assert(strncmp(data->sessionid, sessionid, this->sessionid_length) == 0);
-      for (i = 0; i < data->tokens->count(data->tokens); i++) {
+      unsigned int n = data->tokens->count(data->tokens);
+      for (i = 0; i < n; i++) {
          const char *check_token = *((char**)data->tokens->get(data->tokens, i));
          if (!strncmp(token, check_token, this->token_length)) {
             return I(data);
@@ -152,11 +155,11 @@ static circus_session_data_t *session_get(session_impl_t *this, const char *sess
 }
 
 static circus_session_data_t *session_set(session_impl_t *this, circus_user_t *user) {
-   data_t *data = this->per_user->get(this->per_user, user);
+   data_t *data = this->per_user->del(this->per_user, user);
    if (data != NULL) {
       assert(data->user == user);
-      this->per_sessionid->del(this->per_sessionid, data->sessionid);
-      this->per_user->del(this->per_user, user);
+      data_t *data2 = this->per_sessionid->del(this->per_sessionid, data->sessionid);
+      assert(data == data2);
       free_data(data);
    }
    data = new_data(this->memory, user, this);
@@ -169,8 +172,8 @@ static void clean_sessionid(void *UNUSED(hash), int UNUSED(index), const char *U
    // Avoid double free() by not doing it :-)
 }
 
-static void clean_user(void *UNUSED(hash), int UNUSED(index), const circus_user_t *UNUSED(key), data_t *UNUSED(value), session_impl_t *UNUSED(this)) {
-   // Avoid double free() by not doing it :-)
+static void clean_user(void *UNUSED(hash), int UNUSED(index), const circus_user_t *UNUSED(key), data_t *value, session_impl_t *UNUSED(this)) {
+   free_data(value);
 }
 
 static void session_free(session_impl_t *this) {

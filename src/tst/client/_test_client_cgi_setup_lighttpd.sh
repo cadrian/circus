@@ -135,7 +135,9 @@ EOF
     export PATH=/bin:/usr/bin
     export HOME=$DIR
     # cannot use valgrind (illegal instruction in libgcrypt)
-    exec valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind_server.log $ROOT/exe/main/server$exe
+    exec valgrind --verbose --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind_server.log \
+          --leak-check=full --show-leak-kinds=all \
+         $ROOT/exe/main/server$exe
     # exec $ROOT/exe/main/server$exe
 ) >$LOG/server.out 2>$LOG/server.err &
 server_pid=$!

@@ -154,7 +154,7 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
    } else {
       log_warning(this->log, "uv poll init failed for write: %s", uv_strerror(n));
       log_info(this->log, "trying to write directly without proper poll.");
-      write_response(this, reponse);
+      write_response(this, response);
    }
 }
 

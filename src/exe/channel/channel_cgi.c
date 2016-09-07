@@ -100,6 +100,20 @@ static circus_channel_t impl_fn = {
    (circus_channel_free_fn) impl_free,
 };
 
+static void write_response(cgi_impl_t *this, cad_cgi_response_t *response) {
+   if (this->write_cb != NULL) {
+      log_debug(this->log, "calling callback");
+      (this->write_cb)((circus_channel_t*)this, this->write_data, response);
+      int n = response->flush(response);
+      if (n != 0) {
+         log_warning(this->log, "error while flushing response: %s", strerror(errno));
+      }
+   } else {
+      log_warning(this->log, "no write callback!");
+   }
+   response->free(response);
+}
+
 static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
    cgi_impl_t *this = container_of(handle, cgi_impl_t, write_handle);
    int n;
@@ -111,17 +125,7 @@ static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
    }
    log_debug(this->log, "event write: %s", events & UV_WRITABLE ? "true": "false");
    if (events & UV_WRITABLE) {
-      if (this->write_cb != NULL) {
-         log_debug(this->log, "calling callback");
-         (this->write_cb)((circus_channel_t*)this, this->write_data, response);
-         n = response->flush(response);
-         if (n != 0) {
-            log_warning(this->log, "error while flushing response: %s", strerror(errno));
-         }
-      } else {
-         log_warning(this->log, "no write callback!");
-      }
-      response->free(response);
+      write_response(this, response);
       n = uv_poll_stop(&(this->write_handle));
       if (n != 0) {
          log_warning(this->log, "uv poll stop failed for write: %s", uv_strerror(n));
@@ -148,7 +152,9 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
          this->write = starting;
       }
    } else {
-      log_error(this->log, "uv poll init failed for write: %s", uv_strerror(n));
+      log_warning(this->log, "uv poll init failed for write: %s", uv_strerror(n));
+      log_info(this->log, "trying to write directly without proper poll.");
+      write_response(this, reponse);
    }
 }
 

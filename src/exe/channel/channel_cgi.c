@@ -53,8 +53,11 @@ static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *d
    if (this->read == starting) {
       log_debug(this->log, "starting uv poll");
       int n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
-      assert(n == 0);
-      this->read = started;
+      if (n == 0) {
+         this->read = started;
+      } else {
+         log_error(this->log, "uv poll start failed for read: %s", uv_strerror(n));
+      }
    }
 }
 
@@ -66,8 +69,11 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void 
    if (this->write == starting) {
       log_debug(this->log, "starting uv poll");
       int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-      assert(n == 0);
-      this->write = started;
+      if (n = 0) {
+         this->write = started;
+      } else {
+         log_error(this->log, "uv poll start failed for write: %s", uv_strerror(n));
+      }
    }
 }
 
@@ -109,13 +115,17 @@ static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
          log_debug(this->log, "calling callback");
          (this->write_cb)((circus_channel_t*)this, this->write_data, response);
          n = response->flush(response);
-         assert(n == 0);
+         if (n != 0) {
+            log_warning(this->log, "error while flushing response: %s", strerror(errno));
+         }
       } else {
          log_warning(this->log, "no write callback!");
       }
       response->free(response);
       n = uv_poll_stop(&(this->write_handle));
-      assert(n == 0);
+      if (n != 0) {
+         log_warning(this->log, "uv poll stop failed for write: %s", uv_strerror(n));
+      }
    }
 }
 
@@ -123,17 +133,22 @@ static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
    int n;
 
    n = uv_poll_init(uv_default_loop(), &(this->write_handle), response->fd(response));
-   assert(n == 0);
-   this->write_handle.data = response;
-   if (this->write_cb != NULL) {
-      if (this->write == idle) {
-         log_debug(this->log, "starting uv poll");
-         n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-         assert(n == 0);
+   if (n == 0) {
+      this->write_handle.data = response;
+      if (this->write_cb != NULL) {
+         if (this->write == idle) {
+            log_debug(this->log, "starting uv poll");
+            n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
+            if (n != 0) {
+               log_error(this->log, "uv poll start failed for write: %s", uv_strerror(n));
+            }
+         }
+         this->write = started;
+      } else {
+         this->write = starting;
       }
-      this->write = started;
    } else {
-      this->write = starting;
+      log_error(this->log, "uv poll init failed for write: %s", uv_strerror(n));
    }
 }
 
@@ -155,7 +170,9 @@ static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
          log_error(this->log, "NULL response!!");
       }
       int n = uv_poll_stop(&(this->read_handle));
-      assert(n == 0);
+      if (n != 0) {
+         log_warning(this->log, "uv poll stop failed for read: %s", uv_strerror(n));
+      }
    }
 }
 
@@ -163,17 +180,22 @@ static void start_read(cgi_impl_t *this) {
    int n;
 
    n = uv_poll_init(uv_default_loop(), &(this->read_handle), this->cgi->fd(this->cgi));
-   assert(n == 0);
-   this->read_handle.data = this;
-   if (this->read_cb != NULL) {
-      if (this->read == idle) {
-         log_debug(this->log, "starting uv poll");
-         n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
-         assert(n == 0);
+   if (n == 0) {
+      this->read_handle.data = this;
+      if (this->read_cb != NULL) {
+         if (this->read == idle) {
+            log_debug(this->log, "starting uv poll");
+            n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
+            if (n != 0) {
+               log_error(this->log, "uv poll start failed for read: %s", uv_strerror(n));
+            }
+         }
+         this->read = started;
+      } else {
+         this->read = starting;
       }
-      this->read = started;
    } else {
-      this->read = starting;
+      log_error(this->log, "uv poll init failed for read: %s", uv_strerror(n));
    }
 }
 

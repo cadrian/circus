@@ -69,7 +69,7 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void 
    if (this->write == starting) {
       log_debug(this->log, "starting uv poll");
       int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-      if (n = 0) {
+      if (n == 0) {
          this->write = started;
       } else {
          log_error(this->log, "uv poll start failed for write: %s", uv_strerror(n));

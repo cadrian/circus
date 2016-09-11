@@ -22,51 +22,95 @@
 
 #include <circus_stream.h>
 
-struct write_req_s {
+typedef struct cb_s {
    union {
-      uv_write_t stream;
+      circus_stream_read_fn read;
+      circus_stream_write_fn write;
+   } on;
+   void *payload;
+} cb_t;
+
+struct circus_stream_req_s {
+   union {
+      uv_stream_t *read;
+      uv_write_t write;
       uv_fs_t fs;
    } req;
    cad_memory_t memory;
+   circus_stream_t *stream;
    uv_buf_t buf;
-   void (*cleanup)(write_req_t*);
+   void (*cleanup)(circus_stream_req_t*);
+   cb_t cb;
 };
 
-static void cleanup_stream(write_req_t *req) {
+static void cleanup_stream(circus_stream_req_t *req) {
    req->memory.free(req->buf.base);
+   req->buf = uv_buf_init(NULL, 0);
 }
 
-static void cleanup_fs(write_req_t *req) {
+static void cleanup_fs(circus_stream_req_t *req) {
    req->memory.free(req->buf.base);
+   req->buf = uv_buf_init(NULL, 0);
    uv_fs_req_cleanup(&req->req.fs);
 }
 
-static void on_write(write_req_t* req, int UNUSED(status)) {
+static void on_write(circus_stream_req_t* req, int UNUSED(status)) {
+   if (req->cb.on.write != NULL) {
+      req->cb.on.write(req->stream, req->cb.payload);
+   }
    req->cleanup(req);
    req->memory.free(req);
 }
 
-write_req_t *circus_write_req(cad_memory_t memory, const char *base, int len) {
-   write_req_t *result = memory.malloc(sizeof(write_req_t));
+static void on_read_fs(circus_stream_req_t* req, int UNUSED(status)) {
+   int more = 0;
+   if (req->cb.on.read != NULL) {
+      more = req->cb.on.read(req->stream, req->cb.payload, req->buf.base, req->buf.len);
+   }
+   if (!more) {
+      req->cleanup(req);
+      req->memory.free(req);
+   }
+}
+
+static void on_read_stream(circus_stream_req_t* req, ssize_t nread, const uv_buf_t *buf) {
+   assert(buf == &(req->buf));
+   int more = 0;
+   if (nread >= 0 && req->cb.on.read != NULL) {
+      more = req->cb.on.read(req->stream, req->cb.payload, req->buf.base, (int)nread);
+   }
+   if (!more) {
+      int n = uv_read_stop(req->req.read);
+      assert(n == 0);
+      req->cleanup(req);
+      req->memory.free(req);
+   }
+}
+
+static void stream_read_alloc(circus_stream_req_t *this, size_t suggested_size, uv_buf_t *buf) {
+   if (suggested_size > this->buf.len) {
+      this->memory.free(this->buf.base);
+      this->buf = uv_buf_init(this->memory.malloc(suggested_size), suggested_size);
+   }
+   *buf = this->buf;
+}
+
+circus_stream_req_t *circus_stream_req(cad_memory_t memory, const char *base, int len) {
+   circus_stream_req_t *result = memory.malloc(sizeof(circus_stream_req_t));
    int base_len = len;
    assert(result != NULL);
 
    result->memory = memory;
-   result->buf.base = szprintf(memory, &base_len, "%*s", len, base);
-   result->buf.len = (size_t)base_len;
+   if (base != NULL && len > 0) {
+      char *buf_base = szprintf(memory, &base_len, "%*s", len, base);
+      result->buf = uv_buf_init(buf_base, base_len);
+   } else {
+      result->buf = uv_buf_init(NULL, 0);
+   }
    result->cleanup = NULL;
 
    return result;
 }
-
-/* ---------------------------------------------------------------- */
-
-struct read_req_s {
-   cad_memory_t memory;
-   void (*cleanup)(read_req_t*);
-};
-
-// TODO
 
 /* ---------------------------------------------------------------- */
 
@@ -76,6 +120,7 @@ typedef struct stream_impl_s {
    uv_stream_t *stream;
    uv_file fd;
    int64_t offset;
+   cb_t cb;
 } stream_impl_t;
 
 static void file_free(stream_impl_t *this) {
@@ -83,11 +128,20 @@ static void file_free(stream_impl_t *this) {
    this->memory.free(this);
 }
 
-static void file_write(stream_impl_t *this, write_req_t *req) {
+static void file_read(stream_impl_t *this, circus_stream_req_t *req) {
+   assert(req->cleanup == NULL);
+   int64_t offset = this->offset;
+   req->cleanup = cleanup_fs;
+   req->cb = this->cb;
+   uv_fs_read(uv_default_loop(), &req->req.fs, this->fd, &req->buf, 1, offset, (uv_fs_cb)on_read_fs);
+}
+
+static void file_write(stream_impl_t *this, circus_stream_req_t *req) {
    assert(req->cleanup == NULL);
    int64_t offset = this->offset;
    req->cleanup = cleanup_fs;
    this->offset += req->buf.len;
+   req->cb = this->cb;
    uv_fs_write(uv_default_loop(), &req->req.fs, this->fd, &req->buf, 1, offset, (uv_fs_cb)on_write);
 }
 
@@ -106,7 +160,7 @@ static void file_flush(stream_impl_t *this) {
  */
 static circus_stream_t stream_file_fn = {
    (stream_free_fn)file_free,
-   NULL, // TODO
+   (stream_read_fn)file_read,
    (stream_write_fn)file_write,
    (stream_flush_fn)file_flush,
 };
@@ -119,10 +173,20 @@ static void tty_free(stream_impl_t *this) {
    this->memory.free(this);
 }
 
-static void tty_write(stream_impl_t *this, write_req_t *req) {
+static void tty_read(stream_impl_t *this, circus_stream_req_t *req) {
+   assert(req->cleanup == NULL);
+   req->req.read = this->stream;
+   assert(this->stream == (uv_stream_t*)req);
+   req->cleanup = cleanup_fs;
+   req->cb = this->cb;
+   uv_read_start(this->stream, (uv_alloc_cb)stream_read_alloc, (uv_read_cb)on_read_stream);
+}
+
+static void tty_write(stream_impl_t *this, circus_stream_req_t *req) {
    assert(req->cleanup == NULL);
    req->cleanup = cleanup_stream;
-   uv_write(&req->req.stream, this->stream, &req->buf, 1, (uv_write_cb)on_write);
+   req->cb = this->cb;
+   uv_write(&req->req.write, this->stream, &req->buf, 1, (uv_write_cb)on_write);
 }
 
 static void tty_flush(stream_impl_t *UNUSED(this)) {
@@ -134,7 +198,7 @@ static void tty_flush(stream_impl_t *UNUSED(this)) {
  */
 static circus_stream_t stream_tty_fn = {
    (stream_free_fn)tty_free,
-   NULL, // TODO
+   (stream_read_fn)tty_read,
    (stream_write_fn)tty_write,
    (stream_flush_fn)tty_flush,
 };
@@ -148,10 +212,20 @@ static void pipe_free(stream_impl_t *this) {
    this->memory.free(this);
 }
 
-static void pipe_write(stream_impl_t *this, write_req_t *req) {
+static void pipe_read(stream_impl_t *this, circus_stream_req_t *req) {
+   assert(req->cleanup == NULL);
+   req->req.read = this->stream;
+   assert(this->stream == (uv_stream_t*)req);
+   req->cleanup = cleanup_fs;
+   req->cb = this->cb;
+   uv_read_start(this->stream, (uv_alloc_cb)stream_read_alloc, (uv_read_cb)on_read_stream);
+}
+
+static void pipe_write(stream_impl_t *this, circus_stream_req_t *req) {
    assert(req->cleanup == NULL);
    req->cleanup = cleanup_stream;
-   uv_write(&req->req.stream, this->stream, &req->buf, 1, (uv_write_cb)on_write);
+   req->cb = this->cb;
+   uv_write(&req->req.write, this->stream, &req->buf, 1, (uv_write_cb)on_write);
 }
 
 static void pipe_flush(stream_impl_t *UNUSED(this)) {
@@ -163,14 +237,14 @@ static void pipe_flush(stream_impl_t *UNUSED(this)) {
  */
 static circus_stream_t stream_pipe_fn = {
    (stream_free_fn)pipe_free,
-   NULL, // TODO
+   (stream_read_fn)pipe_read,
    (stream_write_fn)pipe_write,
    (stream_flush_fn)pipe_flush,
 };
 
 /* ---------------------------------------------------------------- */
 
-static circus_stream_t *new_stream_file(cad_memory_t memory, const char *filename, int flags) {
+static stream_impl_t *new_stream_file(cad_memory_t memory, const char *filename, int flags, int *uv_error) {
    assert(filename != NULL);
 
    stream_impl_t *result = NULL;
@@ -187,25 +261,43 @@ static circus_stream_t *new_stream_file(cad_memory_t memory, const char *filenam
       result->stream = (uv_stream_t*)pipe;
       result->fd = fd;
       result->offset = 0;
+   } else if (uv_error != NULL) {
+      *uv_error = fd;
    }
 
+   return result;
+}
+
+circus_stream_t *new_stream_file_write(cad_memory_t memory, const char *filename, circus_stream_write_fn on_write_cb, void *payload, int *uv_error) {
+   stream_impl_t *result = new_stream_file(memory, filename, O_WRONLY | O_CREAT, uv_error);
+   if (result != NULL) {
+      result->cb.on.write = on_write_cb;
+      result->cb.payload = payload;
+   }
    return I(result);
 }
 
-circus_stream_t *new_stream_file_write(cad_memory_t memory, const char *filename) {
-   return new_stream_file(memory, filename, O_WRONLY | O_CREAT);
+circus_stream_t *new_stream_file_append(cad_memory_t memory, const char *filename, circus_stream_write_fn on_write_cb, void *payload, int *uv_error) {
+   stream_impl_t *result = new_stream_file(memory, filename, O_WRONLY | O_CREAT | O_APPEND, uv_error);
+   if (result != NULL) {
+      result->cb.on.write = on_write_cb;
+      result->cb.payload = payload;
+   }
+   return I(result);
 }
 
-circus_stream_t *new_stream_file_append(cad_memory_t memory, const char *filename) {
-   return new_stream_file(memory, filename, O_WRONLY | O_CREAT | O_APPEND);
+circus_stream_t *new_stream_file_read(cad_memory_t memory, const char *filename, circus_stream_read_fn on_read_cb, void *payload, int *uv_error) {
+   stream_impl_t *result = new_stream_file(memory, filename, O_RDONLY, uv_error);
+   if (result != NULL) {
+      result->cb.on.read = on_read_cb;
+      result->cb.payload = payload;
+   }
+   return I(result);
 }
 
-circus_stream_t *new_stream_file_read(cad_memory_t memory, const char *filename) {
-   return new_stream_file(memory, filename, O_RDONLY);
-}
-
-circus_stream_t *new_stream_fd(cad_memory_t memory, int fd) {
+static stream_impl_t *new_stream_fd(cad_memory_t memory, int fd) {
    stream_impl_t *result = memory.malloc(sizeof(stream_impl_t));
+   assert(result != NULL);
    uv_tty_t *tty;
    uv_pipe_t *pipe;
    uv_handle_type handle_type = uv_guess_handle(fd);
@@ -235,5 +327,19 @@ circus_stream_t *new_stream_fd(cad_memory_t memory, int fd) {
       fprintf(stderr, "handle_type=%d not handled...\n", handle_type);
       crash();
    }
+   return result;
+}
+
+circus_stream_t *new_stream_fd_read(cad_memory_t memory, int fd, circus_stream_read_fn on_read_cb, void *payload) {
+   stream_impl_t *result = new_stream_fd(memory, fd);
+   result->cb.on.read = on_read_cb;
+   result->cb.payload = payload;
+   return I(result);
+}
+
+circus_stream_t *new_stream_fd_write(cad_memory_t memory, int fd, circus_stream_write_fn on_write_cb, void *payload) {
+   stream_impl_t *result = new_stream_fd(memory, fd);
+   result->cb.on.write = on_write_cb;
+   result->cb.payload = payload;
    return I(result);
 }

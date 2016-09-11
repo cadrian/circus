@@ -23,16 +23,20 @@
 
 #include <circus.h>
 
-typedef struct write_req_s write_req_t;
-__PUBLIC__ write_req_t *circus_write_req(cad_memory_t memory, const char *base, int len);
-
-typedef struct read_req_s read_req_t;
-__PUBLIC__ read_req_t *circus_read_req(cad_memory_t memory, char *base, int len);
-
 typedef struct circus_stream_s circus_stream_t;
+
+/**
+ * @return zero if need to stop reading
+ */
+typedef int (*circus_stream_read_fn)(circus_stream_t *stream, void *payload, const char *buffer, int len);
+typedef void (*circus_stream_write_fn)(circus_stream_t *stream, void *payload);
+
+typedef struct circus_stream_req_s circus_stream_req_t;
+__PUBLIC__ circus_stream_req_t *circus_stream_req(cad_memory_t memory, const char *base, int len);
+
 typedef void (*stream_free_fn)(circus_stream_t *stream);
-typedef int (*stream_read_fn)(circus_stream_t *stream, read_req_t *req);
-typedef int (*stream_write_fn)(circus_stream_t *stream, write_req_t *req);
+typedef int (*stream_read_fn)(circus_stream_t *stream, circus_stream_req_t *req);
+typedef int (*stream_write_fn)(circus_stream_t *stream, circus_stream_req_t *req);
 typedef void (*stream_flush_fn)(circus_stream_t *stream);
 struct circus_stream_s {
    stream_free_fn  free ;
@@ -41,9 +45,11 @@ struct circus_stream_s {
    stream_flush_fn flush;
 };
 
-__PUBLIC__ circus_stream_t *new_stream_fd(cad_memory_t memory, int fd);
-__PUBLIC__ circus_stream_t *new_stream_file_write(cad_memory_t memory, const char *filename);
-__PUBLIC__ circus_stream_t *new_stream_file_append(cad_memory_t memory, const char *filename);
-__PUBLIC__ circus_stream_t *new_stream_file_read(cad_memory_t memory, const char *filename);
+__PUBLIC__ circus_stream_t *new_stream_fd_read(cad_memory_t memory, int fd, circus_stream_read_fn on_read, void *payload);
+__PUBLIC__ circus_stream_t *new_stream_fd_write(cad_memory_t memory, int fd, circus_stream_write_fn on_write, void *payload);
+
+__PUBLIC__ circus_stream_t *new_stream_file_write(cad_memory_t memory, const char *filename, circus_stream_write_fn on_write, void *payload, int *uv_error);
+__PUBLIC__ circus_stream_t *new_stream_file_append(cad_memory_t memory, const char *filename, circus_stream_write_fn on_write, void *payload, int *uv_error);
+__PUBLIC__ circus_stream_t *new_stream_file_read(cad_memory_t memory, const char *filename, circus_stream_read_fn on_read, void *payload, int *uv_error);
 
 #endif /* __CIRCUS_STREAM_H */

@@ -155,7 +155,7 @@ static void log_free_stream(log_file_output_stream *this) {
 }
 
 static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
-   write_req_t *req;
+   circus_stream_req_t *req;
    struct timeval tv = now();
    char *message = NULL;
    int n;
@@ -170,7 +170,7 @@ static void log_vput_stream(log_file_output_stream *this, const char *format, va
    format_log(logline, n + 1, *(this->format), &tv, this->tag, this->module, message);
    this->memory.free(message);
 
-   req = circus_write_req(this->memory, logline, n);
+   req = circus_stream_req(this->memory, logline, n);
    this->memory.free(logline);
 
    this->stream->write(this->stream, req);
@@ -328,12 +328,19 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
 
    circus_log_impl *result = memory.malloc(sizeof(circus_log_impl));
    if (result != NULL) {
+      int e = 0;
       result->fn = impl_fn;
       result->memory = memory;
       result->module_streams = cad_new_hash(memory, cad_hash_strings);
       result->max_level = max_level;
-      result->stream = new_stream_file_append(memory, filename);
-      result->format = szprintf(memory, NULL, "%s", DEFAULT_FORMAT);
+      result->stream = new_stream_file_append(memory, filename, NULL, NULL, &e);
+      if (e < 0) {
+         fprintf(stderr, "Error opening log file: %s\n", uv_strerror(e));
+         memory.free(result);
+         result = NULL;
+      } else {
+         result->format = szprintf(memory, NULL, "%s", DEFAULT_FORMAT);
+      }
    }
    return I(result);
 }
@@ -347,7 +354,7 @@ circus_log_t *circus_new_log_file_descriptor(cad_memory_t memory, log_level_t ma
       result->memory = memory;
       result->module_streams = cad_new_hash(memory, cad_hash_strings);
       result->max_level = max_level;
-      result->stream = new_stream_fd(memory, fd);
+      result->stream = new_stream_fd_write(memory, fd, NULL, NULL);
       result->format = szprintf(memory, NULL, "%s", DEFAULT_FORMAT);
    }
    return I(result);

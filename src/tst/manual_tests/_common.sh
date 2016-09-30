@@ -14,9 +14,6 @@ case x"$1" in
         (
             cd $ROOT
             export CFLAGS="-DDEBUG -g"
-            export LD_FLAGS_DBG="-Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize_rnd -Wl,--wrap=gcry_create_nonce_rnd"
-            # mlock/munlock: we are not root
-            # gcry_*: we need valgrind (libgcrypt generates instructions not recognized by Valgrind)
             export STRIP_EXE=false
             exec make manual_test
         ) || exit 1

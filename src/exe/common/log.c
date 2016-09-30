@@ -308,8 +308,8 @@ static void impl_close(circus_log_impl *this) {
 
 static void impl_free(circus_log_impl *this) {
    // running the default loop just ensures that all the log messages are flushed and freed.
-   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-   impl_close(this);
+   // uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+   // impl_close(this);
    this->memory.free(this);
 }
 

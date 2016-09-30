@@ -39,6 +39,7 @@ static void set_log(circus_config_t *config) {
    const char *log_szfilename;
    const char *log_szlevel;
    log_level_t log_level = LOG_INFO;
+   cad_memory_t memory = stdlib_memory;
 
    log_szlevel = config->get(config, "log", "level");
    if (log_szlevel != NULL) {
@@ -52,6 +53,7 @@ static void set_log(circus_config_t *config) {
          log_level = LOG_DEBUG;
       } else if (!strcmp(log_szlevel, "pii")) {
          log_level = LOG_PII;
+         memory = MEMORY;
       } else {
          fprintf(stderr, "Ignored unknown log level: %s\n", log_szlevel);
       }
@@ -59,9 +61,9 @@ static void set_log(circus_config_t *config) {
 
    log_szfilename = config->get(config, "log", "filename");
    if (log_szfilename == NULL) {
-      LOG = circus_new_log_file_descriptor(stdlib_memory, log_level, STDERR_FILENO);
+      LOG = circus_new_log_file_descriptor(memory, log_level, STDERR_FILENO);
    } else {
-      LOG = circus_new_log_file(stdlib_memory, log_szfilename, log_level);
+      LOG = circus_new_log_file(memory, log_szfilename, log_level);
    }
 }
 
@@ -82,7 +84,7 @@ static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) 
 }
 
 static void run(circus_config_t *config) {
-   circus_channel_t *zmq_channel = circus_zmq_client(stdlib_memory, LOG, config);
+   circus_channel_t *zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
       log_error(LOG, "Could not allocate zmq_channel");
       LOG->free(LOG);
@@ -90,7 +92,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_client_message_handler_t *mh = circus_message_handler(stdlib_memory, LOG, config);
+   circus_client_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
       log_error(LOG, "Could not allocate message handler");
       zmq_channel->free(zmq_channel);
@@ -99,7 +101,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_channel_t *cgi_channel = circus_cgi(stdlib_memory, LOG, config);
+   circus_channel_t *cgi_channel = circus_cgi(MEMORY, LOG, config);
    if (cgi_channel == NULL) {
       log_error(LOG, "Could not allocate cgi_channel");
       mh->free(mh);
@@ -108,7 +110,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_client_cgi_handler_t *ch = circus_cgi_handler(stdlib_memory, LOG, config);
+   circus_client_cgi_handler_t *ch = circus_cgi_handler(MEMORY, LOG, config);
    if (ch == NULL) {
       log_error(LOG, "Could not allocate CGI handler");
       cgi_channel->free(cgi_channel);
@@ -119,7 +121,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_automaton_t *automaton = new_automaton(stdlib_memory, LOG);
+   circus_automaton_t *automaton = new_automaton(MEMORY, LOG);
    assert(automaton->state(automaton) == State_started);
    mh->register_to(mh, zmq_channel, automaton);
    ch->register_to(ch, cgi_channel, automaton);

@@ -108,7 +108,9 @@ char *new_symmetric_key(cad_memory_t memory, circus_log_t *log) {
    if (raw == NULL) {
       log_error(log, "Could not allocate memory for symmetric key");
    } else {
+      log_debug(log, "Creating symmetric key (%d bits), needing entropy here...", KEY_SIZE * 8);
       gcry_randomize(raw, KEY_SIZE, GCRY_VERY_STRONG_RANDOM);
+      log_debug(log, "Symmetric key created.");
    }
    char *result = base64(memory, raw, KEY_SIZE);
    memory.free(raw);

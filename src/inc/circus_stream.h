@@ -20,6 +20,7 @@
 #define __CIRCUS_STREAM_H
 
 #include <cad_shared.h>
+#include <cad_stream.h>
 
 #include <circus.h>
 
@@ -39,10 +40,10 @@ typedef int (*stream_read_fn)(circus_stream_t *stream, circus_stream_req_t *req)
 typedef int (*stream_write_fn)(circus_stream_t *stream, circus_stream_req_t *req);
 typedef void (*stream_flush_fn)(circus_stream_t *stream);
 struct circus_stream_s {
-   stream_free_fn  free ;
-   stream_read_fn  read ;
-   stream_write_fn write;
-   stream_flush_fn flush;
+   stream_free_fn   free  ;
+   stream_read_fn   read  ;
+   stream_write_fn  write ;
+   stream_flush_fn  flush ;
 };
 
 __PUBLIC__ circus_stream_t *new_stream_fd_read(cad_memory_t memory, int fd, circus_stream_read_fn on_read, void *payload);

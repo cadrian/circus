@@ -48,9 +48,6 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
             } else {
                set_response_redirect(this, response, "login", NULL);
             }
-            if (query != NULL) {
-               query->free(query);
-            }
          }
       } else if (!strcmp(verb, "POST")) {
          if (log_is_pii(this->log)) {

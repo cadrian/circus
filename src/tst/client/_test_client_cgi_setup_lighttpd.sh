@@ -86,7 +86,6 @@ ext=.\$(printf "%02d" \$i)
 {
     env | sort
 } > $LOG/env\$ext.log
-#$ROOT/exe/main/client_cgi$exe |
 tee $base\$ext.in |
     valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind\$ext.log $ROOT/exe/main/client_cgi$exe |
     tee $base\$ext.out

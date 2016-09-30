@@ -17,20 +17,159 @@
 */
 
 #include <cad_cgi.h>
+#include <errno.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include <uv.h>
 
 #include <circus_channel.h>
+#include <circus_stream.h>
 
-typedef enum {
-   idle = 0,
-   starting,
-   started,
-} cb_status;
+#define DEFAULT_CGI_STREAM_CAPACITY 4096
 
 typedef struct {
+   char *data;
+   size_t capacity;
+   size_t index;
+   size_t count;
+} cgi_buffer;
+
+static void init_buffer(cad_memory_t memory, cgi_buffer *buf) {
+   buf->capacity = DEFAULT_CGI_STREAM_CAPACITY;
+   buf->data = memory.malloc(buf->capacity);
+   assert(buf->data != NULL);
+   buf->index = 0;
+   buf->count = 0;
+}
+
+static int buffer_vput(cad_memory_t memory, cgi_buffer *this, const char *format, va_list args) {
+   int result;
+   va_list copy;
+   va_copy(copy, args);
+   result = vsnprintf("", 0, format, copy);
+   va_end(copy);
+   if (result > 0) {
+      size_t cap = this->capacity;
+      while (cap < this->count + result) {
+         cap *= 2;
+      }
+      if (cap > this->capacity) {
+         char *buf = memory.malloc(cap);
+         memcpy(buf, this->data, this->count);
+         memory.free(this->data);
+         this->data = buf;
+         this->capacity = cap;
+      }
+      result = vsnprintf(this->data + this->count, this->capacity - this->count, format, args);
+      this->count += result;
+   }
+   return result;
+}
+
+static int buffer_put(cad_memory_t memory, cgi_buffer *this, const char *format, ...) {
+   int result;
+   va_list args;
+   va_start(args, format);
+   result = buffer_vput(memory, this, format, args);
+   va_end(args);
+   return result;
+}
+
+typedef struct cgi_impl_s cgi_impl_t;
+
+typedef struct {
+   cad_input_stream_t fn;
+   cad_memory_t memory;
+   cgi_impl_t *cgi;
+   cgi_buffer buffer;
+} cgi_input_stream;
+
+static void in_stream_free(cgi_input_stream *this) {
+   this->memory.free(this->buffer.data);
+   this->memory.free(this);
+}
+
+static int in_stream_next(cgi_input_stream *this) {
+   if (this->buffer.index < this->buffer.count) {
+      this->buffer.index++;
+      return 0;
+   }
+   return -1;
+}
+
+static int in_stream_item(cgi_input_stream *this) {
+   if (this->buffer.index <= this->buffer.count) {
+      return this->buffer.data[this->buffer.index];
+   }
+   return -1;
+}
+
+static cad_input_stream_t cgi_in_fn = {
+   (cad_input_stream_free_fn) in_stream_free,
+   (cad_input_stream_next_fn) in_stream_next,
+   (cad_input_stream_item_fn) in_stream_item,
+};
+
+static cgi_input_stream *new_cgi_in(cad_memory_t memory, cgi_impl_t *cgi) {
+   cgi_input_stream *result = memory.malloc(sizeof(cgi_input_stream));
+   assert(result != NULL);
+   result->fn = cgi_in_fn;
+   result->memory = memory;
+   result->cgi = cgi;
+   init_buffer(memory, &result->buffer);
+   return result;
+}
+
+typedef struct {
+   cad_output_stream_t fn;
+   cad_memory_t memory;
+   cgi_impl_t *cgi;
+   cgi_buffer buffer;
+} cgi_output_stream;
+
+static void out_stream_free(cgi_output_stream *this) {
+   this->memory.free(this->buffer.data);
+   this->memory.free(this);
+}
+
+static int out_stream_vput(cgi_output_stream *this, const char *format, va_list args) {
+   return buffer_vput(this->memory, &this->buffer, format, args);
+}
+
+static int out_stream_put(cgi_output_stream *this, const char *format, ...) {
+   int result;
+   va_list args;
+   va_start(args, format);
+   result = out_stream_vput(this, format, args);
+   va_end(args);
+   return result;
+}
+
+static int out_stream_flush(cgi_output_stream *UNUSED(this)) {
+   return 0;
+}
+
+static cad_output_stream_t cgi_out_fn = {
+   (cad_output_stream_free_fn) out_stream_free,
+   (cad_output_stream_put_fn) out_stream_put,
+   (cad_output_stream_vput_fn) out_stream_vput,
+   (cad_output_stream_flush_fn) out_stream_flush,
+};
+
+static cgi_output_stream *new_cgi_out(cad_memory_t memory, cgi_impl_t *cgi) {
+   cgi_output_stream *result = memory.malloc(sizeof(cgi_output_stream));
+   assert(result != NULL);
+   result->fn = cgi_out_fn;
+   result->memory = memory;
+   result->cgi = cgi;
+   init_buffer(memory, &result->buffer);
+   return result;
+}
+
+/* ---------------------------------------------------------------- */
+
+struct cgi_impl_s {
    circus_channel_t fn;
    cad_memory_t memory;
    circus_log_t *log;
@@ -39,41 +178,56 @@ typedef struct {
    void *read_data;
    circus_channel_on_write_cb write_cb;
    void *write_data;
-   cb_status read;
-   uv_poll_t read_handle;
-   cb_status write;
-   uv_poll_t write_handle;
-} cgi_impl_t;
+   circus_stream_t *cgi_in;
+   circus_stream_t *cgi_out;
+   cad_cgi_response_t *response;
+   cgi_input_stream *cgi_in_stream;
+   cgi_output_stream *cgi_out_stream;
+};
 
-static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events);
-
-static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *data) {
-   this->read_cb = cb;
-   this->read_data = data;
-   if (this->read == starting) {
-      log_debug(this->log, "starting uv poll");
-      int n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
-      if (n == 0) {
-         this->read = started;
-      } else {
-         log_error(this->log, "uv poll start failed for read: %s", uv_strerror(n));
-      }
-   }
+static void start_read(cgi_impl_t *this) {
+   log_debug(this->log, "Start read CGI");
+   circus_stream_req_t *req = circus_stream_req(this->memory, NULL, 0); // TODO free
+   this->cgi_in->read(this->cgi_in, req);
+   log_debug(this->log, "Started read CGI");
 }
 
-static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events);
+static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *data) {
+   log_debug(this->log, "start reading CGI");
+   this->read_cb = cb;
+   this->read_data = data;
+   start_read(this);
+   log_debug(this->log, "started reading CGI");
+}
+
+static void start_write(cgi_impl_t *this) {
+   log_debug(this->log, "Start write CGI");
+
+   assert(this->response != NULL);
+   if (this->write_cb != NULL) {
+      log_debug(this->log, "calling callback");
+      (this->write_cb)((circus_channel_t*)this, this->write_data, this->response);
+      int n = this->response->flush(this->response);
+      if (n != 0) {
+         log_warning(this->log, "error while flushing response: %s", strerror(errno));
+      }
+   } else {
+      log_warning(this->log, "no write callback!");
+   }
+   this->response->free(this->response);
+   this->response = NULL;
+
+   log_debug(this->log, "Write CGI response");
+   circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count); // TODO free
+   this->cgi_out->write(this->cgi_out, req);
+}
 
 static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void *data) {
+   log_debug(this->log, "start writing CGI");
    this->write_cb = cb;
    this->write_data = data;
-   if (this->write == starting) {
-      log_debug(this->log, "starting uv poll");
-      int n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-      if (n == 0) {
-         this->write = started;
-      } else {
-         log_error(this->log, "uv poll start failed for write: %s", uv_strerror(n));
-      }
+   if (this->response != NULL) {
+      start_write(this);
    }
 }
 
@@ -89,6 +243,8 @@ static int impl_write(cgi_impl_t *UNUSED(this), const char *buffer, size_t bufle
 
 static void impl_free(cgi_impl_t *this) {
    this->cgi->free(this->cgi);
+   this->cgi_in->free(this->cgi_in);
+   this->cgi_out->free(this->cgi_out);
    this->memory.free(this);
 }
 
@@ -100,109 +256,32 @@ static circus_channel_t impl_fn = {
    (circus_channel_free_fn) impl_free,
 };
 
-static void write_response(cgi_impl_t *this, cad_cgi_response_t *response) {
-   if (this->write_cb != NULL) {
-      log_debug(this->log, "calling callback");
-      (this->write_cb)((circus_channel_t*)this, this->write_data, response);
-      int n = response->flush(response);
-      if (n != 0) {
-         log_warning(this->log, "error while flushing response: %s", strerror(errno));
-      }
+static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffer, int len) {
+   int result = 0;
+   assert(cgi->cgi_in == this);
+   cgi_input_stream *in = cgi->cgi_in_stream;
+   if (len >= 0) {
+      buffer_put(in->memory, &in->buffer, "%*s", len, buffer);
+      result = 1;
    } else {
-      log_warning(this->log, "no write callback!");
-   }
-   response->free(response);
-}
-
-static void impl_cgi_write_callback(uv_poll_t *handle, int status, int events) {
-   cgi_impl_t *this = container_of(handle, cgi_impl_t, write_handle);
-   int n;
-   cad_cgi_response_t *response = handle->data;
-   assert(response != NULL);
-   if (status != 0) {
-      log_warning(this->log, "status=%d", status);
-      return;
-   }
-   log_debug(this->log, "event write: %s", events & UV_WRITABLE ? "true": "false");
-   if (events & UV_WRITABLE) {
-      write_response(this, response);
-      n = uv_poll_stop(&(this->write_handle));
-      if (n != 0) {
-         log_warning(this->log, "uv poll stop failed for write: %s", uv_strerror(n));
-      }
-   }
-}
-
-static void start_write(cgi_impl_t *this, cad_cgi_response_t *response) {
-   int n;
-
-   n = uv_poll_init(uv_default_loop(), &(this->write_handle), response->fd(response));
-   if (n == 0) {
-      this->write_handle.data = response;
-      if (this->write_cb != NULL) {
-         if (this->write == idle) {
-            log_debug(this->log, "starting uv poll");
-            n = uv_poll_start(&(this->write_handle), UV_WRITABLE, impl_cgi_write_callback);
-            if (n != 0) {
-               log_error(this->log, "uv poll start failed for write: %s", uv_strerror(n));
-            }
-         }
-         this->write = started;
-      } else {
-         this->write = starting;
-      }
-   } else {
-      log_warning(this->log, "uv poll init failed for write: %s", uv_strerror(n));
-      log_info(this->log, "trying to write directly without proper poll.");
-      write_response(this, response);
-   }
-}
-
-static void impl_cgi_read_callback(uv_poll_t *handle, int status, int events) {
-   cgi_impl_t *this = handle->data;
-   assert(this == container_of(handle, cgi_impl_t, read_handle));
-   if (status != 0) {
-      log_warning(this->log, "impl_cgi_read_callback: status=%d", status);
-      return;
-   }
-   log_debug(this->log, "event read: %s", events & UV_READABLE ? "true": "false");
-   if (events & UV_READABLE) {
-      log_debug(this->log, "calling CGI run");
-      cad_cgi_response_t *response = this->cgi->run(this->cgi);
+      assert(len == -1 /* EOF */);
+      log_debug(cgi->log, "calling CGI run");
+      cad_cgi_response_t *response = cgi->cgi->run(cgi->cgi);
       if (response != NULL) {
-         log_debug(this->log, "got response from CGI run");
-         start_write(this, response);
+         cgi->response = response;
+         log_debug(cgi->log, "got response from CGI run");
+         start_write(cgi);
       } else {
-         log_error(this->log, "NULL response!!");
-      }
-      int n = uv_poll_stop(&(this->read_handle));
-      if (n != 0) {
-         log_warning(this->log, "uv poll stop failed for read: %s", uv_strerror(n));
+         log_error(cgi->log, "NULL response!!");
       }
    }
+   return result;
 }
 
-static void start_read(cgi_impl_t *this) {
-   int n;
-
-   n = uv_poll_init(uv_default_loop(), &(this->read_handle), this->cgi->fd(this->cgi));
-   if (n == 0) {
-      this->read_handle.data = this;
-      if (this->read_cb != NULL) {
-         if (this->read == idle) {
-            log_debug(this->log, "starting uv poll");
-            n = uv_poll_start(&(this->read_handle), UV_READABLE, impl_cgi_read_callback);
-            if (n != 0) {
-               log_error(this->log, "uv poll start failed for read: %s", uv_strerror(n));
-            }
-         }
-         this->read = started;
-      } else {
-         this->read = starting;
-      }
-   } else {
-      log_error(this->log, "uv poll init failed for read: %s", uv_strerror(n));
-   }
+static void cgi_on_write(circus_stream_t *this, cgi_impl_t *cgi) {
+   assert(cgi->cgi_out == this);
+   assert(cgi->response != NULL);
+   log_debug(cgi->log, "response written.");
 }
 
 static int cgi_handler(cad_cgi_t *cgi, cad_cgi_response_t *response, cgi_impl_t *this) {
@@ -221,23 +300,35 @@ circus_channel_t *circus_cgi(cad_memory_t memory, circus_log_t *log, circus_conf
    cgi_impl_t *result = memory.malloc(sizeof(cgi_impl_t));
    assert(result != NULL);
 
-   cad_cgi_t *cgi = new_cad_cgi(memory, (cad_cgi_handle_cb)cgi_handler, result);
-   assert(cgi != NULL);
-
    result->fn = impl_fn;
    result->memory = memory;
    result->log = log;
-   result->cgi = cgi;
    result->read_cb = NULL;
    result->read_data = NULL;
    result->write_cb = NULL;
    result->write_data = NULL;
-   result->read = idle;
-   result->read_handle.data = NULL;
-   result->write = idle;
-   result->write_handle.data = NULL;
 
-   start_read(result);
+   cgi_input_stream *cgi_in = new_cgi_in(memory, result);
+   assert(cgi_in != NULL);
+   result->cgi_in_stream = cgi_in;
+
+   cgi_output_stream *cgi_out = new_cgi_out(memory, result);
+   assert(cgi_out != NULL);
+   result->cgi_out_stream = cgi_out;
+
+   cad_cgi_t *cgi = new_cad_cgi_stream(memory, (cad_cgi_handle_cb)cgi_handler, result, I(cgi_in), I(cgi_out));
+   assert(cgi != NULL);
+   result->cgi = cgi;
+
+   result->cgi_in = new_stream_fd_read(memory, STDIN_FILENO, (circus_stream_read_fn)cgi_on_read, result);
+   if (result->cgi_in == NULL) {
+      log_error(log, "CGI init failed for read");
+   }
+
+   result->cgi_out = new_stream_fd_write(memory, STDOUT_FILENO, (circus_stream_write_fn)cgi_on_write, result);
+   if (result->cgi_out == NULL) {
+      log_error(log, "CGI init failed for write");
+   }
 
    return I(result);
 }

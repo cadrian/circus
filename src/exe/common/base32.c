@@ -26,10 +26,11 @@
 
 #include <circus_base32.h>
 
-static char ALPHABET[] = "ybndrfg8ejkmcpqxot1uwisza345h769";
+static char ALPHABET_L[] = "ybndrfg8ejkmcpqxot1uwisza345h769";
+static char ALPHABET_H[] = "YBNDRFG8EJKMCPQXOT1UWISZA345H769";
 
 static char encode_char(char c) {
-   return ALPHABET[c & 0x1F];
+   return ALPHABET_L[c & 0x1F];
 }
 
 static unsigned int b32_hash(const void *key) {
@@ -50,19 +51,29 @@ static void b32_free(void *UNUSED(key)) {
 
 static cad_hash_keys_t b32_keys = {b32_hash, b32_compare, b32_clone, b32_free};
 
-static int decode_char(char c) {
+static cad_hash_t *alphabet(void) {
    static cad_hash_t *map = NULL;
    if (map == NULL) {
       static int *values = NULL;
-      size_t i, n = strlen(ALPHABET);
+      size_t i, n = 32;
+      assert(n == strlen(ALPHABET_H));
+      assert(n == strlen(ALPHABET_L));
       values = malloc(n * sizeof(int));
       memset(values, 0, n * sizeof(int));
       map = cad_new_hash(stdlib_memory, b32_keys);
       for (i = 0; i < n; i++) {
          values[i] = i;
-         map->set(map, &ALPHABET[i], &values[i]);
+         map->set(map, &ALPHABET_L[i], &values[i]);
+         if (ALPHABET_H[i] != ALPHABET_L[i]) {
+            map->set(map, &ALPHABET_H[i], &values[i]);
+         }
       }
    }
+   return map;
+}
+
+static int decode_char(char c) {
+   cad_hash_t *map = alphabet();
    void *res = map->get(map, &c);
    if (res == NULL) {
       return -1;

@@ -16,6 +16,7 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -24,9 +25,22 @@
 int main() {
    char *test = "This is a base32 test.";
    printf("[%zd] %s\n", strlen(test), test);
+
+   // Normal low-case encoding
    char *encoded = base32(stdlib_memory, test, strlen(test) + 1); // + 1 to encode the whole string with its terminator
    printf("[%zd] %s\n", strlen(encoded), encoded);
-   char *decoded = unbase32(stdlib_memory, encoded);
-   printf("[%zd] %s\n", strlen(decoded), decoded);
-   assert(!strcmp(decoded, test));
+   char *decoded_l = unbase32(stdlib_memory, encoded);
+   printf("[%zd] %s\n", strlen(decoded_l), decoded_l);
+   assert(!strcmp(decoded_l, test));
+
+   // Check up-case encoding (base32 is case insensitive)
+   char *p = encoded;
+   while (*p) {
+      *p = toupper(*p);
+      p++;
+   }
+   printf("[%zd] %s\n", strlen(encoded), encoded);
+   char *decoded_h = unbase32(stdlib_memory, encoded);
+   printf("[%zd] %s\n", strlen(decoded_h), decoded_h);
+   assert(!strcmp(decoded_h, test));
 }

@@ -81,8 +81,15 @@ static void usage(const char *cmd, FILE *out) {
    );
 }
 
-static void run(circus_config_t *config, circus_vault_t *vault) {
-   circus_channel_t *channel = circus_zmq_server(MEMORY, LOG, config);
+static circus_config_t *config;
+static circus_vault_t *vault;
+static circus_channel_t *channel;
+static circus_server_message_handler_t *mh;
+
+static void do_run(uv_idle_t *runner) {
+   log_debug(LOG, "Creating ZMQ channel...");
+
+   channel = circus_zmq_server(MEMORY, LOG, config);
    if (channel == NULL) {
       log_error(LOG, "Could not allocate channel");
       LOG->free(LOG);
@@ -90,7 +97,9 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
       exit(1);
    }
 
-   circus_server_message_handler_t *mh = circus_message_handler(MEMORY, LOG, vault, config);
+   log_debug(LOG, "Creating message handler...");
+
+   mh = circus_message_handler(MEMORY, LOG, vault, config);
    if (mh == NULL) {
       log_error(LOG, "Could not allocate message handler");
       channel->free(channel);
@@ -99,9 +108,20 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
       exit(1);
    }
 
+   log_debug(LOG, "Registering message handler...");
+
    mh->register_to(mh, channel);
 
    log_info(LOG, "Server started.");
+
+   uv_idle_stop(runner);
+}
+
+static void run(void) {
+   uv_idle_t runner;
+   uv_idle_init(uv_default_loop(), &runner);
+   uv_idle_start(&runner, do_run);
+
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
    log_info(LOG, "Server stopped.");
@@ -113,7 +133,7 @@ static void run(circus_config_t *config, circus_vault_t *vault) {
 __PUBLIC__ int main(int argc, const char* const* argv) {
    init();
 
-   circus_config_t *config = circus_config_read(stdlib_memory, "server.conf");
+   config = circus_config_read(stdlib_memory, "server.conf");
    int status = 0;
 
    assert(config != NULL);
@@ -129,10 +149,10 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
    if (!init_crypt(LOG)) {
       status = 1;
    } else {
-      circus_vault_t *vault = circus_vault(MEMORY, LOG, config, circus_database_sqlite3);
+      vault = circus_vault(MEMORY, LOG, config, circus_database_sqlite3);
       switch (argc) {
       case 1:
-         run(config, vault);
+         run();
          assert(0 == status);
          break;
       case 2:

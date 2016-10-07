@@ -204,29 +204,32 @@ static void start_write(cgi_impl_t *this) {
    log_debug(this->log, "Start write CGI");
 
    assert(this->response != NULL);
-   if (this->write_cb != NULL) {
+   if (this->write_cb == NULL) {
+      log_debug(this->log, "no write callback (will write later)");
+   } else {
       log_debug(this->log, "calling callback");
       (this->write_cb)((circus_channel_t*)this, this->write_data, this->response);
       int n = this->response->flush(this->response);
       if (n != 0) {
          log_warning(this->log, "error while flushing response: %s", strerror(errno));
-      }
-   } else {
-      log_warning(this->log, "no write callback!");
-   }
-   this->response->free(this->response);
-   this->response = NULL;
+      } else {
+         this->response->free(this->response);
+         this->response = NULL;
 
-   log_debug(this->log, "Write CGI response");
-   circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count); // TODO free
-   this->cgi_out->write(this->cgi_out, req);
+         log_debug(this->log, "Write CGI response");
+         circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count); // TODO free
+         this->cgi_out->write(this->cgi_out, req);
+      }
+   }
 }
 
 static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void *data) {
    log_debug(this->log, "start writing CGI");
    this->write_cb = cb;
    this->write_data = data;
-   if (this->response != NULL) {
+   if (this->response == NULL) {
+      log_debug(this->log, "no CGI response registered (will write later)");
+   } else {
       start_write(this);
    }
 }
@@ -259,6 +262,7 @@ static circus_channel_t impl_fn = {
 static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffer, int len) {
    int result = 0;
    assert(cgi->cgi_in == this);
+   log_debug(cgi->log, "Reading CGI (%p, %d)", buffer, len);
    cgi_input_stream *in = cgi->cgi_in_stream;
    if (len >= 0) {
       buffer_put(in->memory, &in->buffer, "%*s", len, buffer);
@@ -267,6 +271,7 @@ static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffe
       assert(len == -1 /* EOF */);
       log_debug(cgi->log, "calling CGI run");
       cad_cgi_response_t *response = cgi->cgi->run(cgi->cgi);
+      log_debug(cgi->log, "returned from CGI run, response=%p", response);
       if (response != NULL) {
          cgi->response = response;
          log_debug(cgi->log, "got response from CGI run");
@@ -280,7 +285,7 @@ static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffe
 
 static void cgi_on_write(circus_stream_t *this, cgi_impl_t *cgi) {
    assert(cgi->cgi_out == this);
-   assert(cgi->response != NULL);
+   //assert(cgi->response != NULL);
    log_debug(cgi->log, "response written.");
 }
 

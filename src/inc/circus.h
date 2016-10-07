@@ -19,6 +19,8 @@
 #ifndef __CIRCUS_CIRCUS_H
 #define __CIRCUS_CIRCUS_H
 
+#pragma pack(8)
+
 #include <cad_shared.h>
 #include <stdarg.h>
 #include <stddef.h>

@@ -61,15 +61,15 @@ __attribute__ (( noinline )) size_t max_bzero(size_t count) {
 }
 
 typedef struct {
-   uintptr_t size; // in fact size_t but data must be aligned
+   size_t size;
    char data[0];
 } mem;
 
 static void circus_memfree(mem *p) {
-   assert((size_t)p->size > 0);
-   max_bzero((size_t)p->size);
-   force_bzero(p->data, (size_t)p->size);
-   munlock(p, sizeof(mem) + (size_t)p->size);
+   assert(p->size > 0);
+   max_bzero(p->size);
+   force_bzero(p->data, p->size);
+   munlock(p, sizeof(mem) + p->size);
    free(p);
 }
 
@@ -103,7 +103,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       return circus_malloc(size);
    }
    mem *p = container_of(ptr, mem, data);
-   if (size <= (size_t)p->size) {
+   if (size <= p->size) {
       return ptr;
    }
    mem *result = circus_memalloc(size);
@@ -111,7 +111,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       circus_memfree(p);
       return NULL;
    }
-   memcpy(&(result->data), &(p->data), (size_t)p->size);
+   memcpy(&(result->data), &(p->data), p->size);
    circus_memfree(p);
    return &(result->data);
 }

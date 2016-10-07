@@ -88,15 +88,17 @@ static void on_read_fs(circus_stream_req_t* req, int UNUSED(status)) {
 
 static void on_read_stream(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
    circus_stream_req_t* req = stream->data;
-
-   assert(buf->base == req->buf.base);
-   assert(buf->len == req->buf.len);
+   assert(nread < 0 || buf->base == req->buf.base);
+   assert(nread < 0 || buf->len == req->buf.len);
    int more = 0;
    if (req->cb.on.read != NULL) {
       if (nread >= 0) {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, (int)nread);
       } else if (nread == UV_EOF) {
-         more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, -1);
+         more = req->cb.on.read(I(req->stream), req->cb.payload, NULL, -1);
+      } else {
+         fprintf(stderr, "uv error %zd: %s\n", nread, uv_strerror((int)nread));
+         crash();
       }
    }
    if (!more) {

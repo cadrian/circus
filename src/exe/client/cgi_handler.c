@@ -82,8 +82,11 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
       if (msg != NULL) {
          msg->free(msg);
       }
-      this->automaton->set_state(this->automaton, State_finished, NULL);
    }
+}
+
+static void impl_cgi_write_done(circus_channel_t *UNUSED(channel), impl_cgi_t *this) {
+   this->automaton->set_state(this->automaton, State_finished, NULL);
 }
 
 static void on_read(circus_automaton_t *automaton, impl_cgi_t *this) {
@@ -95,7 +98,7 @@ static void on_read(circus_automaton_t *automaton, impl_cgi_t *this) {
 static void on_write(circus_automaton_t *automaton, impl_cgi_t *this) {
    assert(this->automaton == automaton);
    log_debug(this->log, "register on_write");
-   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_cgi_write, this);
+   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_cgi_write, (circus_channel_on_write_done_cb)impl_cgi_write_done, this);
 }
 
 static void impl_register_to(impl_cgi_t *this, circus_channel_t *channel, circus_automaton_t *automaton) {

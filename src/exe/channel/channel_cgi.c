@@ -177,6 +177,7 @@ struct cgi_impl_s {
    circus_channel_on_read_cb read_cb;
    void *read_data;
    circus_channel_on_write_cb write_cb;
+   circus_channel_on_write_done_cb write_done_cb;
    void *write_data;
    circus_stream_t *cgi_in;
    circus_stream_t *cgi_out;
@@ -217,15 +218,22 @@ static void start_write(cgi_impl_t *this) {
          this->response = NULL;
 
          log_debug(this->log, "Write CGI response");
-         circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count); // TODO free
+         circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count);
          this->cgi_out->write(this->cgi_out, req);
+         this->cgi_out->flush(this->cgi_out);
+         // TODO free req
+      }
+      if (this->write_done_cb != NULL) {
+         log_debug(this->log, "CGI finished");
+         (this->write_done_cb)((circus_channel_t*)this, this->write_data);
       }
    }
 }
 
-static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, void *data) {
+static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, circus_channel_on_write_done_cb done_cb, void *data) {
    log_debug(this->log, "start writing CGI");
    this->write_cb = cb;
+   this->write_done_cb = done_cb;
    this->write_data = data;
    if (this->response == NULL) {
       log_debug(this->log, "no CGI response registered (will write later)");

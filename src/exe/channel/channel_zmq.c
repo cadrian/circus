@@ -59,8 +59,9 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
    }
 }
 
-static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, void *data) {
+static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, circus_channel_on_write_done_cb done_cb, void *data) {
    this->write_cb = cb;
+   assert(done_cb == NULL);
    this->write_data = data;
    if (!this->started) {
       log_debug(this->log, "starting uv poll");

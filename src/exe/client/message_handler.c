@@ -218,7 +218,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
 static void on_write(circus_automaton_t *automaton, impl_mh_t *this) {
    assert(this->automaton == automaton);
    log_debug(this->log, "register on_write");
-   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_mh_write, this);
+   this->channel->on_write(this->channel, (circus_channel_on_write_cb)impl_mh_write, NULL, this);
 }
 
 static void on_read(circus_automaton_t *automaton, impl_mh_t *this) {

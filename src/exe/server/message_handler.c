@@ -664,7 +664,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
 
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel) {
    channel->on_read(channel, (circus_channel_on_read_cb)impl_mh_read, this);
-   channel->on_write(channel, (circus_channel_on_write_cb)impl_mh_write, this);
+   channel->on_write(channel, (circus_channel_on_write_cb)impl_mh_write, NULL, this);
    this->running = 1;
 }
 

@@ -10,8 +10,8 @@
       <input type="hidden" name="action"/>
       <div id="navigation">
         <ul class="menu">
-          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-list')">Your passwords</a></li>
-          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-form')">Define a password</a></li>
+          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-list')">Your Jokers</a></li>
+          <li><a class="tablink" href="#" onclick="tabulate(event, 'passwords-form')">Define a Joker</a></li>
           <li><a class="tablink" href="#" onclick="tabulate(event, 'credentials')">Your account</a></li>
         </ul>
       </div>
@@ -121,7 +121,7 @@
             </tr>
             <tr>
               <td colspan="2">
-                <button type="button" onclick="submit_action('password')">Change password</button><br/>
+                <button type="button" onclick="submit_action('password')">Change Ticket</button><br/>
               </td>
             </tr>
           </table>

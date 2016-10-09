@@ -83,8 +83,14 @@ static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) 
    uv_stop(uv_default_loop());
 }
 
-static void run(circus_config_t *config) {
-   circus_channel_t *zmq_channel = circus_zmq_client(MEMORY, LOG, config);
+circus_config_t *config;
+circus_channel_t *zmq_channel;
+circus_client_message_handler_t *mh;
+circus_channel_t *cgi_channel;
+circus_client_cgi_handler_t *ch;
+circus_automaton_t *automaton;
+static void do_run(uv_idle_t *runner) {
+   zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
       log_error(LOG, "Could not allocate zmq_channel");
       LOG->free(LOG);
@@ -92,7 +98,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_client_message_handler_t *mh = circus_message_handler(MEMORY, LOG, config);
+   mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
       log_error(LOG, "Could not allocate message handler");
       zmq_channel->free(zmq_channel);
@@ -101,7 +107,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_channel_t *cgi_channel = circus_cgi(MEMORY, LOG, config);
+   cgi_channel = circus_cgi(MEMORY, LOG, config);
    if (cgi_channel == NULL) {
       log_error(LOG, "Could not allocate cgi_channel");
       mh->free(mh);
@@ -110,7 +116,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_client_cgi_handler_t *ch = circus_cgi_handler(MEMORY, LOG, config);
+   ch = circus_cgi_handler(MEMORY, LOG, config);
    if (ch == NULL) {
       log_error(LOG, "Could not allocate CGI handler");
       cgi_channel->free(cgi_channel);
@@ -121,7 +127,7 @@ static void run(circus_config_t *config) {
       exit(1);
    }
 
-   circus_automaton_t *automaton = new_automaton(MEMORY, LOG);
+   automaton = new_automaton(MEMORY, LOG);
    assert(automaton->state(automaton) == State_started);
    mh->register_to(mh, zmq_channel, automaton);
    ch->register_to(ch, cgi_channel, automaton);
@@ -130,6 +136,15 @@ static void run(circus_config_t *config) {
    automaton->set_state(automaton, State_read_from_client, NULL);
 
    log_info(LOG, "Client started.");
+
+   uv_idle_stop(runner);
+}
+
+static void run(void) {
+   uv_idle_t runner;
+   uv_idle_init(uv_default_loop(), &runner);
+   uv_idle_start(&runner, do_run);
+
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
    uv_loop_close(uv_default_loop());
    log_info(LOG, "Client stopped.");
@@ -144,7 +159,7 @@ static void run(circus_config_t *config) {
 __PUBLIC__ int main(int argc, const char* const* argv) {
    init();
 
-   circus_config_t *config = circus_config_read(stdlib_memory, "cgi.conf");
+   config = circus_config_read(stdlib_memory, "cgi.conf");
    int status = 0;
 
    assert(config != NULL);
@@ -161,7 +176,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
       usage(argv[0], stderr);
       status = 1;
    } else {
-      run(config);
+      run();
    }
 
    LOG->free(LOG);

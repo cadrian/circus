@@ -128,7 +128,7 @@ char *base32(cad_memory_t memory, const char *raw, size_t len) {
    return coded;
 }
 
-static int decode_sequence(const char *coded, char *plain) {
+static size_t decode_sequence(const char *coded, char *plain) {
    assert(coded && plain);
 
    plain[0] = '\0';
@@ -138,7 +138,7 @@ static int decode_sequence(const char *coded, char *plain) {
 
       int c = decode_char(coded[block]);
       if (c < 0) {
-         return octet;
+         return (size_t)octet;
       }
 
       plain[octet] |= shift_left(c, offset);
@@ -150,18 +150,21 @@ static int decode_sequence(const char *coded, char *plain) {
    return 5;
 }
 
-char *unbase32(cad_memory_t memory, const char *b32) {
+char *unbase32(cad_memory_t memory, const char *b32, size_t *len) {
    size_t sz = strlen(b32) * 5 / 8 + 8;
-   int len = 0;
+   size_t l = 0;
    char *raw = memory.malloc(sz + 1);
    memset(raw, 0, sz + 1);
    for (size_t i = 0, j = 0; ; i += 8, j += 5) {
       int n = decode_sequence(&b32[i], &raw[j]);
-      len += n;
+      l += n;
       if (n < 5) {
          break;
       }
    }
-   assert((size_t)len <= sz);
+   assert(l <= sz);
+   if (len != NULL) {
+      *len = l;
+   }
    return raw;
 }

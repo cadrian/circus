@@ -29,8 +29,10 @@ int main() {
    // Normal low-case encoding
    char *encoded = base32(stdlib_memory, test, strlen(test) + 1); // + 1 to encode the whole string with its terminator
    printf("[%zd] %s\n", strlen(encoded), encoded);
-   char *decoded_l = unbase32(stdlib_memory, encoded);
-   printf("[%zd] %s\n", strlen(decoded_l), decoded_l);
+   size_t dl;
+   char *decoded_l = unbase32(stdlib_memory, encoded, &dl);
+   printf("[%zd] %s\n", dl, decoded_l);
+   assert(dl == strlen(test) + 1);
    assert(!strcmp(decoded_l, test));
 
    // Check up-case encoding (base32 is case insensitive)
@@ -40,7 +42,9 @@ int main() {
       p++;
    }
    printf("[%zd] %s\n", strlen(encoded), encoded);
-   char *decoded_h = unbase32(stdlib_memory, encoded);
-   printf("[%zd] %s\n", strlen(decoded_h), decoded_h);
+   size_t dh;
+   char *decoded_h = unbase32(stdlib_memory, encoded, &dh);
+   printf("[%zd] %s\n", dh, decoded_h);
+   assert(dh == strlen(test) + 1);
    assert(!strcmp(decoded_h, test));
 }

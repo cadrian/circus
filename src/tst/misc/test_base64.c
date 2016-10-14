@@ -26,7 +26,9 @@ int main() {
    printf("%s\n", test);
    char *encoded = base64(stdlib_memory, test, strlen(test) + 1); // + 1 to encode the whole string with its terminator
    printf("%s\n", encoded);
-   char *decoded = unbase64(stdlib_memory, encoded);
+   size_t d;
+   char *decoded = unbase64(stdlib_memory, encoded, &d);
    printf("%s\n", decoded);
+   assert(d == strlen(test) + 1);
    assert(!strcmp(decoded, test));
 }

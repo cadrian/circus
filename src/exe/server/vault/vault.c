@@ -128,6 +128,7 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
                   if (passkey == NULL) {
                      ok = 0;
                   } else {
+                     // HERE is the reason why KEY_SIZE == HASH_SIZE in crypt.c
                      hashkey = encrypted(user->memory, user->log, sltkey, passkey);
                      if (hashkey == NULL) {
                         ok = 0;

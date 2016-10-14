@@ -16,10 +16,56 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#ifndef __CIRCUS_BASE64_H
+#define __CIRCUS_BASE64_H
+
 #include <cad_shared.h>
 
 #include <circus.h>
 
+/**
+ * @ingroup circus_base64
+ * @file
+ *
+ * An implementation of the base-64 encoding
+ */
+
+/**
+ * @addtogroup circus_base64
+ * @{
+ */
+
+/**
+ * Convert a raw byte array size into its base64-encoded string length
+ *
+ * @param[in] len the raw byte array size
+ * @return the base64 size needed to hold the base64-encoded byte array
+ */
 size_t b64_size(size_t len);
+
+/**
+ * Encode a byte array into a base64 string.
+ *
+ * @param[in] memory the memory allocator
+ * @param[in] raw the byte array to encode
+ * @param[in] len the size of the byte array
+ * @return the string containing the byte array encoded in base64
+ */
 char *base64(cad_memory_t memory, const char *raw, size_t len);
-char *unbase64(cad_memory_t memory, const char *b64);
+
+/**
+ * Decode a base64 string into a byte array. Even though not strictly
+ * necessary the returned byte array is 0-terminated.
+ *
+ * @param[in] memory the memory allocator
+ * @param[in] raw the byte array to encode
+ * @param[out] len the size of the resulting byte array; may be NULL
+ * @return the byte array, zero-terminated
+ */
+char *unbase64(cad_memory_t memory, const char *b64, size_t *len);
+
+/**
+ * @}
+ */
+
+#endif /* __CIRCUS_BASE64_H */

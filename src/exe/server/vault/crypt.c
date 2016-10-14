@@ -25,8 +25,8 @@
 
 #define SALT_SIZE 16
 #define KEY_SIZE 32 // 256 bits
-#define HASH_SIZE 64 // 512 bits
-#define SECURE_MEM_SIZE 65536
+#define HASH_SIZE 32 // 256 bits
+// BEWARE!! KEY_SIZE == HASH_SIZE otherwise some bits are lost or uninitialized
 
 #define gcrypt(fn) ({                                      \
          gcry_error_t e ## __LINE__ = gcry_ ## fn;         \
@@ -131,10 +131,12 @@ char *encrypted(cad_memory_t memory, circus_log_t *log, const char *value, const
    int len = strlen(value) + 1; // be sure to encrypt the '\0' at the end of the string, for correct decryption
    int n = len + KEY_SIZE - (len % KEY_SIZE);
    char *enc = memory.malloc(n);
-   key = unbase64(memory, b64key);
+   size_t key_size;
+   key = unbase64(memory, b64key, &key_size);
    if (key == NULL) {
       log_error(log, "could not unbase64");
    } else {
+      assert(key_size == KEY_SIZE);
       assert(gcry_cipher_get_algo_keylen(GCRY_CIPHER_AES256) == KEY_SIZE);
       e = gcrypt(cipher_setkey(hd, key, KEY_SIZE));
       if (e == 0) {
@@ -171,7 +173,8 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
    assert(b64value != NULL);
    assert(b64value[0] != 0);
 
-   char *value = unbase64(memory, b64value);
+   size_t len;
+   char *value = unbase64(memory, b64value, &len);
    if (value == NULL) {
       return NULL;
    }
@@ -184,9 +187,10 @@ char *decrypted(cad_memory_t memory, circus_log_t *log, const char *b64value, co
       memory.free(value);
       return NULL;
    }
-   int len = ((strlen(b64value) + 3) / 4) * 3;
-   key = unbase64(memory, b64key);
+   size_t key_size;
+   key = unbase64(memory, b64key, &key_size);
    if (key != NULL) {
+      assert(key_size == KEY_SIZE);
       assert(gcry_cipher_get_algo_keylen(GCRY_CIPHER_AES256) == KEY_SIZE);
       e = gcrypt(cipher_setkey(hd, key, KEY_SIZE));
       if (e == 0) {

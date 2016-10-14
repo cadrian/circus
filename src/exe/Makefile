@@ -66,7 +66,6 @@ clean:
 
 %.o: %.c protocol/messages client/web
 	gcc -std=gnu11 -Wall -Wextra -Werror -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers \
-		-fdata-sections -ffunction-sections -fsanitize=undefined \
 		-I$(ROOTSRC)/inc -c $(CFLAGS) $*.c -o $*.o
 	gcc -MM -I$(ROOTSRC)/inc -c $(CFLAGS) $*.c > $*.d
 	@mv -f $*.d $*.d.tmp
@@ -82,13 +81,11 @@ client/web: client/web.sh client/web.json protocol/messages.json
 
 main/server.exe: protocol/messages main/server.o $(S_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers \
-		-fdata-sections -ffunction-sections -fsanitize=undefined \
 		$(CFLAGS) $(LDFLAGS) -Wl,--gc-sections -o $@ main/server.o $(S_OBJ) \
 		-lcad -lyacjp -luv -lzmq -lsqlite3 -lgcrypt
 
 main/client_cgi.exe: protocol/messages client/web main/client_cgi.o $(C_OBJ)
 	gcc -std=gnu11 -Wall -Wextra -Wshadow -Wstrict-overflow -fno-strict-aliasing -Wno-missing-field-initializers \
-		-fdata-sections -ffunction-sections -fsanitize=undefined \
 		$(CFLAGS) $(LDFLAGS) -Wl,--gc-sections -o $@ main/client_cgi.o $(C_OBJ) \
 		-lcad -lyacjp -luv -lzmq
 

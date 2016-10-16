@@ -176,14 +176,18 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          assert(res != NULL);
          res->fn = meta_resolved_string_fn;
          res->memory = meta->memory;
+         char *op;
          if (operator != NULL && !strcmp("count", operator)) {
             res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+            op = " (operator)";
          } else if (meta->encode != NULL) {
             res->value = meta->encode(meta->memory, sz_value);
+            op = " (encoded)";
          } else {
             res->value = szprintf(meta->memory, NULL, "%s", sz_value);
+            op = "";
          }
-         log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
+         log_debug(meta->log, "Resolved %s (%s) as%s string: %s", key, name, op, res->value);
          *resolved = I(res);
          result = Cad_stache_string;
       } else {
@@ -198,7 +202,7 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
                res->fn = meta_resolved_string_fn;
                res->memory = meta->memory;
                res->value = szprintf(meta->memory, NULL, "%d", ar_value->count(ar_value));
-               log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
+               log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, res->value);
                *resolved = I(res);
                result = Cad_stache_string;
             } else {
@@ -228,14 +232,18 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
          assert(res != NULL);
          res->fn = meta_resolved_string_fn;
          res->memory = meta->memory;
+         char *op;
          if (operator != NULL && !strcmp("count", operator)) {
             res->value = szprintf(meta->memory, NULL, "%zu", strlen(sz_value));
+            op = " (operator)";
          } else if (meta->encode != NULL) {
             res->value = meta->encode(meta->memory, sz_value);
+            op = " (encoded)";
          } else {
             res->value = szprintf(meta->memory, NULL, "%s", sz_value);
+            op="";
          }
-         log_debug(meta->log, "Resolved %s (%s) as string: %s", key, name, sz_value);
+         log_debug(meta->log, "Resolved %s (%s) as%s string: %s", key, name, op, res->value);
          *resolved = I(res);
          result = Cad_stache_string;
       }

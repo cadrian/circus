@@ -51,11 +51,13 @@ typedef struct {
    int running;
    circus_message_t *reply;
 
-   // The two fields below manage the latest POST-Redirect-GET when creating
-   // a new user, because the random password must be displayed.
-   // Risk mitigation: only for the random password; its validity is short,
-   // the user is asked to change it ASAP; and only one is kept (the username
-   // is also checked).
+   // The two fields below manage the latest POST-Redirect-GET when
+   // creating a new user, because the random password must be
+   // displayed.  Risk mitigation: only for the random password; its
+   // validity is short, the user is asked to change it ASAP; and only
+   // one is kept (the username is also checked).
+   // Keeping one is enough: we don't expect more than one
+   // administrator to be creating users at the same moment.
    char *last_username;
    char *last_password;
 } impl_mh_t;
@@ -420,11 +422,6 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
          if (this->last_username != NULL && !strcmp(username, this->last_username)) {
             password = this->last_password;
             ok = 1;
-         } else {
-            this->memory.free(this->last_username);
-            this->memory.free(this->last_password);
-            this->last_username = NULL;
-            this->last_password = NULL;
          }
       }
       token = data->set_token(data);
@@ -434,6 +431,10 @@ static void visit_query_show_user(circus_message_visitor_query_t *visitor, circu
                                                                       username == NULL ? "" : username,
                                                                       password == NULL ? "" : password,
                                                                       validity == NULL ? "" : validity);
+   this->memory.free(this->last_username);
+   this->last_username = NULL;
+   this->memory.free(this->last_password);
+   this->last_password = NULL;
    this->memory.free(validity);
    this->reply = I(userr);
 }

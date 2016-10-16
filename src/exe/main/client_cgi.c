@@ -33,6 +33,13 @@
 
 #include "../common/init.h"
 
+/*
+ * CGI is expected not to run as root. No mlock possible.
+ *
+ * Mitigation: CGI is also expected to be an ephemeral process.
+ */
+#define MEMORY stdlib_memory
+
 static circus_log_t *LOG;
 
 static void set_log(circus_config_t *config) {

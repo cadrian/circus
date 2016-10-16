@@ -75,6 +75,7 @@ static char *encode_url(cad_memory_t memory, const char *in) {
          result[outindex++] = HEX[lo];
       }
    }
+   result[outlen] = '\0';
    return result;
 }
 

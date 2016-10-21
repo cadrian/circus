@@ -39,55 +39,96 @@ typedef struct stream_impl_s {
    cb_t cb;
 } stream_impl_t;
 
-struct circus_stream_req_s {
+typedef struct circus_stream_req_impl_s circus_stream_req_impl_t;
+
+struct circus_stream_req_impl_s {
+   circus_stream_req_t fn;
    union {
       uv_stream_t *read;
-      uv_write_t write;
-      uv_fs_t fs;
+      uv_write_t *write;
+      uv_fs_t *fs;
    } req;
    cad_memory_t memory;
    stream_impl_t *stream;
-   void (*cleanup)(circus_stream_req_t*);
+   void (*cleanup)(circus_stream_req_impl_t *);
    cb_t cb;
    uv_buf_t buf;
 };
 
-static void cleanup_stream(circus_stream_req_t *req) {
-   req->memory.free(req->buf.base);
-   req->buf = uv_buf_init(NULL, 0);
+static void circus_stream_req_free(circus_stream_req_impl_t *this) {
+   if (this->cleanup != NULL) {
+      this->cleanup(this);
+   }
+   this->memory.free(this);
 }
 
-static void cleanup_fs(circus_stream_req_t *req) {
+static circus_stream_req_t req_fn = {
+   (stream_req_free_fn) circus_stream_req_free,
+};
+
+static void cleanup_stream_write(circus_stream_req_impl_t *req) {
    req->memory.free(req->buf.base);
    req->buf = uv_buf_init(NULL, 0);
-   uv_fs_req_cleanup(&req->req.fs);
+   if (req->req.write != NULL) {
+      req->memory.free(req->req.write);
+      req->req.write = NULL;
+   }
 }
 
-static void on_write(circus_stream_req_t* req, int UNUSED(status)) {
+static void cleanup_stream_read(circus_stream_req_impl_t *req) {
+   req->memory.free(req->buf.base);
+   req->buf = uv_buf_init(NULL, 0);
+   if (req->req.read != NULL) {
+      int n = uv_read_stop(req->req.read);
+      assert(n == 0);
+      req->memory.free(req->req.read);
+      req->req.read = NULL;
+   }
+}
+
+static void cleanup_fs(circus_stream_req_impl_t *req) {
+   req->memory.free(req->buf.base);
+   req->buf = uv_buf_init(NULL, 0);
+   if (req->req.fs != NULL) {
+      uv_fs_req_cleanup(req->req.fs);
+      req->memory.free(req->req.fs);
+      req->req.fs = NULL;
+   }
+}
+
+static void on_write_stream(uv_write_t *w, int UNUSED(status)) {
+   circus_stream_req_impl_t *req = w->data;
    if (req->cb.on.write != NULL) {
       req->cb.on.write(I(req->stream), req->cb.payload);
    }
-   req->cleanup(req);
-   req->memory.free(req);
+   I(req)->free(I(req));
 }
 
-static void on_read_fs(circus_stream_req_t* req, int UNUSED(status)) {
+static void on_write_fs(uv_fs_t *fs) {
+   circus_stream_req_impl_t *req = fs->data;
+   if (req->cb.on.write != NULL) {
+      req->cb.on.write(I(req->stream), req->cb.payload);
+   }
+   I(req)->free(I(req));
+}
+
+static void on_read_fs(uv_fs_t *fs) {
+   circus_stream_req_impl_t *req = fs->data;
    int more = 0;
    if (req->cb.on.read != NULL) {
-      if (req->req.fs.result > 0) {
+      if (req->req.fs->result > 0) {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, req->buf.len);
       } else {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, -1);
       }
    }
    if (!more) {
-      req->cleanup(req);
-      req->memory.free(req);
+      I(req)->free(I(req));
    }
 }
 
 static void on_read_stream(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-   circus_stream_req_t* req = stream->data;
+   circus_stream_req_impl_t *req = stream->data;
    assert(nread < 0 || buf->base == req->buf.base);
    assert(nread < 0 || buf->len == req->buf.len);
    int more = 0;
@@ -102,29 +143,37 @@ static void on_read_stream(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
       }
    }
    if (!more) {
-      int n = uv_read_stop(req->req.read);
-      assert(n == 0);
-      req->cleanup(req);
-      req->memory.free(req);
+      I(req)->free(I(req));
    }
 }
 
 static void stream_read_alloc(uv_stream_t *stream, size_t suggested_size, uv_buf_t *buf) {
-   circus_stream_req_t *this = stream->data;
+   circus_stream_req_impl_t *req = stream->data;
 
-   if (suggested_size > this->buf.len) {
-      this->memory.free(this->buf.base);
-      this->buf = uv_buf_init(this->memory.malloc(suggested_size), suggested_size);
+   if (suggested_size > req->buf.len) {
+      req->memory.free(req->buf.base);
+      req->buf = uv_buf_init(req->memory.malloc(suggested_size), suggested_size);
    }
-   *buf = this->buf;
+   *buf = req->buf;
 }
 
 circus_stream_req_t *circus_stream_req(cad_memory_t memory, const char *base, int len) {
-   circus_stream_req_t *result = memory.malloc(sizeof(circus_stream_req_t));
+   // I know there are unions, albeit for legibility all fields are initialized
+
+   circus_stream_req_impl_t *result = memory.malloc(sizeof(circus_stream_req_impl_t));
    int base_len = len;
    assert(result != NULL);
 
+   result->fn = req_fn;
    result->memory = memory;
+   result->cb.on.read = NULL;
+   result->cb.on.write = NULL;
+   result->cb.payload = NULL;
+
+   result->req.read = NULL;
+   result->req.write = NULL;
+   result->req.fs = NULL;
+
    if (base != NULL && len > 0) {
       char *buf_base = szprintf(memory, &base_len, "%*s", len, base);
       result->buf = uv_buf_init(buf_base, base_len);
@@ -133,7 +182,7 @@ circus_stream_req_t *circus_stream_req(cad_memory_t memory, const char *base, in
    }
    result->cleanup = NULL;
 
-   return result;
+   return I(result);
 }
 
 /* ---------------------------------------------------------------- */
@@ -143,23 +192,29 @@ static void file_free(stream_impl_t *this) {
    this->memory.free(this);
 }
 
-static void file_read(stream_impl_t *this, circus_stream_req_t *req) {
+static void file_read(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
    int64_t offset = this->offset;
    req->cleanup = cleanup_fs;
+   req->req.fs = req->memory.malloc(sizeof(uv_fs_t));
+   assert(req->req.fs != NULL);
+   req->req.fs->data = req;
    req->cb = this->cb;
    req->stream = this;
-   uv_fs_read(uv_default_loop(), &req->req.fs, this->fd, &req->buf, 1, offset, (uv_fs_cb)on_read_fs);
+   uv_fs_read(uv_default_loop(), req->req.fs, this->fd, &req->buf, 1, offset, on_read_fs);
 }
 
-static void file_write(stream_impl_t *this, circus_stream_req_t *req) {
+static void file_write(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
    int64_t offset = this->offset;
    req->cleanup = cleanup_fs;
+   req->req.fs = req->memory.malloc(sizeof(uv_fs_t));
+   assert(req->req.fs != NULL);
+   req->req.fs->data = req;
    this->offset += req->buf.len;
    req->cb = this->cb;
    req->stream = this;
-   uv_fs_write(uv_default_loop(), &req->req.fs, this->fd, &req->buf, 1, offset, (uv_fs_cb)on_write);
+   uv_fs_write(uv_default_loop(), req->req.fs, this->fd, &req->buf, 1, offset, on_write_fs);
 }
 
 static void file_flush(stream_impl_t *this) {
@@ -190,23 +245,26 @@ static void tty_free(stream_impl_t *this) {
    this->memory.free(this);
 }
 
-static void tty_read(stream_impl_t *this, circus_stream_req_t *req) {
+static void tty_read(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
+   req->cleanup = cleanup_stream_read;
    req->req.read = this->stream;
-   req->cleanup = cleanup_fs;
+   req->req.read->data = req;
    req->cb = this->cb;
    req->stream = this;
-   this->stream->data = req;
-   int n = uv_read_start(this->stream, (uv_alloc_cb)stream_read_alloc, (uv_read_cb)on_read_stream);
+   int n = uv_read_start(req->req.read, (uv_alloc_cb)stream_read_alloc, on_read_stream);
    assert(n == 0);
 }
 
-static void tty_write(stream_impl_t *this, circus_stream_req_t *req) {
+static void tty_write(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
-   req->cleanup = cleanup_stream;
+   req->cleanup = cleanup_stream_write;
+   req->req.write = req->memory.malloc(sizeof(uv_write_t));
+   assert(req->req.write != NULL);
+   req->req.write->data = req;
    req->cb = this->cb;
    req->stream = this;
-   uv_write(&req->req.write, this->stream, &req->buf, 1, (uv_write_cb)on_write);
+   uv_write(req->req.write, this->stream, &req->buf, 1, on_write_stream);
 }
 
 static void tty_flush(stream_impl_t *UNUSED(this)) {
@@ -225,30 +283,38 @@ static circus_stream_t stream_tty_fn = {
 
 /* ---------------------------------------------------------------- */
 
-static void pipe_free(stream_impl_t *this) {
-   uv_fs_t req;
-   uv_fs_close(uv_default_loop(), &req, this->fd, NULL);
+static void pipe_free_on_close(uv_fs_t *fs) {
+   stream_impl_t *this = fs->data;
    this->memory.free(this->stream);
    this->memory.free(this);
 }
 
-static void pipe_read(stream_impl_t *this, circus_stream_req_t *req) {
+static void pipe_free(stream_impl_t *this) {
+   uv_fs_t req;
+   req.data = this;
+   uv_fs_close(uv_default_loop(), &req, this->fd, pipe_free_on_close);
+}
+
+static void pipe_read(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
+   req->cleanup = cleanup_stream_read;
    req->req.read = this->stream;
-   req->cleanup = cleanup_fs;
+   req->req.read->data = req;
    req->cb = this->cb;
    req->stream = this;
-   this->stream->data = req;
-   int n = uv_read_start(this->stream, (uv_alloc_cb)stream_read_alloc, (uv_read_cb)on_read_stream);
+   int n = uv_read_start(req->req.read, (uv_alloc_cb)stream_read_alloc, on_read_stream);
    assert(n == 0);
 }
 
-static void pipe_write(stream_impl_t *this, circus_stream_req_t *req) {
+static void pipe_write(stream_impl_t *this, circus_stream_req_impl_t *req) {
    assert(req->cleanup == NULL);
-   req->cleanup = cleanup_stream;
+   req->cleanup = cleanup_stream_write;
+   req->req.write = req->memory.malloc(sizeof(uv_write_t));
+   assert(req->req.write != NULL);
+   req->req.write->data = req;
    req->cb = this->cb;
    req->stream = this;
-   uv_write(&req->req.write, this->stream, &req->buf, 1, (uv_write_cb)on_write);
+   uv_write(req->req.write, this->stream, &req->buf, 1, on_write_stream);
 }
 
 static void pipe_flush(stream_impl_t *UNUSED(this)) {

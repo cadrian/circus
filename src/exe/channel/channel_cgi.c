@@ -188,8 +188,9 @@ struct cgi_impl_s {
 
 static void start_read(cgi_impl_t *this) {
    log_debug(this->log, "Start read CGI");
-   circus_stream_req_t *req = circus_stream_req(this->memory, NULL, 0); // TODO free
+   circus_stream_req_t *req = circus_stream_req(this->memory, NULL, 0);
    this->cgi_in->read(this->cgi_in, req);
+   req->free(req);
    log_debug(this->log, "Started read CGI");
 }
 
@@ -221,7 +222,7 @@ static void start_write(cgi_impl_t *this) {
          circus_stream_req_t *req = circus_stream_req(this->memory, this->cgi_out_stream->buffer.data, this->cgi_out_stream->buffer.count);
          this->cgi_out->write(this->cgi_out, req);
          this->cgi_out->flush(this->cgi_out);
-         // TODO free req
+         req->free(req);
       }
       if (this->write_done_cb != NULL) {
          log_debug(this->log, "CGI finished");

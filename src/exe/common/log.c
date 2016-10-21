@@ -335,7 +335,7 @@ circus_log_t *circus_new_log_file(cad_memory_t memory, const char *filename, log
       result->max_level = max_level;
       result->stream = new_stream_file_append(memory, filename, NULL, NULL, &e);
       if (e < 0) {
-         fprintf(stderr, "Error opening log file: %s\n", uv_strerror(e));
+         fprintf(stderr, "Error opening log file (%s): %s\n", filename, uv_strerror(e));
          memory.free(result);
          result = NULL;
       } else {

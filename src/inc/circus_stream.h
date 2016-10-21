@@ -33,6 +33,11 @@ typedef int (*circus_stream_read_fn)(circus_stream_t *stream, void *payload, con
 typedef void (*circus_stream_write_fn)(circus_stream_t *stream, void *payload);
 
 typedef struct circus_stream_req_s circus_stream_req_t;
+typedef void (*stream_req_free_fn)(circus_stream_req_t *this);
+struct circus_stream_req_s {
+   stream_req_free_fn free;
+};
+
 __PUBLIC__ circus_stream_req_t *circus_stream_req(cad_memory_t memory, const char *base, int len);
 
 typedef void (*stream_free_fn)(circus_stream_t *stream);

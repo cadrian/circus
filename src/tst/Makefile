@@ -37,22 +37,24 @@ LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl
 .PHONY: test clean
 
 test: $(T_EXE) $(T_RUN)
+#	./run_test.sh client/test_client_cgi_login_admin.exe client/test_client_cgi_login_admin.run || { rm -f client/test_client_cgi_login_admin.run; false; }
+#	./run_test.sh client/test_client_cgi_login_fail.exe client/test_client_cgi_login_fail.run || { rm -f client/test_client_cgi_login_fail.run; false; }
 
 clean:
 	$(shell while read pattern; do find . -name "$$pattern" -exec rm -rf {} +; done < .gitignore)
 	rm -rf manual_test
-	find . -name manual_tests -prune -o -name \*-conf.d -exec rm -rf {} +
-	find . -name manual_tests -prune -o -name \*.[od] -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.exe -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.[od] -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.exe -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.log.new -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.log.err -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.log.valgrind\* -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.log -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.db -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.d0 -exec rm -f {} +
-	find . -name manual_tests -prune -o -name \*.d1 -exec rm -f {} +
+	find . -name \*-conf.d -exec rm -rf {} +
+	find . -name \*.[od] -exec rm -f {} +
+	find . -name \*.exe -exec rm -f {} +
+	find . -name \*.[od] -exec rm -f {} +
+	find . -name \*.exe -exec rm -f {} +
+	find . -name \*.log.new -exec rm -f {} +
+	find . -name \*.log.err -exec rm -f {} +
+	find . -name \*.log.valgrind\* -exec rm -f {} +
+	find . -name \*.log -exec rm -f {} +
+	find . -name \*.db -exec rm -f {} +
+	find . -name \*.d0 -exec rm -f {} +
+	find . -name \*.d1 -exec rm -f {} +
 
 # ----------------------------------------------------------------
 

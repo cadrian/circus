@@ -203,6 +203,8 @@ static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *d
 }
 
 static void start_write(cgi_impl_t *this) {
+   SET_CANARY();
+
    log_debug(this->log, "Start write CGI");
 
    assert(this->response != NULL);
@@ -229,6 +231,8 @@ static void start_write(cgi_impl_t *this) {
          (this->write_done_cb)((circus_channel_t*)this, this->write_data);
       }
    }
+
+   CHECK_CANARY();
 }
 
 static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, circus_channel_on_write_done_cb done_cb, void *data) {
@@ -269,6 +273,8 @@ static circus_channel_t impl_fn = {
 };
 
 static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffer, int len) {
+   SET_CANARY();
+
    int result = 0;
    assert(cgi->cgi_in == this);
    log_debug(cgi->log, "Reading CGI (%p, %d)", buffer, len);
@@ -289,6 +295,8 @@ static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffe
          log_error(cgi->log, "NULL response!!");
       }
    }
+
+   CHECK_CANARY();
    return result;
 }
 

@@ -150,6 +150,7 @@ static circus_message_visitor_reply_t visitor_fn = {
 };
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
+   SET_CANARY();
    if (this->automaton->state(this->automaton) == State_write_to_server) {
       log_info(this->log, "message write");
       circus_message_t *msg = this->automaton->message(this->automaton);
@@ -175,9 +176,11 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
 
       this->automaton->set_state(this->automaton, State_read_from_server, NULL);
    }
+   CHECK_CANARY();
 }
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
+   SET_CANARY();
    if (this->automaton->state(this->automaton) == State_read_from_server) {
       log_info(this->log, "message read");
       int buflen = 4096;
@@ -213,6 +216,7 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
       msg->accept(msg, (circus_message_visitor_t*)&(this->vfn));
       this->automaton->set_state(this->automaton, State_write_to_client, msg);
    }
+   CHECK_CANARY();
 }
 
 static void on_write(circus_automaton_t *automaton, impl_mh_t *this) {

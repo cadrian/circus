@@ -90,6 +90,8 @@ static void config_read_checker_free(config_read_checker *UNUSED(this)) {
 }
 
 static void config_read_checker_visit_object(config_read_checker *this, json_object_t *visited) {
+   SET_CANARY();
+
    int i;
    int n = visited->count(visited);
    const char **keys;
@@ -106,6 +108,8 @@ static void config_read_checker_visit_object(config_read_checker *this, json_obj
       v->accept(v, (json_visitor_t*)this);
    }
    this->depth--;
+
+   CHECK_CANARY();
 }
 
 static void config_read_checker_visit_array(config_read_checker *this, json_array_t *UNUSED(visited)) {

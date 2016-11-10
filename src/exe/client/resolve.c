@@ -132,6 +132,7 @@ static cad_stache_resolved_t meta_resolved_strings_fn = {
 };
 
 static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const char *name, struct meta_data *meta, cad_stache_resolved_t **resolved) {
+   SET_CANARY();
    cad_stache_lookup_type result = Cad_stache_not_found;
    cad_hash_t *dict = NULL;
    char *key = NULL;
@@ -254,6 +255,8 @@ static cad_stache_lookup_type resolve_meta(cad_stache_t *UNUSED(stache), const c
       log_debug(meta->log, "Resolved %s (%s) as not found", key, name);
    }
    meta->memory.free(key);
+
+   CHECK_CANARY();
    return result;
 }
 
@@ -266,6 +269,7 @@ static void response_security_headers(cad_cgi_response_t *response) {
 }
 
 void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *string) {
+   SET_CANARY();
    assert(!this->ready);
    cad_output_stream_t *body = response->body(response);
    log_debug(this->log, "response string: status %d -- %s", status, string);
@@ -274,6 +278,7 @@ void set_response_string(impl_cgi_t *this, cad_cgi_response_t *response, int sta
    response_security_headers(response);
    this->ready = 1;
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
+   CHECK_CANARY();
 }
 
 static void template_error(const char *error, int offset, void *data) {
@@ -282,6 +287,7 @@ static void template_error(const char *error, int offset, void *data) {
 }
 
 static char *resolve_string(impl_cgi_t *this, const char *string, cad_cgi_meta_t *meta, cad_hash_t *extra, encode_fn encode) {
+   SET_CANARY();
    char *result = NULL;
    cad_array_t *nested = cad_new_array(this->memory, sizeof(cad_hash_t*));
    struct meta_data data = {this->log, meta, extra, this->memory, nested, NULL, this->config, encode};
@@ -297,10 +303,12 @@ static char *resolve_string(impl_cgi_t *this, const char *string, cad_cgi_meta_t
    in->free(in);
    assert(nested->count(nested) == 0);
    nested->free(nested);
+   CHECK_CANARY();
    return result;
 }
 
 void set_response_redirect(impl_cgi_t *this, cad_cgi_response_t *response, const char *redirect, cad_hash_t *extra) {
+   SET_CANARY();
    assert(!this->ready);
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
@@ -332,9 +340,11 @@ void set_response_redirect(impl_cgi_t *this, cad_cgi_response_t *response, const
    this->ready = 1;
    this->memory.free(full_redirect);
    this->automaton->set_state(this->automaton, State_write_to_client, NULL);
+   CHECK_CANARY();
 }
 
 void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int status, const char *template, cad_hash_t *extra) {
+   SET_CANARY();
    assert(!this->ready);
    cad_output_stream_t *body = response->body(response);
    cad_cgi_meta_t *meta = response->meta_variables(response);
@@ -376,4 +386,5 @@ void set_response_template(impl_cgi_t *this, cad_cgi_response_t *response, int s
    nested->free(nested);
    cgi->free(cgi);
    this->memory.free(template_path);
+   CHECK_CANARY();
 }

@@ -49,6 +49,7 @@ typedef struct {
 static void impl_zmq_callback(uv_poll_t *handle, int status, int events);
 
 static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *data) {
+   SET_CANARY();
    this->read_cb = cb;
    this->read_data = data;
    if (!this->started) {
@@ -57,9 +58,11 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
       assert(n == 0);
       this->started = 1;
    }
+   CHECK_CANARY();
 }
 
 static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, circus_channel_on_write_done_cb done_cb, void *data) {
+   SET_CANARY();
    this->write_cb = cb;
    assert(done_cb == NULL);
    this->write_data = data;
@@ -69,6 +72,7 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, circu
       assert(n == 0);
       this->started = 1;
    }
+   CHECK_CANARY();
 }
 
 static int impl_read(zmq_impl_t *this, char *buffer, size_t buflen) {
@@ -134,6 +138,8 @@ circus_channel_t impl_fn = {
 };
 
 static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
+   SET_CANARY();
+
    zmq_impl_t *this = handle->data;
    assert(this == container_of(handle, zmq_impl_t, handle));
    if (status != 0) {
@@ -144,6 +150,8 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    if (events & UV_READABLE) {
       int more;
       do {
+         CHECK_CANARY();
+
          uint32_t zevents = 0;
          size_t zevents_size = sizeof(uint32_t);
          int n = zmq_getsockopt(this->socket, ZMQ_EVENTS, &zevents, &zevents_size);
@@ -173,6 +181,8 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
          }
       } while (more);
    }
+
+   CHECK_CANARY();
 }
 
 static char *getaddr(cad_memory_t memory, circus_config_t *config, const char *config_ip_name) {

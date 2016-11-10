@@ -24,6 +24,6 @@
 extern cad_memory_t MEMORY;
 
 size_t max_bzero(size_t count);
-void force_bzero(char *buf, size_t count);
+void force_bzero(void *buf, size_t count);
 
 #endif /* __CIRCUS_MEMORY_H */

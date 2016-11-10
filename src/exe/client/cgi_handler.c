@@ -32,6 +32,7 @@ static void debug_cookie(cad_cgi_cookies_t *UNUSED(jar), cad_cgi_cookie_t *cooki
 }
 
 static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
+   SET_CANARY();
    if (this->automaton->state(this->automaton) == State_read_from_client) {
       log_info(this->log, "CGI read");
       cad_cgi_meta_t *meta = response->meta_variables(response);
@@ -64,9 +65,11 @@ static void impl_cgi_read(circus_channel_t *UNUSED(channel), impl_cgi_t *this, c
          set_response_string(this, response, 401, "Invalid query\n");
       }
    }
+   CHECK_CANARY();
 }
 
 static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, cad_cgi_response_t *response) {
+   SET_CANARY();
    if (this->automaton->state(this->automaton) == State_write_to_client) {
       log_info(this->log, "CGI write");
       cad_cgi_meta_t *meta = response->meta_variables(response);
@@ -83,6 +86,7 @@ static void impl_cgi_write(circus_channel_t *UNUSED(channel), impl_cgi_t *this, 
          msg->free(msg);
       }
    }
+   CHECK_CANARY();
 }
 
 static void impl_cgi_write_done(circus_channel_t *UNUSED(channel), impl_cgi_t *this) {

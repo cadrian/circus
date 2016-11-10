@@ -585,6 +585,7 @@ static circus_message_visitor_query_t visitor_fn = {
 };
 
 static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
+   SET_CANARY();
    if (this->reply == NULL) {
       int buflen = 4096;
       int nbuf = 0;
@@ -627,9 +628,11 @@ static void impl_mh_read(circus_channel_t *channel, impl_mh_t *this) {
 
       this->memory.free(buf);
    }
+   CHECK_CANARY();
 }
 
 static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
+   SET_CANARY();
    char *szout = NULL;
    if (this->reply != NULL) {
       json_object_t *reply = this->reply->serialize(this->reply);
@@ -661,6 +664,7 @@ static void impl_mh_write(circus_channel_t *channel, impl_mh_t *this) {
       reply->accept(reply, json_kill());
       this->reply = NULL;
    }
+   CHECK_CANARY();
 }
 
 static void impl_register_to(impl_mh_t *this, circus_channel_t *channel) {

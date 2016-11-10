@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 void init(void) {
-   // default init does nothing
+   // default init does nothing (see __wrap_init below)
 }
 
 static int no_salt(void) {

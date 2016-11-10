@@ -35,7 +35,7 @@ static volatile size_t __bzero_max = 1024;
  *  - reverse loop to force cache misses
  *  - at least __bzero_max loops; so this should be safe if count < __bzero_max
  */
-__attribute__ (( noinline )) void force_bzero(char *buf, size_t count) {
+__attribute__ (( noinline )) void force_bzero(void *buf, size_t count) {
    volatile char* data = (volatile char*)buf;
    volatile size_t i;
    volatile size_t max = count > __bzero_max ? count : __bzero_max;
@@ -62,14 +62,17 @@ __attribute__ (( noinline )) size_t max_bzero(size_t count) {
 
 typedef struct {
    size_t size;
+   volatile long canary;
    char data[0];
 } mem;
 
 static void circus_memfree(mem *p) {
-   assert(p->size > 0);
-   max_bzero(p->size);
-   force_bzero(p->data, p->size);
-   munlock(p, sizeof(mem) + p->size);
+   assert(p->canary == CANARY);
+   size_t size = p->size;
+   assert(size > 0);
+   max_bzero(size);
+   force_bzero(p, sizeof(mem) + size);
+   munlock(p, sizeof(mem) + size);
    free(p);
 }
 
@@ -78,6 +81,7 @@ static mem *circus_memalloc(size_t size) {
    mem *result = malloc(s);
    if (result != NULL) {
       result->size = (uintptr_t)size;
+      result->canary = CANARY;
       int n = mlock(result, s);
       if (n != 0) {
          fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
@@ -95,7 +99,7 @@ static void *circus_malloc(size_t size) {
    if (result == NULL) {
       return NULL;
    }
-   return &(result->data);
+   return result->data;
 }
 
 static void *circus_realloc(void *ptr, size_t size) {
@@ -103,6 +107,7 @@ static void *circus_realloc(void *ptr, size_t size) {
       return circus_malloc(size);
    }
    mem *p = container_of(ptr, mem, data);
+   assert(p->canary == CANARY);
    if (size <= p->size) {
       return ptr;
    }
@@ -111,9 +116,9 @@ static void *circus_realloc(void *ptr, size_t size) {
       circus_memfree(p);
       return NULL;
    }
-   memcpy(&(result->data), &(p->data), p->size);
+   memcpy(result->data, p->data, p->size);
    circus_memfree(p);
-   return &(result->data);
+   return result->data;
 }
 
 static void circus_free(void *ptr) {

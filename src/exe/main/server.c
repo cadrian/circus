@@ -87,6 +87,8 @@ static circus_channel_t *channel;
 static circus_server_message_handler_t *mh;
 
 static void do_run(uv_idle_t *runner) {
+   SET_CANARY();
+
    log_debug(LOG, "Creating ZMQ channel...");
 
    channel = circus_zmq_server(MEMORY, LOG, config);
@@ -115,9 +117,13 @@ static void do_run(uv_idle_t *runner) {
    log_info(LOG, "Server started.");
 
    uv_idle_stop(runner);
+
+   CHECK_CANARY();
 }
 
 static void run(void) {
+   SET_CANARY();
+
    uv_idle_t runner;
    uv_idle_init(uv_default_loop(), &runner);
    uv_idle_start(&runner, do_run);
@@ -128,9 +134,13 @@ static void run(void) {
 
    mh->free(mh);
    channel->free(channel);
+
+   CHECK_CANARY();
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {
+   SET_CANARY();
+
    init();
 
    config = circus_config_read(stdlib_memory, "server.conf");
@@ -185,5 +195,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
 
    LOG->free(LOG);
    config->free(config);
+
+   CHECK_CANARY();
    return status;
 }

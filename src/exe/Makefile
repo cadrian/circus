@@ -41,7 +41,7 @@ LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl
 # gcry_*: we need valgrind (libgcrypt generates instructions not recognized by Valgrind)
 LDFLAGS_RND := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize_rnd -Wl,--wrap=gcry_create_nonce_rnd
 
-CFLAGS ?= -g -O1
+CFLAGS ?= -g -O0
 
 # ----------------------------------------------------------------
 

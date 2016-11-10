@@ -90,13 +90,16 @@ static void finished(circus_automaton_t *UNUSED(automaton), void *UNUSED(data)) 
    uv_stop(uv_default_loop());
 }
 
-circus_config_t *config;
-circus_channel_t *zmq_channel;
-circus_client_message_handler_t *mh;
-circus_channel_t *cgi_channel;
-circus_client_cgi_handler_t *ch;
-circus_automaton_t *automaton;
+static circus_config_t *config;
+static circus_channel_t *zmq_channel;
+static circus_client_message_handler_t *mh;
+static circus_channel_t *cgi_channel;
+static circus_client_cgi_handler_t *ch;
+static circus_automaton_t *automaton;
+
 static void do_run(uv_idle_t *runner) {
+   SET_CANARY();
+
    zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
       log_error(LOG, "Could not allocate zmq_channel");
@@ -145,9 +148,13 @@ static void do_run(uv_idle_t *runner) {
    log_info(LOG, "Client started.");
 
    uv_idle_stop(runner);
+
+   CHECK_CANARY();
 }
 
 static void run(void) {
+   SET_CANARY();
+
    uv_idle_t runner;
    uv_idle_init(uv_default_loop(), &runner);
    uv_idle_start(&runner, do_run);
@@ -161,9 +168,13 @@ static void run(void) {
    cgi_channel->free(cgi_channel);
    mh->free(mh);
    zmq_channel->free(zmq_channel);
+
+   CHECK_CANARY();
 }
 
 __PUBLIC__ int main(int argc, const char* const* argv) {
+   SET_CANARY();
+
    init();
 
    config = circus_config_read(stdlib_memory, "cgi.conf");
@@ -188,5 +199,7 @@ __PUBLIC__ int main(int argc, const char* const* argv) {
 
    LOG->free(LOG);
    config->free(config);
+
+   CHECK_CANARY();
    return status;
 }

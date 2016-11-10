@@ -22,6 +22,8 @@
 #include <circus.h>
 
 char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args) {
+   SET_CANARY();
+
    va_list args2;
    int n, n2;
    char *result = NULL;
@@ -39,6 +41,7 @@ char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args
       *size = n;
    }
 
+   CHECK_CANARY();
    return result;
 }
 

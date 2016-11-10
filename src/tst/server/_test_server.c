@@ -231,7 +231,10 @@ static int server_fn(void) {
 }
 
 static void run(int (*fn)(void)) {
-   exit(fn());
+   SET_CANARY();
+   int st = fn();
+   CHECK_CANARY();
+   exit(st);
 }
 
 static void start(char *name, int process_info_index, int (*fn)(void)) {

@@ -109,6 +109,13 @@ char *szprintf(cad_memory_t memory, int *size, const char *format, ...) __attrib
 char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args);
 
 // ----------------------------------------------------------------
+// Debugging guards
+
+#define CANARY (0x1235813215475129L)
+#define SET_CANARY() volatile long canary = CANARY
+#define CHECK_CANARY() assert(canary == CANARY)
+
+// ----------------------------------------------------------------
 // Default configuration
 
 /**

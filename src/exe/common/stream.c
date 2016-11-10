@@ -99,7 +99,9 @@ static void cleanup_fs(circus_stream_req_impl_t *req) {
 static void on_write_stream(uv_write_t *w, int UNUSED(status)) {
    circus_stream_req_impl_t *req = w->data;
    if (req->cb.on.write != NULL) {
+      SET_CANARY();
       req->cb.on.write(I(req->stream), req->cb.payload);
+      CHECK_CANARY();
    }
    I(req)->free(I(req));
 }
@@ -107,7 +109,9 @@ static void on_write_stream(uv_write_t *w, int UNUSED(status)) {
 static void on_write_fs(uv_fs_t *fs) {
    circus_stream_req_impl_t *req = fs->data;
    if (req->cb.on.write != NULL) {
+      SET_CANARY();
       req->cb.on.write(I(req->stream), req->cb.payload);
+      CHECK_CANARY();
    }
    I(req)->free(I(req));
 }
@@ -116,11 +120,13 @@ static void on_read_fs(uv_fs_t *fs) {
    circus_stream_req_impl_t *req = fs->data;
    int more = 0;
    if (req->cb.on.read != NULL) {
+      SET_CANARY();
       if (req->req.fs->result > 0) {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, req->buf.len);
       } else {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, -1);
       }
+      CHECK_CANARY();
    }
    if (!more) {
       I(req)->free(I(req));
@@ -133,6 +139,7 @@ static void on_read_stream(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
    assert(nread < 0 || buf->len == req->buf.len);
    int more = 0;
    if (req->cb.on.read != NULL) {
+      SET_CANARY();
       if (nread >= 0) {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, (int)nread);
       } else if (nread == UV_EOF) {
@@ -141,6 +148,7 @@ static void on_read_stream(uv_stream_t *stream, ssize_t nread, const uv_buf_t *b
          fprintf(stderr, "uv error %zd: %s\n", nread, uv_strerror((int)nread));
          crash();
       }
+      CHECK_CANARY();
    }
    if (!more) {
       I(req)->free(I(req));

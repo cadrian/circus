@@ -16,7 +16,6 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
-#include <alloca.h>
 #include <string.h>
 #include <sys/time.h>
 
@@ -155,6 +154,8 @@ static void log_free_stream(log_file_output_stream *this) {
 }
 
 static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
+   SET_CANARY();
+
    circus_stream_req_t *req;
    struct timeval tv = now();
    char *message = NULL;
@@ -174,6 +175,8 @@ static void log_vput_stream(log_file_output_stream *this, const char *format, va
    this->memory.free(logline);
 
    this->stream->write(this->stream, req);
+
+   CHECK_CANARY();
 }
 
 static void log_put_stream(log_file_output_stream *this, const char *format, ...) {

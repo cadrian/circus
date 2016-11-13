@@ -161,6 +161,7 @@ cat > $CONF/circus/server.conf <<EOF
 EOF
 
 (
+    ulimit -c unlimited
     export PATH=/bin:/usr/bin
     export HOME=$DIR
     # cannot use valgrind (illegal instruction in libgcrypt)

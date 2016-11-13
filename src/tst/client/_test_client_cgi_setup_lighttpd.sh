@@ -72,6 +72,7 @@ EOF
 echo 0 >$base.count
 cat >$WEB/test_cgi.cgi <<EOF
 #!/bin/dash
+ulimit -c unlimited
 export PATH=/bin:/usr/bin
 export HOME=$DIR
 export XDG_CACHE_HOME=$XDG_CACHE_HOME
@@ -87,7 +88,6 @@ ext=.\$(printf "%02d" \$i)
     env | sort
 } > $LOG/env\$ext.log
 tee $base\$ext.in |
-    # valgrind --verbose --leak-check=full --track-origins=yes --trace-children=yes --log-file=$LOG/valgrind\$ext.log $ROOT/exe/main/client_cgi$exe |
     $ROOT/exe/main/client_cgi$exe |
     tee $base\$ext.out
 EOF

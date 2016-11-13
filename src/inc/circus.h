@@ -22,10 +22,13 @@
 #define _GNU_SOURCE
 
 #include <cad_shared.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /**
  * @ingroup circus_shared
@@ -60,11 +63,7 @@
 /**
  * The crash function denotes a grave bug.
  */
-#ifdef DEBUG
-#define crash() do { int *i ## __LINE__ = 0; *i ## __LINE__ = 0; } while(1)
-#else
-#define crash() do { fprintf(stderr, "Crash in %s:%d\n", __FILE__, __LINE__); exit(-1); } while(1)
-#endif
+#define crash() do { kill(getpid(), SIGABRT); } while(0)
 
 /**
  * The assert macro denotes conditions that must always hold.

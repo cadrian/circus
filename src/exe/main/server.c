@@ -138,8 +138,26 @@ static void run(void) {
    CHECK_CANARY();
 }
 
+static void *uv_malloc(size_t size) {
+   return MEMORY.malloc(size);
+}
+
+static void *uv_realloc(void *ptr, size_t size) {
+   return MEMORY.realloc(ptr, size);
+}
+
+static void *uv_calloc(size_t count, size_t size) {
+   return MEMORY.malloc(count * size);
+}
+
+static void uv_free(void *ptr) {
+   MEMORY.free(ptr);
+}
+
 __PUBLIC__ int main(int argc, const char* const* argv) {
    SET_CANARY();
+
+   uv_replace_allocator(uv_malloc, uv_realloc, uv_calloc, uv_free);
 
    init();
 

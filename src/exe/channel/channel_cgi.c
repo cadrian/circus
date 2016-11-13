@@ -253,11 +253,13 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, circu
 }
 
 static int impl_read(cgi_impl_t *this, char *buffer, size_t buflen, cad_cgi_response_t *UNUSED(response)) {
+   log_debug(this->log, "impl_read(%zd)", buflen);
    int fd = this->cgi->fd(this->cgi);
    return read(fd, buffer, buflen);
 }
 
-static int impl_write(cgi_impl_t *UNUSED(this), const char *buffer, size_t buflen, cad_cgi_response_t *response) {
+static int impl_write(cgi_impl_t *this, const char *buffer, size_t buflen, cad_cgi_response_t *response) {
+   log_debug(this->log, "impl_write(%zd)", buflen);
    cad_output_stream_t *stream = response->body(response);
    return stream->put(stream, "%*s", (int)(buflen > (size_t)INT_MAX ? INT_MAX : buflen), buffer);
 }

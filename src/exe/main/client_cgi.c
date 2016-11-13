@@ -100,6 +100,8 @@ static circus_automaton_t *automaton;
 static void do_run(uv_idle_t *runner) {
    SET_CANARY();
 
+   log_debug(LOG, "Creating ZMQ channel...");
+
    zmq_channel = circus_zmq_client(MEMORY, LOG, config);
    if (zmq_channel == NULL) {
       log_error(LOG, "Could not allocate zmq_channel");
@@ -107,6 +109,8 @@ static void do_run(uv_idle_t *runner) {
       config->free(config);
       exit(1);
    }
+
+   log_debug(LOG, "Creating message handler...");
 
    mh = circus_message_handler(MEMORY, LOG, config);
    if (mh == NULL) {
@@ -126,6 +130,8 @@ static void do_run(uv_idle_t *runner) {
       exit(1);
    }
 
+   log_debug(LOG, "Creating CGI channel...");
+
    ch = circus_cgi_handler(MEMORY, LOG, config);
    if (ch == NULL) {
       log_error(LOG, "Could not allocate CGI handler");
@@ -137,17 +143,28 @@ static void do_run(uv_idle_t *runner) {
       exit(1);
    }
 
+   log_debug(LOG, "Creating automaton...");
+
    automaton = new_automaton(MEMORY, LOG);
    assert(automaton->state(automaton) == State_started);
+
+   log_debug(LOG, "Registering message handler...");
    mh->register_to(mh, zmq_channel, automaton);
+
+   log_debug(LOG, "Registering CGI channel...");
    ch->register_to(ch, cgi_channel, automaton);
 
    automaton->on_state(automaton, State_finished, finished, NULL);
    automaton->set_state(automaton, State_read_from_client, NULL);
 
-   log_info(LOG, "Client started.");
+   log_info(LOG, "Client ready, loop handles count=%u.", uv_default_loop()->active_handles);
 
-   uv_idle_stop(runner);
+   if (runner != NULL) {
+      log_debug(LOG, "Stopping init runner...");
+      uv_idle_stop(runner);
+   }
+
+   log_info(LOG, "Client started, loop handles count=%u.", uv_default_loop()->active_handles);
 
    CHECK_CANARY();
 }
@@ -158,8 +175,10 @@ static void run(void) {
    uv_idle_t runner;
    uv_idle_init(uv_default_loop(), &runner);
    uv_idle_start(&runner, do_run);
+   //do_run(NULL);
 
    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+   log_info(LOG, "Client stopping...");
    uv_loop_close(uv_default_loop());
    log_info(LOG, "Client stopped.");
 

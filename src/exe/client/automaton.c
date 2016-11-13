@@ -60,6 +60,7 @@ static void on_state(automaton_impl *this, circus_automaton_state_e state, circu
 }
 
 static void free_automaton(automaton_impl *this) {
+   log_debug(this->log, "Freeing automaton, state: %d", this->state);
    this->memory.free(this);
 }
 

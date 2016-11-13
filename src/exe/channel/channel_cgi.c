@@ -187,11 +187,15 @@ struct cgi_impl_s {
 };
 
 static void start_read(cgi_impl_t *this) {
+   SET_CANARY();
+
    log_debug(this->log, "Start read CGI");
    circus_stream_req_t *req = circus_stream_req(this->memory, NULL, 0);
    this->cgi_in->read(this->cgi_in, req);
-   req->free(req);
+   // NOTE: req will be freed when the read is over -- see stream.c: on_read_stream()
    log_debug(this->log, "Started read CGI");
+
+   CHECK_CANARY();
 }
 
 static void impl_on_read(cgi_impl_t *this, circus_channel_on_read_cb cb, void *data) {
@@ -244,6 +248,7 @@ static void impl_on_write(cgi_impl_t *this, circus_channel_on_write_cb cb, circu
       log_debug(this->log, "no CGI response registered (will write later)");
    } else {
       start_write(this);
+      log_debug(this->log, "started writing CGI");
    }
 }
 

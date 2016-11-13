@@ -377,43 +377,51 @@ void logger_error(circus_log_t *logger, const char *module, int line, const char
 void logger_warning(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_WARNING);
-   int n = snprintf("", 0, "%d: %s", line, format) + 1;
-   char *fmt = alloca(n);
-   snprintf(fmt, n, "%d: %s", line, format);
-   va_start(arg, format);
-   s->vput(s, fmt, arg);
-   va_end(arg);
+   if (s != NULL) {
+      int n = snprintf("", 0, "%d: %s", line, format) + 1;
+      char *fmt = alloca(n);
+      snprintf(fmt, n, "%d: %s", line, format);
+      va_start(arg, format);
+      s->vput(s, fmt, arg);
+      va_end(arg);
+   }
 }
 
 void logger_info(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_INFO);
-   int n = snprintf("", 0, "%d: %s", line, format) + 1;
-   char *fmt = alloca(n);
-   snprintf(fmt, n, "%d: %s", line, format);
-   va_start(arg, format);
-   s->vput(s, fmt, arg);
-   va_end(arg);
+   if (s != NULL) {
+      int n = snprintf("", 0, "%d: %s", line, format) + 1;
+      char *fmt = alloca(n);
+      snprintf(fmt, n, "%d: %s", line, format);
+      va_start(arg, format);
+      s->vput(s, fmt, arg);
+      va_end(arg);
+   }
 }
 
 void logger_debug(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_DEBUG);
-   int n = snprintf("", 0, "%d: %s", line, format) + 1;
-   char *fmt = alloca(n);
-   snprintf(fmt, n, "%d: %s", line, format);
-   va_start(arg, format);
-   s->vput(s, fmt, arg);
-   va_end(arg);
+   if (s != NULL) {
+      int n = snprintf("", 0, "%d: %s", line, format) + 1;
+      char *fmt = alloca(n);
+      snprintf(fmt, n, "%d: %s", line, format);
+      va_start(arg, format);
+      s->vput(s, fmt, arg);
+      va_end(arg);
+   }
 }
 
 void logger_pii(circus_log_t *logger, const char *module, int line, const char *format, ...) {
    va_list arg;
    cad_output_stream_t *s = logger->stream(logger, module, LOG_PII);
-   int n = snprintf("", 0, "%d: %s", line, format) + 1;
-   char *fmt = alloca(n);
-   snprintf(fmt, n, "%d: %s", line, format);
-   va_start(arg, format);
-   s->vput(s, fmt, arg);
-   va_end(arg);
+   if (s != NULL) {
+      int n = snprintf("", 0, "%d: %s", line, format) + 1;
+      char *fmt = alloca(n);
+      snprintf(fmt, n, "%d: %s", line, format);
+      va_start(arg, format);
+      s->vput(s, fmt, arg);
+      va_end(arg);
+   }
 }

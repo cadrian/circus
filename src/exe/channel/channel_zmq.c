@@ -53,7 +53,7 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_cb = cb;
    this->read_data = data;
    if (!this->started) {
-      log_debug(this->log, "starting uv poll");
+      log_debug(this->log, "starting uv poll (read)");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;
@@ -67,7 +67,7 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, circu
    assert(done_cb == NULL);
    this->write_data = data;
    if (!this->started) {
-      log_debug(this->log, "starting uv poll");
+      log_debug(this->log, "starting uv poll (write)");
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
       this->started = 1;
@@ -150,6 +150,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
    if (events & UV_READABLE) {
       int more;
       do {
+         log_debug(this->log, "impl_zmq_callback: ready (state: %s)", this->state == reading ? "reading" : this->state == writing ? "writing" : "unknown");
          CHECK_CANARY();
 
          uint32_t zevents = 0;
@@ -165,6 +166,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
             assert(zevents_size = sizeof(uint32_t));
 
             if (this->state == reading && (zevents & ZMQ_POLLIN)) {
+               log_debug(this->log, "impl_zmq_callback: poll has input");
                if (this->read_cb != NULL) {
                   (this->read_cb)((circus_channel_t*)this, this->read_data);
                }
@@ -172,6 +174,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
                more = 1;
             }
             if (this->state == writing && (zevents & ZMQ_POLLOUT)) {
+               log_debug(this->log, "impl_zmq_callback: poll has output");
                if (this->write_cb != NULL) {
                   (this->write_cb)((circus_channel_t*)this, this->write_data);
                }
@@ -180,6 +183,8 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
             }
          }
       } while (more);
+   } else {
+      log_debug(this->log, "impl_zmq_callback: NOT ready");
    }
 
    CHECK_CANARY();

@@ -16,8 +16,11 @@
     Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 */
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <circus.h>
 
@@ -55,4 +58,9 @@ char *szprintf(cad_memory_t memory, int *size, const char *format, ...) {
    return result;
 }
 
-#include "circus.h"
+void __crash(const char *file, int line) {
+   fprintf(stderr, "**** CRASH **** %s:%d\n", file, line);
+   kill(getpid(), SIGABRT);
+   // never reached
+   exit(1);
+}

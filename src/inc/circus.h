@@ -108,8 +108,12 @@ char *vszprintf(cad_memory_t memory, int *size, const char *format, va_list args
 // ----------------------------------------------------------------
 // Debugging guards
 
+#if defined(__amd64__) || defined(__aarch64__)
 #define CANARY (0x1235813215475129L)
-#define SET_CANARY() volatile long canary = CANARY
+#else
+#define CANARY (0x12358132L)
+#endif
+#define SET_CANARY() volatile long int canary = CANARY
 #define CHECK_CANARY() assert(canary == CANARY)
 
 // ----------------------------------------------------------------

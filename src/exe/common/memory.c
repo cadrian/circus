@@ -84,7 +84,6 @@ static mem *circus_memalloc(size_t size) {
       result->canary = CANARY;
       int n = mlock(result, s);
       if (n != 0) {
-         fprintf(stderr, "mlock error: %d - %s\n", errno, strerror(errno));
          circus_memfree(result);
          result = NULL;
       } else if (size > 0) {

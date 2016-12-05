@@ -421,7 +421,7 @@ static stream_impl_t *new_stream_fd(cad_memory_t memory, int fd) {
       result->stream = NULL;
       break;
    default:
-      fprintf(stderr, "%d: handle_type=%d not handled...\n", fd, handle_type);
+      fprintf(stderr, "fd#%d: handle_type=%d not handled...\n", fd, handle_type);
       crash();
    }
    result->memory = memory;

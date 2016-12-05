@@ -233,7 +233,9 @@ static void start(zmq_impl_t *this) {
       fprintf(stderr, "Error %d while getting socket fd -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
       crash();
    } else {
+      log_debug(this->log, "Init zmq on fd#%d\n", fd);
       assert(fd_size = sizeof(int));
+      assert(fd != 0);
 
       n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
       assert(n == 0);

@@ -34,7 +34,7 @@ typedef enum {
    __LOG_MAX
 } log_level_t;
 
-#define DEFAULT_FORMAT "%Y-%M-%D %h:%m:%s.%u [%T] %O:%G\n"
+#define DEFAULT_FORMAT "%X %Y-%M-%D %h:%m:%s.%u [%T] %O:%G\n"
 
 typedef void (*circus_log_set_log_fn)(circus_log_t *this, const char *module, log_level_t max_level);
 typedef int (*circus_log_is_log_fn)(circus_log_t *this, const char *module, log_level_t level);

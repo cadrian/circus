@@ -30,14 +30,15 @@
 
 static const char* level_tag[] = {"ERROR", "WARNING", "INFO", "DEBUG", "PII"};
 
-static int format_log(char *buf, const int buflen, const char *format, const struct timeval *tv, const char *tag, const char *module, const char *message) {
+static int format_log(unsigned long int id, char *buf, const int buflen, const char *format, const struct timeval *tv, const char *tag, const char *module, const char *message) {
    int result = 0;
    int state = 0;
    struct tm *tm = gmtime(&(tv->tv_sec));
    const char *f;
+
    for (f = format; *f; f++) {
       switch(state) {
-      case 0:
+      case 0: // normal
          if (*f == '%') {
             state = 1;
          } else {
@@ -47,7 +48,7 @@ static int format_log(char *buf, const int buflen, const char *format, const str
             result++;
          }
          break;
-      case 1:
+      case 1: // after '%'
          switch(*f) {
          case '%':
             if (result < buflen) {
@@ -125,6 +126,13 @@ static int format_log(char *buf, const int buflen, const char *format, const str
                result += strlen(message);
             }
             break;
+         case 'X':
+            if (result < buflen) {
+               result += snprintf(buf + result, buflen - result, "%0*lx", (int)sizeof(id), id);
+            } else {
+               result += snprintf("", 0, "%0*lx", (int)sizeof(id), id);
+            }
+            break;
          default:
             fprintf(stderr, "Invalid flag %%%c\n", *f);
             crash();
@@ -155,20 +163,22 @@ static void log_free_stream(log_file_output_stream *this) {
 
 static void log_vput_stream(log_file_output_stream *this, const char *format, va_list args) {
    SET_CANARY();
+   static volatile unsigned long int index = 0;
 
    circus_stream_req_t *req;
    struct timeval tv = now();
    char *message = NULL;
    int n;
    char *logline = NULL;
+   unsigned long int id = index++;
 
    message = vszprintf(this->memory, NULL, format, args);
    assert(message != NULL);
 
-   n = format_log("", 0, *(this->format), &tv, this->tag, this->module, message);
+   n = format_log(id, "", 0, *(this->format), &tv, this->tag, this->module, message);
    logline = this->memory.malloc(n + 1);
    assert(logline != NULL);
-   format_log(logline, n + 1, *(this->format), &tv, this->tag, this->module, message);
+   format_log(id, logline, n + 1, *(this->format), &tv, this->tag, this->module, message);
    this->memory.free(message);
 
    req = circus_stream_req(this->memory, logline, n);

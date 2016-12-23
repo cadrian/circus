@@ -78,7 +78,7 @@ static void circus_memfree(mem *p) {
 
 static mem *circus_memalloc(size_t size) {
    size_t s = sizeof(mem) + size;
-   mem *result = malloc(s);
+   mem *result = calloc(s, 1);
    if (result != NULL) {
       result->size = (uintptr_t)size;
       result->canary = CANARY;
@@ -86,8 +86,6 @@ static mem *circus_memalloc(size_t size) {
       if (n != 0) {
          circus_memfree(result);
          result = NULL;
-      } else if (size > 0) {
-         memset(&(result->data), 0, size);
       }
    }
    return result;

@@ -70,14 +70,15 @@ static void circus_memfree(mem *p) {
    assert(p->canary == CANARY);
    size_t size = p->size;
    assert(size > 0);
+   assert(*(p->data + size) == '\003');
    max_bzero(size);
-   force_bzero(p, sizeof(mem) + size);
-   munlock(p, sizeof(mem) + size);
+   force_bzero(p, sizeof(mem) + size + 1);
+   munlock(p, sizeof(mem) + size + 1);
    free(p);
 }
 
 static mem *circus_memalloc(size_t size) {
-   size_t s = sizeof(mem) + size;
+   size_t s = sizeof(mem) + size + 1;
    mem *result = calloc(s, 1);
    if (result != NULL) {
       result->size = (uintptr_t)size;
@@ -87,11 +88,13 @@ static mem *circus_memalloc(size_t size) {
          circus_memfree(result);
          result = NULL;
       }
+      *(result->data + size) = '\003';
    }
    return result;
 }
 
 static void *circus_malloc(size_t size) {
+   assert(size > 0);
    mem *result = circus_memalloc(size);
    if (result == NULL) {
       return NULL;
@@ -100,11 +103,13 @@ static void *circus_malloc(size_t size) {
 }
 
 static void *circus_realloc(void *ptr, size_t size) {
+   assert(size > 0);
    if (ptr == NULL) {
       return circus_malloc(size);
    }
    mem *p = container_of(ptr, mem, data);
    assert(p->canary == CANARY);
+   assert(*(p->data + size) == '\003');
    if (size <= p->size) {
       return ptr;
    }

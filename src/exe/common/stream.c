@@ -123,8 +123,10 @@ static void on_read_fs(uv_fs_t *fs) {
       SET_CANARY();
       if (req->req.fs->result > 0) {
          more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, req->buf.len);
+      } else if (req->req.fs->result < 0) {
+         more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, req->req.fs->result);
       } else {
-         more = req->cb.on.read(I(req->stream), req->cb.payload, req->buf.base, -1);
+         more = 1; // just an empty buffer, let's go on
       }
       CHECK_CANARY();
    }
@@ -310,6 +312,7 @@ static void pipe_read(stream_impl_t *this, circus_stream_req_impl_t *req) {
    req->req.read->data = req;
    req->cb = this->cb;
    req->stream = this;
+   //fprintf(stderr, "pipe_read fd#%d\n", this->fd);
    int n = uv_read_start(req->req.read, (uv_alloc_cb)stream_read_alloc, on_read_stream);
    assert(n == 0);
 }
@@ -322,6 +325,7 @@ static void pipe_write(stream_impl_t *this, circus_stream_req_impl_t *req) {
    req->req.write->data = req;
    req->cb = this->cb;
    req->stream = this;
+   //fprintf(stderr, "pipe_write fd#%d\n", this->fd);
    uv_write(req->req.write, this->stream, &req->buf, 1, on_write_stream);
 }
 

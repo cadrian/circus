@@ -287,11 +287,17 @@ static int cgi_on_read(circus_stream_t *this, cgi_impl_t *cgi, const char *buffe
    log_debug(cgi->log, "Reading CGI (%p, %d)", buffer, len);
    cgi_input_stream *in = cgi->cgi_in_stream;
    if (len >= 0) {
+      assert(buffer != NULL);
       buffer_put(in->memory, &in->buffer, "%*s", len, buffer);
       result = 1;
    } else {
       assert(len == -1 /* EOF */);
       log_debug(cgi->log, "calling CGI run");
+      if (in->buffer.count <= INT_MAX) {
+         log_pii(cgi->log, "**** CGI INPUT BUFFER **** [%*s]", (int)in->buffer.count, in->buffer.data);
+      } else {
+         log_pii(cgi->log, "**** CGI INPUT BUFFER **** [%*s...]", (int)INT_MAX, in->buffer.data);
+      }
       cad_cgi_response_t *response = cgi->cgi->run(cgi->cgi);
       log_debug(cgi->log, "returned from CGI run, response=%p", response);
       if (response != NULL) {

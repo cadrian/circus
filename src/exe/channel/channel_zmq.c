@@ -54,9 +54,9 @@ static void impl_on_read(zmq_impl_t *this, circus_channel_on_read_cb cb, void *d
    this->read_data = data;
    if (!this->started) {
       log_debug(this->log, "starting uv poll (read)");
+      this->started = 1;
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
-      this->started = 1;
    }
    CHECK_CANARY();
 }
@@ -68,9 +68,9 @@ static void impl_on_write(zmq_impl_t *this, circus_channel_on_write_cb cb, circu
    this->write_data = data;
    if (!this->started) {
       log_debug(this->log, "starting uv poll (write)");
+      this->started = 1;
       int n = uv_poll_start(&(this->handle), UV_READABLE, impl_zmq_callback);
       assert(n == 0);
-      this->started = 1;
    }
    CHECK_CANARY();
 }
@@ -146,6 +146,7 @@ static void impl_zmq_callback(uv_poll_t *handle, int status, int events) {
       log_warning(this->log, "impl_zmq_callback: status=%d", status);
       return;
    }
+   //fprintf(stderr, "impl_zmq_callback: events=%x\n", events);
 
    if (events & UV_READABLE) {
       int more;
@@ -230,16 +231,29 @@ static void start(zmq_impl_t *this) {
 
    n = zmq_getsockopt(this->socket, ZMQ_FD, &fd, &fd_size);
    if (n < 0) {
-      fprintf(stderr, "Error %d while getting socket fd -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
+      fprintf(stderr, "Error %d while getting zmq socket fd -- %s\n", zmq_errno(), zmq_strerror(zmq_errno()));
       crash();
    } else {
       log_debug(this->log, "Init zmq on fd#%d", fd);
       assert(fd_size = sizeof(int));
       assert(fd != 0);
 
-      n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
-      assert(n == 0);
-      this->handle.data = this;
+      uv_handle_type handle_type = uv_guess_handle(fd);
+      switch(handle_type) {
+         /*
+          * It is quite ironic that the only expected type here is
+          * "unknown"...
+          */
+      case UV_UNKNOWN_HANDLE:
+         n = uv_poll_init(uv_default_loop(), &(this->handle), fd);
+         assert(n == 0);
+         this->handle.data = this;
+         //fprintf(stderr, "Initialized zmq socket handle: fd#%d\n", fd);
+         break;
+      default:
+         fprintf(stderr, "Unknown handle type: %d\n", (int)handle_type);
+         crash();
+      }
    }
 }
 

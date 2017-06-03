@@ -109,7 +109,7 @@ static void *circus_realloc(void *ptr, size_t size) {
    }
    mem *p = container_of(ptr, mem, data);
    assert(p->canary == CANARY);
-   assert(*(p->data + size) == '\003');
+   assert(*(p->data + p->size) == '\003');
    if (size <= p->size) {
       return ptr;
    }

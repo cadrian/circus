@@ -34,7 +34,13 @@ LDFLAGS_DBG := -Wl,--wrap=mlock -Wl,--wrap=munlock -Wl,--wrap=gcry_randomize -Wl
 
 # ----------------------------------------------------------------
 
-.PHONY: test clean
+.PHONY: test clean test_nginx test_lighttpd
+
+test_nginx: test
+	$(MAKE) -C manual_tests $@
+
+test_lighttpd: test
+	$(MAKE) -C manual_tests $@
 
 test: $(T_EXE) $(T_RUN)
 #	./run_test.sh client/test_client_cgi_login_admin.exe client/test_client_cgi_login_admin.run || { rm -f client/test_client_cgi_login_admin.run; false; }

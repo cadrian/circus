@@ -18,7 +18,7 @@
 
 # ----------------------------------------------------------------
 
-.PHONY: all test manual_test compile clean debian
+.PHONY: all test manual_test compile clean debian test_nginx test_lighttpd
 
 all: test doc
 	$(MAKE) -C src $@
@@ -32,6 +32,12 @@ test: compile
 	$(MAKE) -C src $@
 
 manual_test: test
+	$(MAKE) -C src $@
+
+test_nginx: manual_test
+	$(MAKE) -C src $@
+
+test_lighttpd: manual_test
 	$(MAKE) -C src $@
 
 compile:

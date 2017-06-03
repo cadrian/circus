@@ -16,34 +16,10 @@
 #
 # Copyright © 2015-2016 Cyril Adrian <cyril.adrian@gmail.com>
 
-# ----------------------------------------------------------------
+.PHONY: test_nginx test_lighttpd
 
-# With the help of http://scottmcpeak.com/autodepend/autodepend.html
+test_nginx:
+	./nginx.sh
 
-ROOTSRC=$(shell pwd)
-
-# ----------------------------------------------------------------
-
-.PHONY: all test compile manual_test clean test_nginx test_lighttpd
-
-all: test
-
-test: compile
-	$(MAKE) -C tst $@
-
-manual_test: test
-	$(MAKE) -C exe $@
-
-test_nginx: manual_test
-	$(MAKE) -C exe $@
-
-test_lighttpd: manual_test
-	$(MAKE) -C exe $@
-
-compile:
-	$(MAKE) -C exe $@
-	$(MAKE) -C web $@
-
-clean:
-	$(MAKE) -C exe $@
-	$(MAKE) -C tst $@
+test_lighttpd:
+	./lighttpd.sh

@@ -35,10 +35,10 @@ manual_test: test
 	$(MAKE) -C exe $@
 
 test_nginx: manual_test
-	$(MAKE) -C exe $@
+	$(MAKE) -C tst $@
 
 test_lighttpd: manual_test
-	$(MAKE) -C exe $@
+	$(MAKE) -C tst $@
 
 compile:
 	$(MAKE) -C exe $@

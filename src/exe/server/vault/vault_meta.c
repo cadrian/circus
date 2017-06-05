@@ -28,7 +28,7 @@ uint64_t get_stretch_threshold(circus_log_t *log, circus_database_t *database) {
    circus_database_query_t *q = database->query(database, sql);
    int ok;
 
-   uint64_t result;
+   uint64_t result = DEFAULT_STRETCH;
 
    if (q != NULL) {
       ok = q->set_string(q, 0, "STRETCH");

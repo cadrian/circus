@@ -21,6 +21,7 @@
 #include <circus_vault.h>
 
 #include "vault_impl.h"
+#include "vault_pass.h"
 
 uint64_t get_stretch_threshold(circus_log_t *log, circus_database_t *database) {
    static const char *sql = "SELECT VALUE FROM META WHERE KEY=?";

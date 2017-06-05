@@ -35,8 +35,6 @@
 #define PERMISSION_USER     1
 #define PERMISSION_ADMIN    2
 
-#define DEFAULT_STRETCH ((uint64_t)65536)
-
 #define META_SCHEMA                                          \
    "CREATE TABLE IF NOT EXISTS META (\n"                     \
    "  KEY           TEXT PRIMARY KEY,\n"                     \

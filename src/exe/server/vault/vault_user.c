@@ -24,6 +24,7 @@
 #include <circus_vault.h>
 
 #include "vault_impl.h"
+#include "vault_pass.h"
 
 static key_impl_t *vault_user_get(user_impl_t *this, const char *keyname) {
    assert(keyname != NULL);
@@ -88,7 +89,7 @@ static key_impl_t *vault_user_new(user_impl_t *this, const char *keyname) {
    }
 
    key_impl_t *result = NULL;
-   static const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, VALUE) VALUES (?, ?, \"\", \"\")";
+   static const char *sql = "INSERT INTO KEYS (USERID, KEYNAME, SALT, STRETCH, VALUE) VALUES (?, ?, \"\", 0, \"\")";
    circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
    int ok;
    if (q != NULL) {
@@ -116,40 +117,36 @@ static const char *vault_user_name(user_impl_t *this) {
 }
 
 static int vault_user_set_password(user_impl_t *this, const char *password, uint64_t validity) {
-   static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=?, PWDVALID=? WHERE USERID=?";
+
+   uint64_t stretch_threshold = get_stretch_threshold(this->log, this->vault->database);
+   log_info(this->log, "stretch_threshold=%"PRIu64, stretch_threshold);
+
+   static const char *sql = "UPDATE USERS SET PWDSALT=?, HASHPWD=?, PWDVALID=?, STRETCH=? WHERE USERID=?";
    circus_database_query_t *q = this->vault->database->query(this->vault->database, sql);
    int result = 0;
+   hashing_t h_pass;
    if (q != NULL) {
-      int ok = 1;
-      char *pwdsalt=NULL;
+      h_pass.stretch = stretch_threshold;
+      h_pass.clear = (char*)password;
+      h_pass.salt = NULL;
+      h_pass.hashed = NULL;
+
+      int ok = pass_hash(this->memory, this->log, &h_pass);
+
       if (ok) {
-         pwdsalt = salt(this->memory, this->log);
-         if (pwdsalt == NULL) {
-            ok = 0;
-         } else {
-            ok = q->set_string(q, 0, pwdsalt);
-         }
+         ok = q->set_string(q, 0, h_pass.salt);
       }
-      char *pwd=NULL;
-      char *hashpwd=NULL;
       if (ok) {
-         pwd = salted(this->memory, this->log, pwdsalt, password);
-         if (pwd == NULL) {
-            ok = 0;
-         } else {
-            hashpwd = hashed(this->memory, this->log, pwd);
-            if (hashpwd == NULL) {
-               ok = 0;
-            } else {
-               ok = q->set_string(q, 1, hashpwd);
-            }
-         }
+         ok = q->set_string(q, 1, h_pass.hashed);
       }
       if (ok) {
          ok = q->set_int(q, 2, validity);
       }
       if (ok) {
-         ok = q->set_int(q, 3, this->userid);
+         ok = q->set_int(q, 3, stretch_threshold);
+      }
+      if (ok) {
+         ok = q->set_int(q, 4, this->userid);
       }
 
       if (ok) {
@@ -163,9 +160,8 @@ static int vault_user_set_password(user_impl_t *this, const char *password, uint
          }
       }
 
-      this->memory.free(hashpwd);
-      this->memory.free(pwd);
-      this->memory.free(pwdsalt);
+      this->memory.free(h_pass.salt);
+      this->memory.free(h_pass.hashed);
 
       q->free(q);
 
@@ -262,12 +258,46 @@ user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, int64_t user
    return result;
 }
 
+static int update_stretched_password(user_impl_t *user, hashing_t *hashing) {
+   static const char *sql = "UPDATE USERS SET STRETCH=?, HASHPWD=? WHERE USERID=?";
+   circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
+   int ok;
+   int result = 0;
+   if (q != NULL) {
+      ok = q->set_int(q, 0, (int64_t)hashing->stretch);
+      if (ok) {
+         ok = q->set_string(q, 1, hashing->hashed);
+      }
+      if (ok) {
+         ok = q->set_int(q, 2, user->userid);
+      }
+      if (ok) {
+         circus_database_resultset_t *rs = q->run(q);
+         if (rs != NULL) {
+            result = !rs->has_error(rs);
+            rs->free(rs);
+         }
+      }
+      q->free(q);
+   }
+
+   return result;
+}
+
 user_impl_t *check_user_password(user_impl_t *user, const char *password) {
    log_debug(user->log, "Checking user %"PRId64" password", user->userid);
-   static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID FROM USERS WHERE USERID=?";
+
+   uint64_t stretch_threshold = get_stretch_threshold(user->log, user->vault->database);
+   log_info(user->log, "stretch_threshold=%"PRIu64, stretch_threshold);
+
+   static const char *sql = "SELECT USERNAME, PWDSALT, HASHPWD, PWDVALID, STRETCH FROM USERS WHERE USERID=?";
    user_impl_t *result = NULL;
    circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
    int ok;
+
+   hashing_t h_pass;
+   int update = 0;
+
    if (q != NULL) {
       ok = q->set_int(q, 0, user->userid);
       if (ok) {
@@ -283,21 +313,27 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
             const char *pwdsalt = rs->get_string(rs, 1);
             const char *hashpwd = rs->get_string(rs, 2);
             uint64_t validity = (uint64_t)rs->get_int(rs, 3);
+            uint64_t stretch = (uint64_t)rs->get_int(rs, 4);
             if ((validity == 0) || ((time_t)validity > now().tv_sec)) {
-               char *saltedpwd = salted(user->memory, user->log, pwdsalt, password);
-               char *hashedpwd = hashed(user->memory, user->log, saltedpwd);
-               if (strcmp(hashedpwd, hashpwd) == 0) {
+               h_pass.stretch = stretch;
+               h_pass.clear = (char*)password;
+               h_pass.salt = (char*)pwdsalt;
+               h_pass.hashed = (char*)hashpwd;
+
+               int cmp = pass_compare(user->memory, user->log, &h_pass, stretch_threshold);
+               if (cmp) {
+                  if (h_pass.stretch > stretch) {
+                     update = 1;
+                  }
                   result = user;
                } else {
                   log_warning(user->log, "Invalid password for user %s", rs->get_string(rs, 0));
                }
-               user->memory.free(hashedpwd);
-               user->memory.free(saltedpwd);
             } else {
                log_warning(user->log, "Stale password for user %s", rs->get_string(rs, 0));
             }
             if (rs->has_next(rs)) {
-               log_error(user->log, "Error multiple users found: %"PRId64, user->userid);
+               log_error(user->log, "Error multiple users found for userid: %"PRId64, user->userid);
                result = NULL;
             }
             rs->free(rs);
@@ -305,5 +341,14 @@ user_impl_t *check_user_password(user_impl_t *user, const char *password) {
       }
       q->free(q);
    }
+
+   if (update) {
+      // was re-stretched... need to update
+      if (!update_stretched_password(user, &h_pass)) {
+         log_warning(user->log, "Could not update stretched password for userid %"PRId64, user->userid);
+      }
+      user->memory.free(h_pass.hashed);
+   }
+
    return result;
 }

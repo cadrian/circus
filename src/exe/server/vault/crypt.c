@@ -52,7 +52,8 @@ char *salt(cad_memory_t memory, circus_log_t *log) {
 }
 
 char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
-   assert(strlen(salt) == b64_size(SALT_SIZE));
+   //assert(strlen(salt) == b64_size(SALT_SIZE));
+   assert(strlen(salt) > 0);
    assert(value != NULL);
    assert(value[0] != 0);
    char *result = szprintf(memory, NULL, "%s:%s", salt, value);
@@ -63,16 +64,18 @@ char *salted(cad_memory_t memory, circus_log_t *log, const char *salt, const cha
 }
 
 char *unsalted(cad_memory_t memory, circus_log_t *log, const char *salt, const char *value) {
-   assert(strlen(salt) == b64_size(SALT_SIZE));
+   //assert(strlen(salt) == b64_size(SALT_SIZE));
+   assert(strlen(salt) > 0);
    assert(value != NULL);
    assert(value[0] != 0);
 
    char *result = NULL;
-   int n = strlen(value) - b64_size(SALT_SIZE); /* - 1 (for ':') + 1 (for '\0') */
+   int saltlen = strlen(salt);
+   int n = strlen(value) - saltlen; /* - 1 (for ':') + 1 (for '\0') */
 
-   if (n > 1 && value[b64_size(SALT_SIZE)] == ':' && memcmp(value, salt, b64_size(SALT_SIZE)) == 0) {
+   if (n > 1 && value[saltlen] == ':' && memcmp(value, salt, saltlen) == 0) {
       result = memory.malloc(n);
-      memcpy(result, value + b64_size(SALT_SIZE) + 1, n);
+      memcpy(result, value + saltlen + 1, n);
    } else {
       log_error(log, "Tampered salted value!!");
    }

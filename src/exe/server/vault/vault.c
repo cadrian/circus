@@ -25,6 +25,7 @@
 #include <circus_xdg.h>
 
 #include "vault_impl.h"
+#include "vault_pass.h"
 
 /*
  * TODO - WIP password stretching:
@@ -248,48 +249,38 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
    assert(password != NULL && password[0] != 0);
    log_info(this->log, "Creating new user %s", username);
 
+   uint64_t stretch_threshold = get_stretch_threshold(this->log, this->database);
+   log_info(this->log, "stretch_threshold=%"PRIu64, stretch_threshold);
+
    user_impl_t *result = NULL;
    static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, STRETCH, PWDSALT, HASHPWD, PWDVALID, KEYSALT, HASHKEY) "
-      "values (?, ?, 0, ?, ?, ?, 'invalid', 'invalid')";
+      "values (?, ?, ?, ?, ?, ?, 'invalid', 'invalid')";
    circus_database_query_t *q = this->database->query(this->database, sql);
 
    if (q != NULL) {
-      int ok = 1;
+      hashing_t h_pass;
+      h_pass.stretch = stretch_threshold;
+      h_pass.clear = (char*)password;
+      h_pass.salt = NULL;
+      h_pass.hashed = NULL;
+      int ok = pass_hash(this->memory, this->log, &h_pass);
       if (ok) {
          ok = q->set_string(q, 0, username);
       }
       if (ok) {
          ok = q->set_int(q, 1, permissions);
       }
-      char *pwdsalt=NULL;
       if (ok) {
-         pwdsalt = salt(this->memory, this->log);
-         if (pwdsalt == NULL) {
-            log_error(this->log, "Error creating salt");
-            ok = 0;
-         } else {
-            ok = q->set_string(q, 2, pwdsalt);
-         }
-      }
-      char *pwd=NULL;
-      char *hashpwd=NULL;
-      if (ok) {
-         pwd = salted(this->memory, this->log, pwdsalt, password);
-         if (pwd == NULL) {
-            log_error(this->log, "Error salting password");
-            ok = 0;
-         } else {
-            hashpwd = hashed(this->memory, this->log, pwd);
-            if (hashpwd == NULL) {
-               log_error(this->log, "Error hashing password");
-               ok = 0;
-            } else {
-               ok = q->set_string(q, 3, hashpwd);
-            }
-         }
+         ok = q->set_int(q, 2, (int64_t)stretch_threshold);
       }
       if (ok) {
-         ok = q->set_int(q, 4, validity);
+         ok = q->set_string(q, 3, h_pass.salt);
+      }
+      if (ok) {
+         ok = q->set_string(q, 4, h_pass.hashed);
+      }
+      if (ok) {
+         ok = q->set_int(q, 5, validity);
       }
 
       if (ok) {
@@ -299,9 +290,8 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
          }
       }
 
-      this->memory.free(hashpwd);
-      this->memory.free(pwd);
-      this->memory.free(pwdsalt);
+      this->memory.free(h_pass.salt);
+      this->memory.free(h_pass.hashed);
 
       q->free(q);
 

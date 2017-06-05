@@ -26,6 +26,12 @@
 
 #include "vault_impl.h"
 
+/*
+ * TODO - WIP password stretching:
+ * - stretch user password, but no need for symmkey (to be thought of... hard)
+ * - stretch user keys
+ */
+
 static void get_symmetric_key(user_impl_t *user, const char *password) {
    assert(password != NULL && password[0] != 0);
 
@@ -52,8 +58,8 @@ static void get_symmetric_key(user_impl_t *user, const char *password) {
                } else if (keysalt == NULL || strlen(keysalt) == 0) {
                   log_error(user->log, "Error user: %"PRId64" -- KEYSALT is NULL", user->userid);
                } else {
-                  char *passslt=NULL;
-                  char *passkey=NULL;
+                  char *passslt = NULL;
+                  char *passkey = NULL;
                   passslt = salted(user->memory, user->log, keysalt, password);
                   if (passslt == NULL) {
                      log_error(user->log, "Error user: %"PRId64" -- could not salt password", user->userid);
@@ -88,12 +94,14 @@ static void get_symmetric_key(user_impl_t *user, const char *password) {
 int set_symmetric_key(user_impl_t *user, const char *password) {
    assert(password != NULL && password[0] != 0);
 
+   // TODO stretch
+
    int result = 0;
    static const char *sql = "UPDATE USERS SET KEYSALT=?, HASHKEY=? WHERE USERID=?";
    circus_database_query_t *q = user->vault->database->query(user->vault->database, sql);
    if (q != NULL) {
       int ok = 1;
-      char *keysalt=NULL;
+      char *keysalt = NULL;
       if (ok) {
          keysalt = salt(user->memory, user->log);
          if (keysalt == NULL) {
@@ -103,11 +111,11 @@ int set_symmetric_key(user_impl_t *user, const char *password) {
          }
       }
 
-      char *hashkey=NULL;
-      char *enckey=NULL;
-      char *sltkey=NULL;
-      char *passslt=NULL;
-      char *passkey=NULL;
+      char *hashkey = NULL;
+      char *enckey = NULL;
+      char *sltkey = NULL;
+      char *passslt = NULL;
+      char *passkey = NULL;
       if (ok) {
          if (user->symmkey == NULL) {
             user->symmkey = new_symmetric_key(user->memory, user->log);
@@ -241,7 +249,8 @@ static user_impl_t *vault_new_(vault_impl_t *this, const char *username, const c
    log_info(this->log, "Creating new user %s", username);
 
    user_impl_t *result = NULL;
-   static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, PWDSALT, HASHPWD, PWDVALID, KEYSALT, HASHKEY) values (?, ?, ?, ?, ?, 'invalid', 'invalid')";
+   static const char *sql = "INSERT INTO USERS (USERNAME, PERMISSIONS, STRETCH, PWDSALT, HASHPWD, PWDVALID, KEYSALT, HASHKEY) "
+      "values (?, ?, 0, ?, ?, ?, 'invalid', 'invalid')";
    circus_database_query_t *q = this->database->query(this->database, sql);
 
    if (q != NULL) {

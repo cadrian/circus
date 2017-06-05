@@ -31,9 +31,11 @@
 
 #define DB_VERSION "1"
 
-#define PERMISSION_REVOKED 0
-#define PERMISSION_USER    1
-#define PERMISSION_ADMIN   2
+#define PERMISSION_REVOKED  0
+#define PERMISSION_USER     1
+#define PERMISSION_ADMIN    2
+
+#define DEFAULT_STRETCH ((uint64_t)65536)
 
 #define META_SCHEMA                                          \
    "CREATE TABLE IF NOT EXISTS META (\n"                     \
@@ -47,6 +49,7 @@
    "  USERNAME      TEXT NOT NULL,\n"                        \
    "  EMAIL         TEXT,\n"                                 \
    "  PERMISSIONS   INTEGER NOT NULL,\n"                     \
+   "  STRETCH       INTEGER NOT NULL,\n"                     \
    "  PWDSALT       TEXT NOT NULL,\n"                        \
    "  HASHPWD       TEXT NOT NULL,\n"                        \
    "  PWDVALID      INTEGER,\n"                              \
@@ -63,6 +66,7 @@
    "  USERID        INTEGER NOT NULL,\n"                     \
    "  KEYNAME       TEXT NOT NULL,\n"                        \
    "  SALT          TEXT NOT NULL,\n"                        \
+   "  STRETCH       INTEGER NOT NULL,\n"                     \
    "  VALUE         TEXT NOT NULL\n"                         \
    ");\n"                                                    \
    "CREATE UNIQUE INDEX IF NOT EXISTS KEYS_IX ON KEYS (\n"   \
@@ -101,6 +105,7 @@ typedef struct {
    char *symmkey;
    vault_impl_t *vault;
    cad_hash_t *keys;
+   uint64_t stretch;
 } user_impl_t;
 
 typedef struct {
@@ -109,6 +114,7 @@ typedef struct {
    circus_log_t *log;
    int64_t keyid;
    user_impl_t *user;
+   uint64_t stretch;
 } key_impl_t;
 
 user_impl_t *new_vault_user(cad_memory_t memory, circus_log_t *log, int64_t userid, uint64_t validity, int permissions,
@@ -117,5 +123,8 @@ key_impl_t *new_vault_key(cad_memory_t memory, circus_log_t *log, int64_t keyid,
 
 user_impl_t *check_user_password(user_impl_t *user, const char *password);
 int set_symmetric_key(user_impl_t *user, const char *password);
+
+uint64_t get_stretch_threshold(circus_log_t *log, circus_database_t *database);
+int set_stretch_threshold(circus_log_t *log, circus_database_t *database, uint64_t stretch_threshold);
 
 #endif /* __CIRCUS_VAULT_IMPL_H */

@@ -28,7 +28,7 @@
  * See https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/
  */
 
-#define DEFAULT_STRETCH ((uint64_t)16)
+#define DEFAULT_STRETCH ((uint64_t)65536)
 
 typedef struct {
    uint64_t stretch;

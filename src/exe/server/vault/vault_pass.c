@@ -121,7 +121,7 @@ int pass_compare(cad_memory_t memory, circus_log_t *log, hashing_t *hashing, uin
          if (min_stretch > hashing->stretch) {
             log_debug(log, "re-stretching to %"PRIu64, min_stretch);
             hashing->stretch = min_stretch;
-            pass_hash(memory, log, hashing);
+            result = pass_stretch(memory, log, hashing);
          }
       }
    }

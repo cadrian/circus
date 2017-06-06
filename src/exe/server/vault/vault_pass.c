@@ -30,7 +30,7 @@ static int pass_stretch(cad_memory_t memory, circus_log_t *log, hashing_t *hashi
    assert(hashing->salt != NULL && hashing->salt[0] != '\0');
    assert(hashing->hashed == NULL);
 
-   log_pii(log, "stretch=%"PRIu64" -- clear pass: %s", hashing->stretch, hashing->clear);
+   log_debug(log, "stretch=%"PRIu64, hashing->stretch);
 
    int result;
 
@@ -72,6 +72,8 @@ int pass_hash(cad_memory_t memory, circus_log_t *log, hashing_t *hashing) {
    assert(hashing->salt == NULL);
    assert(hashing->hashed == NULL);
 
+   log_debug(log, "stretch=%"PRIu64, hashing->stretch);
+
    int result;
 
    if (hashing->stretch < DEFAULT_STRETCH) {
@@ -100,6 +102,8 @@ int pass_compare(cad_memory_t memory, circus_log_t *log, hashing_t *hashing, uin
    assert(hashing->salt != NULL && hashing->salt[0] != '\0');
    assert(hashing->hashed != NULL && hashing->hashed[0] != '\0');
 
+   log_debug(log, "stretch=%"PRIu64, hashing->stretch);
+
    int result;
 
    hashing_t cmp;
@@ -115,6 +119,7 @@ int pass_compare(cad_memory_t memory, circus_log_t *log, hashing_t *hashing, uin
       } else {
          result = 1;
          if (min_stretch > hashing->stretch) {
+            log_debug(log, "re-stretching to %"PRIu64, min_stretch);
             hashing->stretch = min_stretch;
             pass_hash(memory, log, hashing);
          }
